@@ -37,7 +37,7 @@
                         <div class="shrink-0">
                             @if ($trialAlreadyUsed)
                                 <span class="block text-center text-sm text-dim-2 max-w-[14rem]">
-                                    {{ __('Ya usaste tu prueba gratuita. ¡Elige un plan abajo!') }}
+                                    {{ __('¿Te gustó la demo? Elige tu plan y sigue disfrutando sin interrupciones.') }}
                                 </span>
                             @else
                                 <form method="POST" action="{{ route('cart.store', $trialPackage) }}">
