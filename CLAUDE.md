@@ -212,6 +212,17 @@ vista previa en vivo, y versión en texto plano con un botón para regenerarla d
 - Las 4 filas se insertan **directo en la migración** (no en `DatabaseSeeder`, que es opcional)
   porque sin ellas ningún correo se puede enviar — `EmailTemplate::render()` usa `firstOrFail()`.
   El editor del admin no tiene botón de eliminar, a propósito.
+- **Diseño por defecto (2026-08-05)**: header y footer oscuros (`#0f1720`) con el logo
+  (`public/images/logo.png`, referenciado con `asset('images/logo.png')` — **la URL absoluta
+  queda fija en la BD al momento de correr la migración**, tomada del `APP_URL` de cada entorno;
+  si `APP_URL` cambia después, hay que reeditar la plantilla o volver a correr esta migración
+  a mano para actualizar el `src`), tarjeta de credenciales con fondo gris y fuente monoespaciada
+  para usuario/contraseña en `order_approved`, botones grandes color `#2aa890` (brand). Esto vive
+  en la migración de datos `2026_08_05_110740_update_email_templates_professional_design.php`
+  (actualiza las filas que crea la migración anterior, no crea una tabla nueva). Si el admin ya
+  editó una plantilla a mano, esta migración de todos modos la sobreescribe — solo se pensó para
+  correr una vez, al desplegar esta mejora; **no volver a correrla** si ya se personalizaron las
+  plantillas después (usar `php artisan migrate:status` para confirmar si ya corrió).
 - **"Probar esta plantilla"**: cada editor tiene un envío de prueba real (`EmailTemplateController@test`,
   ruta `POST /admin/plantillas-correo/{template}/probar`). Envía el asunto/HTML/texto que hay
   **ahora mismo en el formulario** (aunque no se haya guardado, igual que "Probar conexión" de
@@ -364,3 +375,9 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   plantilla" — debe usarse siempre lo configurado en Admin > Configuración de correo, no un
   override por prueba. Se simplificó el formulario (solo queda "Enviar a") y el controller
   (`Mail::send` ya no llama a `->from(...)`).
+- Se rediseñaron las 4 plantillas por defecto (más profesional, con el logo de
+  `public/images/logo.png`) a pedido del usuario — ver detalle en la sección de arriba.
+  Se generaron previews HTML con datos de ejemplo (`EmailTemplate::sampleVariables()`) y se
+  enviaron como archivos al usuario para que las revisara antes de desplegar (no se pudo tomar
+  captura de pantalla del navegador en esta sesión — el panel de Chrome no estaba visible del
+  lado del usuario). El usuario aprobó el diseño ("Procede") antes de subir a GitHub/VPS.
