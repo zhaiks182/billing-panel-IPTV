@@ -9,7 +9,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -36,12 +37,17 @@ class RegisteredUserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'phone_country_code' => ['required', 'string', 'max:6'],
             'phone' => ['required', 'string', 'max:30'],
-            'address_line_1' => ['nullable', 'string', 'max:255'],
-            'city' => ['nullable', 'string', 'max:255'],
-            'state' => ['nullable', 'string', 'max:255'],
-            'postal_code' => ['nullable', 'string', 'max:20'],
-            'country' => ['nullable', 'string', 'max:255'],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'address_line_1' => ['required', 'string', 'max:255'],
+            'city' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\.\'-]+$/u'],
+            'state' => ['required', 'string', 'max:255', 'regex:/^[\pL\s\.\'-]+$/u'],
+            'postal_code' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+            'country' => ['required', 'string', Rule::in(collect(config('countries'))->pluck('name'))],
+            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+        ], [
+            'city.regex' => 'La ciudad solo puede contener letras.',
+            'state.regex' => 'El estado/provincia solo puede contener letras.',
+            'postal_code.regex' => 'El código postal solo puede contener números.',
+            'country.in' => 'Selecciona un país válido de la lista.',
         ]);
 
         $user = User::create([

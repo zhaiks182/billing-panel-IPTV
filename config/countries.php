@@ -20,6 +20,8 @@ return [
     ['name' => 'República Dominicana', 'dial' => '+1', 'flag' => '🇩🇴'],
     ['name' => 'Puerto Rico', 'dial' => '+1', 'flag' => '🇵🇷'],
     ['name' => 'Cuba', 'dial' => '+53', 'flag' => '🇨🇺'],
+    ['name' => 'Belice', 'dial' => '+501', 'flag' => '🇧🇿'],
+    ['name' => 'Haití', 'dial' => '+509', 'flag' => '🇭🇹'],
     ['name' => 'España', 'dial' => '+34', 'flag' => '🇪🇸'],
     ['name' => 'Estados Unidos', 'dial' => '+1', 'flag' => '🇺🇸'],
     ['name' => 'Canadá', 'dial' => '+1', 'flag' => '🇨🇦'],

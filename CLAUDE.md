@@ -128,6 +128,41 @@ esta máquina; por eso se usa `git archive | ssh ... tar -x` en vez de `rsync -a
 - Se confirmó antes de subir que no hay secretos trackeados (`.env`, llaves, etc. — todos
   excluidos por `.gitignore` desde el primer commit).
 
+## Registro de usuarios (formulario de creación de cuenta)
+
+`RegisteredUserController@store` ([app/Http/Controllers/Auth/RegisteredUserController.php](app/Http/Controllers/Auth/RegisteredUserController.php))
+valida y guarda **todos** los campos de dirección como atributos del usuario (antes eran
+`nullable`, ahora `required` — a pedido del usuario, 2026-08-05). La tabla `users` sigue con
+esas columnas `nullable` a nivel de esquema (no se tocó la migración original) para no romper
+usuarios ya registrados antes de este cambio; la obligatoriedad se aplica solo en la validación
+del formulario de registro.
+
+- `address_line_1`: requerido, texto libre (sí acepta números — una dirección real los necesita,
+  ej. "Av. Amazonas 123"). Solo `city` y `state` están restringidos a **solo letras** (regex
+  `/^[\pL\s\.\'-]+$/u`, acepta acentos/ñ, espacios, puntos, apóstrofes y guiones para nombres
+  compuestos) — así lo pidió el usuario explícitamente, a diferencia de la dirección.
+- `postal_code`: requerido, **solo dígitos** (regex `/^[0-9]+$/`, no se usa la regla `integer`
+  de Laravel para no arriesgar que recorte ceros a la izquierda tipo "00926"). En el formulario,
+  el campo tiene `x-data` + `@input` que descarta cualquier carácter no numérico mientras se
+  escribe (⚠️ el `x-data` en ese `<x-text-input>` es necesario aunque parezca redundante — sin
+  un scope Alpine propio o heredado, `@input` no hace nada; así se descubrió el bug la primera vez).
+- `country`: requerido, debe ser uno de `config('countries.php')` (`Rule::in(...)`). La lista
+  se amplió a **todos los países de América Latina y Norteamérica + España** (única europea) —
+  se agregaron Belice y Haití, que faltaban. Ese mismo archivo se reutiliza para el selector de
+  código de país telefónico, así que agregar un país ahí lo agrega a ambos selectores.
+- `password`: `Password::min(8)->mixedCase()->numbers()->symbols()` — mínimo 8, mayúscula +
+  minúscula, número y carácter especial. El usuario solo pidió explícitamente mayúscula/minúscula/
+  especial; se agregó también el requisito de número por ser estándar en "contraseña fuerte" —
+  si no lo quieren, es un solo `->numbers()` menos en la regla.
+- **Medidor de fuerza** (bajo/medio/alto) en el propio formulario: Alpine.js calcula un puntaje
+  0-6 (longitud ≥8, longitud ≥12, minúscula, mayúscula, número, símbolo) y lo muestra como barra +
+  texto mientras el usuario escribe, sin llamada al servidor. Es solo indicativo — quien decide
+  si la contraseña es válida sigue siendo la regla de Laravel en el backend.
+- Probado end-to-end en local: registro con datos válidos (verificado que el usuario queda
+  guardado con todos los campos), y validación server-side probada directo con `Validator::make`
+  para 5 casos (ciudad con números, código postal con letras, país no permitido, contraseña
+  débil, todo válido) — los primeros 4 se rechazan, el último se acepta.
+
 ## Flujo de negocio principal
 
 1. Cliente ve paquetes por categoría (`PackageController@index/category`), agrega al
@@ -381,3 +416,10 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   enviaron como archivos al usuario para que las revisara antes de desplegar (no se pudo tomar
   captura de pantalla del navegador en esta sesión — el panel de Chrome no estaba visible del
   lado del usuario). El usuario aprobó el diseño ("Procede") antes de subir a GitHub/VPS.
+- Se endureció la validación del formulario de registro (`RegisteredUserController`, `register.blade.php`,
+  `config/countries.php`) — ver sección dedicada "Registro de usuarios" arriba. Se encontró y
+  corrigió un bug real durante las pruebas: el filtro de solo-números del código postal no
+  funcionaba porque el `@input` de Alpine estaba fuera de cualquier `x-data`. Probado en
+  navegador real (Laragon local): registro completo exitoso con datos guardados correctamente,
+  medidor de contraseña mostrando Baja/Alta según lo escrito, y Belice/Haití visibles en el
+  selector de país. Validación de casos inválidos confirmada con `Validator::make` directo.
