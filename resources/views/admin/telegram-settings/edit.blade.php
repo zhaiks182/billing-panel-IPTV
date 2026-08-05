@@ -16,12 +16,20 @@
 
             <div class="bg-panel border border-steel rounded-lg p-6">
                 <div class="text-sm text-dim mb-6 space-y-2">
-                    <p>{{ __('Recibe un mensaje en Telegram cada vez que entra un pedido nuevo (demo o de pago). Es gratis, sin límites de mensajes.') }}</p>
-                    <p class="font-semibold text-paper">{{ __('Cómo obtener tus datos:') }}</p>
-                    <ol class="list-decimal list-inside space-y-1">
-                        <li>{{ __('En Telegram, busca a') }} <span class="font-mono text-brand-400">@BotFather</span> {{ __('y envía') }} <span class="font-mono text-brand-400">/newbot</span>{{ __(', sigue los pasos y copia el token que te da.') }}</li>
-                        <li>{{ __('Busca a') }} <span class="font-mono text-brand-400">@userinfobot</span> {{ __('y envíale cualquier mensaje: te responderá con tu Chat ID.') }}</li>
-                        <li>{{ __('Escríbele primero un mensaje a tu propio bot (así puede enviarte a ti).') }}</li>
+                    <p class="font-semibold text-paper">{{ __('Cómo configurar (paso a paso)') }}</p>
+                    <ol class="list-decimal list-inside space-y-2">
+                        <li>{{ __('Abre Telegram y busca') }} <span class="font-mono text-brand-400">@BotFather</span> {{ __('(el bot oficial de Telegram para crear bots).') }}</li>
+                        <li>{{ __('Envíale el comando') }} <span class="font-mono text-brand-400">/newbot</span> {{ __('y sigue sus instrucciones: te pedirá un nombre para mostrar y un usuario único que debe terminar en "bot" (ej.') }} <span class="font-mono text-brand-400">MiPanelWatchBot</span>{{ __(').') }}</li>
+                        <li>{{ __('BotFather te entrega un') }} <span class="font-semibold text-paper">{{ __('Token') }}</span> {{ __('(se ve así:') }} <span class="font-mono text-brand-400">123456789:AAExxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</span>{{ __('). Cópialo y pégalo abajo en «Bot Token» — es la contraseña de tu bot, no la compartas.') }}</li>
+                        <li>
+                            {{ __('Decide a dónde quieres que lleguen los avisos:') }}
+                            <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                                <li>{{ __('A tu chat personal: busca tu bot por su usuario dentro de Telegram y envíale cualquier mensaje (ej. "hola") para "activar" la conversación.') }}</li>
+                                <li>{{ __('A un grupo: agrega el bot al grupo como un miembro más.') }}</li>
+                            </ul>
+                        </li>
+                        <li>{{ __('Para obtener el') }} <span class="font-semibold text-paper">{{ __('Chat ID') }}</span>{{ __(': escríbele a') }} <span class="font-mono text-brand-400">@userinfobot</span> {{ __('en Telegram y te devuelve tu chat_id personal; si es un grupo, agrega a') }} <span class="font-mono text-brand-400">@getidsbot</span> {{ __('al grupo y te dará el id (empieza con "-"). Pega ese número abajo en «Chat ID».') }}</li>
+                        <li>{{ __('Pulsa') }} <span class="font-semibold text-paper">«{{ __('Probar conexión') }}»</span>{{ __(': si todo está bien, tu bot te enviará un mensaje de prueba a ese chat. Solo si eso funciona, pulsa') }} <span class="font-semibold text-paper">«{{ __('Guardar') }}»</span>{{ __('.') }}</li>
                     </ol>
                 </div>
 
