@@ -42,8 +42,6 @@ class EmailTemplateController extends Controller
     {
         $validated = $request->validate([
             'to' => ['required', 'email'],
-            'from_address' => ['nullable', 'email'],
-            'from_name' => ['nullable', 'string', 'max:255'],
             'subject' => ['required', 'string', 'max:255'],
             'html_body' => ['required', 'string'],
             'text_body' => ['nullable', 'string'],
@@ -59,16 +57,12 @@ class EmailTemplateController extends Controller
         );
 
         try {
+            // El remitente se toma del mailer por defecto (Admin > Configuración de correo),
+            // no se permite indicar uno distinto aquí.
             Mail::send(
                 ['html' => 'emails.template-html', 'text' => 'emails.template-text'],
                 ['html' => $html, 'text' => $text],
-                function ($message) use ($validated, $subject) {
-                    $message->to($validated['to'])->subject($subject);
-
-                    if (! empty($validated['from_address'])) {
-                        $message->from($validated['from_address'], $validated['from_name'] ?: config('app.name'));
-                    }
-                }
+                fn ($message) => $message->to($validated['to'])->subject($subject)
             );
 
             return response()->json([

@@ -216,11 +216,12 @@ vista previa en vivo, y versión en texto plano con un botón para regenerarla d
   ruta `POST /admin/plantillas-correo/{template}/probar`). Envía el asunto/HTML/texto que hay
   **ahora mismo en el formulario** (aunque no se haya guardado, igual que "Probar conexión" de
   Telegram), sustituyendo variables con datos de ejemplo (`EmailTemplate::sampleVariables()`,
-  hardcodeados por plantilla, ajustar si cambian las variables reales). Permite indicar un
-  remitente (correo + nombre) distinto al configurado por defecto, vía `Mail::send(...)` con
-  `$message->from(...)` — si el proveedor SMTP no permite ese remitente, el error se muestra tal
-  cual en la respuesta. No pasa por `EmailTemplate::mail()` (esa función lee la plantilla ya
-  guardada en BD; el test usa lo que está escrito en pantalla, por eso arma el mensaje a mano).
+  hardcodeados por plantilla, ajustar si cambian las variables reales). El remitente **no es
+  configurable aquí a propósito** (a pedido del usuario, 2026-08-05) — siempre usa el mailer
+  por defecto de Admin > Configuración de correo, vía `Mail::send(...)` sin `->from(...)`. Se
+  probó con remitente custom en una versión anterior y se quitó; si hace falta reintroducirlo,
+  usarlo solo para casos de prueba explícitos, no como default. No pasa por `EmailTemplate::mail()`
+  (esa función lee la plantilla ya guardada en BD; el test usa lo que está escrito en pantalla).
 - El editor (`resources/views/admin/email-templates/edit.blade.php`) usa Alpine.js: textarea de
   HTML con `x-model` + `<iframe :srcdoc="html">` para vista previa en vivo, botón "Generar desde
   el HTML" que usa `div.innerText` del navegador para derivar el texto plano, y botones de
@@ -359,3 +360,7 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   cada editor, a pedido del usuario. Probado localmente por tinker: sustitución con datos de
   ejemplo, `Mail::send` con remitente custom, contenido verificado en `storage/logs/laravel.log`
   (mailer `log` en desarrollo) — se ve el HTML final ya con las variables reemplazadas.
+- El usuario pidió quitar los campos de remitente/nombre del remitente del "Probar esta
+  plantilla" — debe usarse siempre lo configurado en Admin > Configuración de correo, no un
+  override por prueba. Se simplificó el formulario (solo queda "Enviar a") y el controller
+  (`Mail::send` ya no llama a `->from(...)`).

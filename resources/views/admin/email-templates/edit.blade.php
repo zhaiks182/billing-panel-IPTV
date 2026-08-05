@@ -14,8 +14,6 @@
             testing: false,
             testResult: null,
             testTo: '',
-            testFromAddress: '',
-            testFromName: '',
             insertVariable(name) {
                 const field = this.$refs[this.focused];
                 const placeholder = '{' + '{' + name + '}' + '}';
@@ -46,8 +44,6 @@
                     },
                     body: JSON.stringify({
                         to: this.testTo,
-                        from_address: this.testFromAddress,
-                        from_name: this.testFromName,
                         subject: this.subject,
                         html_body: this.html,
                         text_body: this.text,
@@ -120,28 +116,15 @@
                         {{ __('Envía un correo de prueba con el asunto, HTML y texto que tienes escritos ahora mismo (aunque no hayas guardado), reemplazando las variables con datos de ejemplo.') }}
                     </p>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                            <x-input-label for="test_to" value="{{ __('Enviar a') }}" />
-                            <input id="test_to" type="email" x-model="testTo" placeholder="tu-correo@ejemplo.com"
-                                   class="mt-1 block w-full rounded-md border-steel bg-panel text-paper placeholder-dim-2 shadow-sm text-sm">
-                        </div>
-                        <div>
-                            <x-input-label for="test_from_address" value="{{ __('Remitente (opcional)') }}" />
-                            <input id="test_from_address" type="email" x-model="testFromAddress"
-                                   placeholder="{{ __('usar el de Configuración de correo') }}"
-                                   class="mt-1 block w-full rounded-md border-steel bg-panel text-paper placeholder-dim-2 shadow-sm text-sm">
-                        </div>
-                        <div>
-                            <x-input-label for="test_from_name" value="{{ __('Nombre del remitente (opcional)') }}" />
-                            <input id="test_from_name" type="text" x-model="testFromName"
-                                   placeholder="{{ config('app.name') }}"
-                                   class="mt-1 block w-full rounded-md border-steel bg-panel text-paper placeholder-dim-2 shadow-sm text-sm">
-                        </div>
+                    <div class="max-w-sm">
+                        <x-input-label for="test_to" value="{{ __('Enviar a') }}" />
+                        <input id="test_to" type="email" x-model="testTo" placeholder="tu-correo@ejemplo.com"
+                               class="mt-1 block w-full rounded-md border-steel bg-panel text-paper placeholder-dim-2 shadow-sm text-sm">
                     </div>
 
                     <p class="mt-3 text-xs text-dim-2">
-                        {{ __('Si tu proveedor SMTP no permite cambiar el remitente, el envío puede fallar — el mensaje de error te lo va a indicar.') }}
+                        {{ __('El remitente se toma de Admin > Configuración de correo.') }}
+                        <a href="{{ route('admin.mail.edit') }}" class="underline hover:text-paper">{{ __('Ver configuración de correo') }}</a>.
                     </p>
 
                     <div class="mt-4">
