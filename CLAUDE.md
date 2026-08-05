@@ -235,6 +235,10 @@ del formulario de registro.
    subiendo comprobante de pago (`proof_path`) y eligiendo `PaymentMethod`.
 2. El pedido nace en `status = pending`. `OrderObserver@created` manda notificación a
    Telegram (`TelegramNotifier`, usa `TelegramSetting` guardado en BD, no en `.env`).
+   Además (solo pedidos de pago, no trial), `OrderController@store` dispara `OrderInvoice`
+   — un correo de "factura pendiente de pago" con los datos del pedido (monto, método de
+   pago, dirección de facturación) a modo de confirmación de recepción del comprobante;
+   no es un aviso de aprobación, esa es `OrderApproved` más adelante.
 3. Un admin revisa en `Admin\OrderController@index` y aprueba/rechaza/reintenta:
    - **Aprobar/Reintentar** → `XuiLineService@activate`: llama a `XuiOneClient::createLine`
      (API del panel XUI ONE, formato `GET {panel_url}/{access_code}/?api_key=...&action=...`),
@@ -296,14 +300,15 @@ del formulario de registro.
 
 ## Plantillas de correo
 
-Los 5 correos transaccionales del sistema (verificación de cuenta, pedido aprobado/línea
-activada, pedido rechazado, recordatorio de vencimiento, restablecer contraseña) **ya no
-tienen el diseño por defecto de Laravel** — cada uno se edita desde Admin > Plantillas de
-correo (asunto, diseño HTML con vista previa en vivo, y versión en texto plano con un botón
-para regenerarla desde el HTML).
+Los 6 correos transaccionales del sistema (verificación de cuenta, **factura pendiente de
+pago**, pedido aprobado/línea activada, pedido rechazado, recordatorio de vencimiento,
+restablecer contraseña) **ya no tienen el diseño por defecto de Laravel** — cada uno se
+edita desde Admin > Plantillas de correo (asunto, diseño HTML con vista previa en vivo, y
+versión en texto plano con un botón para regenerarla desde el HTML).
 
 - Modelo [`EmailTemplate`](app/Models/EmailTemplate.php): una fila por `key`
-  (`verify_email`, `order_approved`, `order_rejected`, `line_expiring_soon`, `password_reset`),
+  (`verify_email`, `order_invoice`, `order_approved`, `order_rejected`, `line_expiring_soon`,
+  `password_reset`),
   con `subject`, `html_body`, `text_body`. `EmailTemplate::mail($key, $variables)` sustituye `{{variable}}`
   por su valor (regex, tolera espacios: `{{ variable }}` también funciona) y devuelve un
   `MailMessage` con `->view(['html' => 'emails.template-html', 'text' => 'emails.template-text'], ...)`
@@ -662,3 +667,29 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   Probado end-to-end en local: mensaje "Te enviamos por correo..." en español al pedir el
   enlace, medidor mostrando "Alta" al escribir una contraseña fuerte en el segundo paso, y
   "Tu contraseña fue restablecida correctamente." en español tras enviar.
+- Se agregó espacio (`mt-4`) entre el campo de correo y el widget de Turnstile en
+  `auth/forgot-password.blade.php` — se veían pegados. El componente compartido
+  `<x-turnstile-widget>` no tiene margen propio a propósito (en registro/checkout el `space-y-6`
+  del formulario ya lo separaba); acá se envolvió con un `div.mt-4` local en vez de tocar el
+  componente, para no alterar el espaciado donde ya se veía bien.
+- **Nueva 6ª plantilla: "Factura de pedido (pendiente de pago)"** (`order_invoice`), a pedido
+  del usuario, que compartió como referencia una captura y dos PDF de facturas de otro panel
+  (Teramont Host — solo como referencia de formato/diseño, no se copió su marca ni sus datos).
+  Antes, al crear un pedido de pago (con comprobante subido) no se enviaba ningún correo hasta
+  que un admin lo aprobaba o rechazaba — el cliente quedaba sin confirmación de que su pedido
+  se recibió. Ahora `OrderController@store` dispara `App\Notifications\OrderInvoice` justo
+  después de crear el pedido (solo pedidos de pago, no trial — un trial es $0, no tiene sentido
+  facturarlo). Contenido: número de pedido, insignia "Pendiente de pago" (ámbar), caja
+  "Facturado a" con el nombre y la dirección del cliente (de los mismos campos que ya se
+  guardan en `users`), tabla con el paquete/método de pago/importe, fecha de emisión y total,
+  botón "Ver mi pedido". A diferencia del ejemplo de referencia, no incluye botón para pagar en
+  línea ni fecha de vencimiento — no aplica a nuestro modelo (el pago ya se hizo por fuera,
+  transferencia/Zelle, y se sube el comprobante; lo "pendiente" es la revisión del admin, no el
+  pago del cliente). Migración de datos nueva (`2026_08_05_155412_add_order_invoice_email_template.php`,
+  mismo patrón de las anteriores). Variables nuevas en `EmailTemplate::variableCatalog()`:
+  `billing_address` (HTML, con `<br>`) y `billing_address_text` (texto plano, con `\n`) — dos
+  variables separadas para la misma dirección porque el texto plano no debe llevar HTML.
+  Probado end-to-end en local con un pedido de pago real (checkout completo con comprobante
+  subido vía `curl -F`): correo verificado en `storage/logs/laravel.log` con los datos reales
+  del pedido (paquete, monto, método de pago, dirección) correctamente sustituidos, sin
+  placeholders sueltos, tanto en HTML como en texto plano.

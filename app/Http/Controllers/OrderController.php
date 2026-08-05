@@ -8,6 +8,7 @@ use App\Models\PaymentMethod;
 use App\Models\TurnstileSetting;
 use App\Models\User;
 use App\Notifications\OrderApproved;
+use App\Notifications\OrderInvoice;
 use App\Rules\ValidTurnstile;
 use App\Services\Xui\XuiApiException;
 use App\Services\Xui\XuiLineService;
@@ -83,6 +84,8 @@ class OrderController extends Controller
             'is_renewal' => $user->lines()->where('status', 'active')->exists(),
             'status' => 'pending',
         ]);
+
+        $user->notify(new OrderInvoice($order));
 
         session()->forget('cart_package_id');
 

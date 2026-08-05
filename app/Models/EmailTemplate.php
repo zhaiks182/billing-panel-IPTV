@@ -53,6 +53,17 @@ class EmailTemplate extends Model
                 'reset_url' => 'Enlace para restablecer la contraseña',
                 'expire_minutes' => 'Minutos antes de que expire el enlace',
             ],
+            'order_invoice' => [
+                'user_name' => 'Nombre del usuario',
+                'order_id' => 'Número de pedido',
+                'package_name' => 'Nombre del paquete',
+                'amount' => 'Monto a pagar (con formato, ej. "$10.00 USD")',
+                'payment_method_name' => 'Método de pago elegido',
+                'issued_date' => 'Fecha de emisión',
+                'billing_address' => 'Dirección de facturación para el HTML (varias líneas, ya con <br>)',
+                'billing_address_text' => 'Dirección de facturación para el texto plano (con saltos de línea)',
+                'orders_url' => 'Enlace a "mis pedidos"',
+            ],
         ];
     }
 
@@ -99,6 +110,17 @@ class EmailTemplate extends Model
                 'user_name' => 'Juan Pérez',
                 'reset_url' => url('/reset-password/ejemplo'),
                 'expire_minutes' => (string) config('auth.passwords.users.expire', 60),
+            ],
+            'order_invoice' => [
+                'user_name' => 'Juan Pérez',
+                'order_id' => '1042',
+                'package_name' => '1 mes - 1 pantalla',
+                'amount' => '$10.00 USD',
+                'payment_method_name' => 'Transferencia bancaria',
+                'issued_date' => now()->format('d/m/Y'),
+                'billing_address' => 'Av. Amazonas 123<br>Quito, Pichincha, 170150, Ecuador',
+                'billing_address_text' => "Av. Amazonas 123\nQuito, Pichincha, 170150, Ecuador",
+                'orders_url' => route('orders.index'),
             ],
             default => [],
         };
