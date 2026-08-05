@@ -776,3 +776,28 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   trial real: correo con asunto "Factura #N - Prueba gratuita" e intro correcta en
   `storage/logs/laravel.log`, y PDF adjunto inspeccionado directamente (insignia ámbar "PRUEBA
   GRATUITA", $0.00 USD) — usuario y pedido de prueba eliminados después.
+- **Segunda factura "Pagada" al aprobar un pedido de pago** (2026-08-05). El usuario probó el
+  flujo real en `desarrollo.4livepro.com` (registro → demo → pedido de pago) y notó que al
+  aprobar el pedido no llegaba ninguna factura actualizada a "Pagada" — solo el correo de
+  "línea activada" (`OrderApproved`). Se confirmó que no era un bug sino una función que nunca
+  se construyó: `OrderInvoice` solo se disparaba una vez, al crear el pedido. Se le preguntó al
+  usuario si prefería un correo nuevo separado o adjuntar el PDF pagado al correo de línea
+  activada — eligió **correo nuevo separado**. Implementación:
+  - `App\Notifications\OrderInvoice::toMail()` ahora calcula `status_label`/`intro_text` con un
+    `match(true)` de 3 ramas: `is_trial` → "Prueba gratuita", `status === 'approved'` → "Pagada"
+    (con intro "confirmamos tu pago..."), default → "Pendiente de pago" (sin cambios). No hizo
+    falta tocar la plantilla en BD ni `InvoicePdfService` — ambos ya usaban `{{status_label}}`/
+    `match(true)` genérico desde la extensión a trials de más arriba, así que "Pagada" ya
+    funcionaba en cuanto se le pasara ese estado.
+  - `Admin\OrderController::activate()` (privado, usado por `approve()` y `retry()`) ahora
+    llama `$order->user->notify(new OrderInvoice($order))` justo después de `OrderApproved`,
+    **solo si `! $order->package->is_trial`** — un trial ya recibió su única factura ("Prueba
+    gratuita") al crearse, no tiene sentido reenviarla al activarse (no hay "pago" que
+    confirmar). Esto corre tanto al aprobar un pedido normal como al reintentar uno que había
+    quedado en `error`.
+  - Probado end-to-end en local simulando el ciclo completo de un pedido de pago (creación →
+    `status=pending`, correo "Factura #N - Pendiente de pago" → luego `status=approved`, correo
+    "Factura #N - Pagada"): ambos verificados en `storage/logs/laravel.log` (asunto, insignia,
+    intro, método de pago real) y el PDF de la versión "Pagada" inspeccionado directamente
+    (insignia ámbar "PAGADA", método de pago correcto) — usuario y pedido de prueba eliminados
+    después.

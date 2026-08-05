@@ -10,9 +10,11 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Se envía apenas el cliente sube su comprobante y crea el pedido (pago manual), como
- * confirmación de recepción — no es una notificación de que ya se aprobó (eso lo manda
- * OrderApproved más tarde, cuando un admin revisa el comprobante).
+ * Se envía dos veces en el ciclo de vida de un pedido de pago: al crearse (estado
+ * "Pendiente de pago", como confirmación de recepción del comprobante) y de nuevo al
+ * aprobarse (estado "Pagada", como comprobante final de la transacción) — ver
+ * Admin\OrderController@activate. En pedidos trial se envía solo una vez, al crearse
+ * (siempre "Prueba gratuita", no hay "pago" que confirmar después).
  */
 class OrderInvoice extends Notification
 {
@@ -33,6 +35,19 @@ class OrderInvoice extends Notification
 
         $pdf = app(InvoicePdfService::class);
         $isTrial = $this->order->package->is_trial;
+        $isApproved = $this->order->status === 'approved';
+
+        $statusLabel = match (true) {
+            $isTrial => 'Prueba gratuita',
+            $isApproved => 'Pagada',
+            default => 'Pendiente de pago',
+        };
+
+        $introText = match (true) {
+            $isTrial => 'recibimos tu solicitud de prueba gratuita. Este es el comprobante de tu pedido — en cuanto verifiques tu correo, activaremos tu línea automáticamente.',
+            $isApproved => 'confirmamos tu pago. Aquí tienes tu factura como comprobante de la transacción — gracias por tu compra.',
+            default => 'recibimos tu pedido y el comprobante de pago que subiste. Está en revisión — en cuanto lo confirmemos, activaremos tu línea y te avisaremos por correo.',
+        };
 
         return EmailTemplate::mail('order_invoice', [
             'user_name' => $notifiable->name,
@@ -40,10 +55,8 @@ class OrderInvoice extends Notification
             'package_name' => $this->order->package->name,
             'amount' => '$'.number_format((float) $this->order->amount, 2).' USD',
             'payment_method_name' => $isTrial ? 'Prueba gratuita' : ($this->order->paymentMethod?->name ?: '—'),
-            'status_label' => $isTrial ? 'Prueba gratuita' : 'Pendiente de pago',
-            'intro_text' => $isTrial
-                ? 'recibimos tu solicitud de prueba gratuita. Este es el comprobante de tu pedido — en cuanto verifiques tu correo, activaremos tu línea automáticamente.'
-                : 'recibimos tu pedido y el comprobante de pago que subiste. Está en revisión — en cuanto lo confirmemos, activaremos tu línea y te avisaremos por correo.',
+            'status_label' => $statusLabel,
+            'intro_text' => $introText,
             'issued_date' => $this->order->created_at->format('d/m/Y'),
             'billing_address' => $this->billingAddressLines($notifiable, '<br>'),
             'billing_address_text' => $this->billingAddressLines($notifiable, "\n"),

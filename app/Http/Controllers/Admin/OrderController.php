@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Notifications\OrderApproved;
+use App\Notifications\OrderInvoice;
 use App\Notifications\OrderRejected;
 use App\Services\Xui\XuiApiException;
 use App\Services\Xui\XuiLineService;
@@ -76,6 +77,10 @@ class OrderController extends Controller
             ]);
 
             $order->user->notify(new OrderApproved($order, $line));
+
+            if (! $order->package->is_trial) {
+                $order->user->notify(new OrderInvoice($order));
+            }
         } catch (XuiApiException $e) {
             $order->update([
                 'status' => 'error',
