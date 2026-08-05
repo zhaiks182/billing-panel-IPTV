@@ -85,8 +85,19 @@ window.trialGateForm = function () {
 
         pollStatus(orderId) {
             const statusUrl = this.rootEl.dataset.statusUrlTemplate.replace('__ORDER_ID__', orderId);
+            const pollIntervalMs = 3000;
+            const maxWaitMs = 10 * 60 * 1000; // 10 minutos: si no verifica el correo en ese tiempo, se cierra el aviso solo.
+            let elapsedMs = 0;
 
             this.pollTimer = setInterval(() => {
+                elapsedMs += pollIntervalMs;
+
+                if (elapsedMs >= maxWaitMs) {
+                    clearInterval(this.pollTimer);
+                    this.state = 'timeout';
+                    return;
+                }
+
                 fetch(statusUrl, { headers: { Accept: 'application/json' } })
                     .then((response) => response.json())
                     .then((data) => {
@@ -99,7 +110,12 @@ window.trialGateForm = function () {
                         }
                     })
                     .catch((error) => console.error('trialGateForm: fallo el sondeo de estado', error));
-            }, 3000);
+            }, pollIntervalMs);
+        },
+
+        closeModal() {
+            clearInterval(this.pollTimer);
+            this.modalOpen = false;
         },
     };
 };

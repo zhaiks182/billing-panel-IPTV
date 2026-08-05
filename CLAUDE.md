@@ -329,6 +329,15 @@ vista previa en vivo, y versión en texto plano con un botón para regenerarla d
   dirección/perfil.
 - XAMPP local mencionado por el usuario pero no hay vhost/configuración de XAMPP en este
   repo todavía; el `launch.json` de Claude apunta a Laragon, no XAMPP.
+- **`hasUsedTrial()` cuenta pedidos demo `pending` como "ya usado"** (revisado 2026-08-05):
+  si un cliente pide el trial pero nunca hace clic en el enlace de verificación del correo,
+  ese pedido se queda `pending` para siempre y el cliente **no puede volver a pedir el demo**
+  — `hasUsedTrial()` no distingue entre "ya lo usó" y "lo pidió pero nunca confirmó". Se le
+  explicó esto al usuario junto con dos posibles soluciones (contar solo trials `approved`, o
+  un cron que cancele pedidos demo pendientes sin verificar tras X horas). **El usuario decidió
+  explícitamente no tocarlo** ("No hagas nada, al parecer ya está bien") — no es un bug
+  corregido, es una decisión de negocio tomada a propósito. No volver a "arreglarlo" sin que
+  el usuario lo pida.
 
 ## Comandos útiles
 
@@ -534,3 +543,14 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   timeout de 20s con `AbortController` para no quedar colgado indefinidamente si la red falla,
   y `console.error` en cada rama de fallo para poder diagnosticar más rápido la próxima vez.
   Verificado con un click real end-to-end: modal se abre, correo correcto, sin errores en consola.
+- El usuario preguntó si el modal "Verifica tu correo" (`trialGateForm`) tiene algún límite de
+  tiempo si nunca confirma el correo — no lo tenía, el sondeo (`pollStatus`) corría cada 3s para
+  siempre mientras la pestaña siguiera abierta. Se agregó un límite de **10 minutos**: pasado
+  ese tiempo se detiene el `setInterval` y el modal cambia a un estado `timeout` con botón
+  "Cerrar" (`closeModal()`, que también limpia el intervalo). Importante: **es solo cosmético,
+  del lado del navegador** — el pedido sigue `pending` en la BD sin límite, y si el cliente
+  verifica el correo después (aunque haya cerrado la ventana o pasado el timeout), la línea se
+  activa igual vía `TrialActivator`, sin depender de que esta ventana siga abierta. Se le explicó
+  al usuario que esto expone un vacío real ya documentado arriba (`hasUsedTrial()`), pero pidió
+  no tocarlo. Probado en navegador forzando el estado `timeout` manualmente (sin esperar los
+  10 minutos reales) y confirmando que el botón "Cerrar" cierra el modal correctamente.

@@ -409,7 +409,22 @@
                                     <template x-if="state === 'error'">
                                         <div>
                                             <h3 class="text-lg font-semibold text-paper mb-2">{{ __('No pudimos activar tu línea') }}</h3>
-                                            <p class="text-sm text-dim">{{ __('Un administrador la revisará y la activará manualmente en breve.') }}</p>
+                                            <p class="text-sm text-dim mb-4">{{ __('Un administrador la revisará y la activará manualmente en breve.') }}</p>
+                                            <button type="button" @click="closeModal()" class="text-sm text-dim underline hover:text-paper">
+                                                {{ __('Cerrar') }}
+                                            </button>
+                                        </div>
+                                    </template>
+                                    <template x-if="state === 'timeout'">
+                                        <div>
+                                            <h3 class="text-lg font-semibold text-paper mb-2">{{ __('Seguimos esperando tu verificación') }}</h3>
+                                            <p class="text-sm text-dim mb-4">
+                                                {{ __('No pasa nada: tu pedido sigue guardado. En cuanto hagas clic en el enlace que te enviamos por correo (revisa también spam), tu línea se activará automáticamente, aunque cierres esta ventana.') }}
+                                            </p>
+                                            <button type="button" @click="closeModal()"
+                                                    class="inline-flex items-center justify-center w-full py-3 rounded-md bg-steel text-paper font-semibold hover:bg-steel/80">
+                                                {{ __('Cerrar') }}
+                                            </button>
                                         </div>
                                     </template>
                                 </div>
