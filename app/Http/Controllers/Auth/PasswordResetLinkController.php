@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\TurnstileSetting;
+use App\Rules\ValidTurnstile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -12,11 +14,26 @@ use Illuminate\View\View;
 class PasswordResetLinkController extends Controller
 {
     /**
+     * Mensajes en español para los códigos de estado que devuelve el password broker de
+     * Laravel (`passwords.sent`, etc.) — no hay archivos de traducción `lang/es` en este
+     * proyecto (APP_LOCALE=es sin lang propio), así que `__($status)` caía en inglés.
+     */
+    private const STATUS_MESSAGES = [
+        'passwords.sent' => 'Te enviamos por correo electrónico un enlace para restablecer tu contraseña.',
+        'passwords.user' => 'No encontramos ningún usuario con ese correo electrónico.',
+        'passwords.throttled' => 'Por favor espera antes de volver a intentarlo.',
+    ];
+
+    /**
      * Display the password reset link request view.
      */
     public function create(): View
     {
-        return view('auth.forgot-password');
+        $turnstileSiteKey = TurnstileSetting::current()->isActive()
+            ? TurnstileSetting::current()->site_key
+            : null;
+
+        return view('auth.forgot-password', compact('turnstileSiteKey'));
     }
 
     /**
@@ -28,6 +45,7 @@ class PasswordResetLinkController extends Controller
     {
         $request->validate([
             'email' => ['required', 'email'],
+            'cf-turnstile-response' => [new ValidTurnstile],
         ]);
 
         // We will send the password reset link to this user. Once we have attempted
@@ -37,9 +55,11 @@ class PasswordResetLinkController extends Controller
             $request->only('email')
         );
 
+        $message = self::STATUS_MESSAGES[$status] ?? __($status);
+
         return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
+                    ? back()->with('status', $message)
                     : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+                        ->withErrors(['email' => $message]);
     }
 }

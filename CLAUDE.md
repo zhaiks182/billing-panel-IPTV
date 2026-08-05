@@ -632,3 +632,33 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   español, URL de reset con token real, "60 minutos" sustituido correctamente desde `config()`,
   y el editor del admin muestra la plantilla y sus variables sin cambios adicionales (la lista
   del admin no tiene claves hardcodeadas, lee todo de la tabla).
+- Texto mejorado en `packages/index.blade.php` (sección de demo gratis) para clientes que ya
+  usaron su prueba: "Ya usaste tu prueba gratuita. ¡Elige un plan abajo!" → "¿Te gustó la demo?
+  Elige tu plan y sigue disfrutando sin interrupciones." — a pedido del usuario, solo el texto
+  (no se agregó botón/scroll-anchor a los planes, se ofreció como alternativa pero no se pidió).
+- El usuario vio "We have emailed your password reset link." en inglés al pedir recuperar
+  contraseña, y preguntó si no debía llevar Turnstile también. Causa: `APP_LOCALE=es` está en
+  `.env`, pero **el proyecto no tiene archivos `lang/es`** — los mensajes que arma uno mismo
+  (`__('texto literal en español')`) siempre se ven bien porque Laravel devuelve la clave tal
+  cual si no encuentra traducción, pero los códigos cortos que usa el password broker de Laravel
+  (`passwords.sent`, `passwords.reset`, `passwords.token`, `passwords.user`) sí son claves reales
+  que Laravel traduce con sus propios archivos internos, y sin `lang/es` caen al inglés. En vez
+  de crear toda una carpeta `lang/es` (esta app no tiene i18n real en ningún otro lado, todo el
+  español ya está hardcodeado), se mapearon esos códigos a texto en español directo en
+  `PasswordResetLinkController` y `NewPasswordController` (`STATUS_MESSAGES`, mismo patrón que
+  el resto de la app). Se agregó Turnstile también en `auth/forgot-password.blade.php` (mismo
+  patrón que registro/checkout: `TurnstileSetting`, `ValidTurnstile`, invisible si no está
+  configurado).
+- El usuario pidió también el medidor de fuerza + coincidencia de contraseña en el formulario de
+  "nueva contraseña" (`auth/reset-password.blade.php`, el segundo paso del reset, después de
+  hacer clic en el enlace del correo) — antes solo tenía inputs simples sin ninguno de los dos.
+  Se extrajo ese bloque (antes vivía solo dentro de `<x-guest-registration-fields />`) a un
+  componente propio, [`<x-password-strength-fields />`](resources/views/components/password-strength-fields.blade.php),
+  usado ahora en los tres formularios (registro, checkout, reset de contraseña) — evita duplicarlo
+  una tercera vez, ya nos había mordido dos veces antes. De paso se endureció la regla de
+  contraseña de `NewPasswordController` (usaba `Password::defaults()` genérico, solo mínimo 8
+  caracteres) a la misma regla fuerte (`min(8)->mixedCase()->numbers()->symbols()`) que el resto,
+  ya que el texto de ayuda del componente compartido promete ese requisito para los tres.
+  Probado end-to-end en local: mensaje "Te enviamos por correo..." en español al pedir el
+  enlace, medidor mostrando "Alta" al escribir una contraseña fuerte en el segundo paso, y
+  "Tu contraseña fue restablecida correctamente." en español tras enviar.
