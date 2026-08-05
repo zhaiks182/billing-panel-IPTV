@@ -80,7 +80,7 @@
                             </a>
                         </div>
                     @else
-                        <div @if ($needsVerificationGate) x-data="trialGateForm()" @endif>
+                        <div @if ($needsVerificationGate) x-data="trialGateForm()" data-status-url-template="{{ route('orders.status', ['order' => '__ORDER_ID__']) }}" @endif>
                         <form method="POST" action="{{ route('orders.store', $package) }}" enctype="multipart/form-data" class="space-y-6"
                               @if ($needsVerificationGate) @submit.prevent="submit" @endif>
                             @csrf
@@ -231,6 +231,11 @@
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"
                                          x-data="{
                                             password: '',
+                                            passwordConfirmation: '',
+                                            get match() {
+                                                if (this.passwordConfirmation.length === 0) return null;
+                                                return this.password === this.passwordConfirmation;
+                                            },
                                             get score() {
                                                 let s = 0;
                                                 if (this.password.length >= 8) s++;
@@ -270,8 +275,14 @@
                                         </div>
                                         <div>
                                             <x-input-label for="password_confirmation" :value="__('Confirmar contraseña')" />
-                                            <x-text-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" required autocomplete="new-password" />
+                                            <x-text-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" required
+                                                          autocomplete="new-password" x-model="passwordConfirmation" />
                                             <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+
+                                            <p class="mt-2 text-xs" x-show="match !== null" x-cloak
+                                               :class="match ? 'text-brand-400' : 'text-red-500'">
+                                                <span x-text="match ? '✓ {{ __('Las contraseñas coinciden') }}' : '✕ {{ __('Las contraseñas no coinciden') }}'"></span>
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

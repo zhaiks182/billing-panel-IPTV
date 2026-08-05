@@ -465,3 +465,27 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   Node/npm instalado** — se instaló Node 20 (ver sección "VPS / SSH"). Verificado localmente con
   `npm run build` + navegador (computed `scrollbar-width: thin`, `scrollbar-color` con el gris
   "steel" del tema) antes de desplegar y compilar también en el VPS.
+- Se agregó un indicador en vivo de "las contraseñas coinciden/no coinciden" debajo de
+  "Confirmar contraseña", en registro y checkout (mismo patrón Alpine que el medidor de fuerza:
+  getter `match` que compara `password` vs `passwordConfirmation`, `null` cuando el segundo
+  campo está vacío). Probado en navegador: casos distinto y coincide, ambos correctos.
+- **Bug preexistente encontrado y corregido**: el botón "Activar prueba gratis" (checkout de un
+  paquete demo cuando el cliente aún no verificó su correo) no mostraba texto — solo la flecha.
+  Causa: `orders/create.blade.php` llama `x-data="trialGateForm()"` pero esa función **nunca
+  estaba definida** en `resources/js/app.js` (confirmado con `git log` que ya faltaba desde el
+  primer commit — no es algo que se rompiera en esta sesión). Como Alpine no podía inicializar
+  el componente, `submitting` quedaba `undefined` y ambos `x-show` del botón se ocultaban. Se
+  implementó `window.trialGateForm()` completo: envía el pedido por `fetch`, abre el modal de
+  espera, sondea `GET /pedidos/{id}/estado` cada 3s hasta que el pedido pasa de `pending` a
+  `approved`/`error`, y actualiza el modal (`waiting` → `ready`/`error`). Probado end-to-end en
+  local: pedido creado, modal de espera con el correo correcto, verificación de email simulada
+  por tinker + `TrialActivator`, y el polling detectó el cambio a `approved` y mostró el mensaje
+  de éxito automáticamente, sin recargar la página.
+  ⚠️ Al probar esto se activó una línea trial real en el panel XUI ONE configurado (con un
+  usuario de prueba ficticio, `carlos.trial.test@example.com`) — es una demo de 2 horas, expira
+  sola, pero avisar si esto no es aceptable para pruebas futuras.
+- Nota aparte: en algún punto de la sesión el `.env` local pasó de `DB_CONNECTION=sqlite` a
+  `mysql` (`billing_panel` en `127.0.0.1:3306`, usuario `root` sin clave) — no fue un cambio que
+  yo hiciera; parece que Laragon/el usuario cambió el motor de BD local. No afecta nada en git
+  ni en el VPS (`.env` nunca se versiona), solo dejarlo anotado por si algo local se comporta
+  distinto a lo esperado en sesiones futuras.
