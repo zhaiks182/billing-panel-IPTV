@@ -212,7 +212,13 @@ del formulario de registro.
   con la regla `ValidTurnstile` en ambos controllers. Si Turnstile no está activado/configurado
   en Admin, el componente no renderiza nada (`$siteKey` null) y la regla de validación no
   falla (`ValidTurnstile` ya hacía ese chequeo de `isActive()` internamente) — cero impacto si
-  el admin no lo configura.
+  el admin no lo configura. Centrado con `flex flex-col items-center` en el propio componente
+  (a pedido del usuario, 2026-08-05) — como es un solo componente compartido, centrarlo ahí
+  ya aplica a los dos formularios sin tocarlos por separado. Verificado visualmente activando
+  temporalmente las llaves de prueba públicas de Cloudflare (`1x00000000000000000000AA` /
+  `1x0000000000000000000000000000000AA`, siempre pasan, no necesitan dominio real) en el
+  `TurnstileSetting` local, confirmando por coordenadas que el widget queda centrado respecto
+  al formulario — y revirtiendo la configuración de prueba después.
 - **Rate limiting agregado**: `throttle:10,1` (10 intentos por minuto por IP) en `POST /register`
   y en `POST /paquetes/{package}/comprar` — antes no tenían ningún límite, a diferencia de
   login/verificación de correo que sí lo traen por defecto de Breeze.

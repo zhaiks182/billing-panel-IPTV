@@ -1,7 +1,7 @@
 @props(['siteKey'])
 
 @if ($siteKey)
-    <div>
+    <div class="flex flex-col items-center">
         <div class="cf-turnstile" data-sitekey="{{ $siteKey }}" data-theme="dark"></div>
         <x-input-error :messages="$errors->get('cf-turnstile-response')" class="mt-2" />
     </div>
