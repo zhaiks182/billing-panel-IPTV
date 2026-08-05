@@ -136,7 +136,7 @@
                                                     <input type="hidden" name="phone_country_code" :value="selected?.dial">
 
                                                     <div x-show="open" x-cloak x-transition
-                                                         class="absolute z-20 mt-1 w-72 max-h-64 overflow-y-auto bg-panel-alt border border-steel rounded-md shadow-lg py-1">
+                                                         class="absolute z-20 mt-1 w-72 max-h-64 overflow-y-auto bg-ink border border-steel rounded-md shadow-lg py-1">
                                                         <template x-for="c in countries" :key="c.name">
                                                             <button type="button" @click="selected = c; open = false"
                                                                     class="w-full flex items-center gap-2 px-3 py-2 text-sm text-dim hover:bg-panel hover:text-paper text-left">
@@ -161,24 +161,26 @@
 
                                     <div>
                                         <x-input-label for="address_line_1" :value="__('Dirección 1')" />
-                                        <x-text-input id="address_line_1" class="block mt-1 w-full" type="text" name="address_line_1" :value="old('address_line_1')" autocomplete="address-line1" />
+                                        <x-text-input id="address_line_1" class="block mt-1 w-full" type="text" name="address_line_1" :value="old('address_line_1')" required autocomplete="address-line1" />
                                         <x-input-error :messages="$errors->get('address_line_1')" class="mt-2" />
                                     </div>
 
                                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                         <div>
                                             <x-input-label for="city" :value="__('Ciudad')" />
-                                            <x-text-input id="city" class="block mt-1 w-full" type="text" name="city" :value="old('city')" autocomplete="address-level2" />
+                                            <x-text-input id="city" class="block mt-1 w-full" type="text" name="city" :value="old('city')" required autocomplete="address-level2" />
                                             <x-input-error :messages="$errors->get('city')" class="mt-2" />
                                         </div>
                                         <div>
                                             <x-input-label for="state" :value="__('Estado / Provincia')" />
-                                            <x-text-input id="state" class="block mt-1 w-full" type="text" name="state" :value="old('state')" autocomplete="address-level1" />
+                                            <x-text-input id="state" class="block mt-1 w-full" type="text" name="state" :value="old('state')" required autocomplete="address-level1" />
                                             <x-input-error :messages="$errors->get('state')" class="mt-2" />
                                         </div>
                                         <div>
                                             <x-input-label for="postal_code" :value="__('Código Postal')" />
-                                            <x-text-input id="postal_code" class="block mt-1 w-full" type="text" name="postal_code" :value="old('postal_code')" autocomplete="postal-code" />
+                                            <x-text-input id="postal_code" class="block mt-1 w-full" type="text" inputmode="numeric" pattern="[0-9]*"
+                                                          name="postal_code" :value="old('postal_code')" required autocomplete="postal-code"
+                                                          x-data @input="$el.value = $el.value.replace(/[^0-9]/g, '')" />
                                             <x-input-error :messages="$errors->get('postal_code')" class="mt-2" />
                                         </div>
                                     </div>
@@ -207,7 +209,7 @@
                                                 <input type="hidden" name="country" :value="selected?.name">
 
                                                 <div x-show="open" x-cloak x-transition
-                                                     class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto bg-panel-alt border border-steel rounded-md shadow-lg py-1">
+                                                     class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto bg-ink border border-steel rounded-md shadow-lg py-1">
                                                     <template x-for="c in countries" :key="c.name">
                                                         <button type="button" @click="selected = c; open = false"
                                                                 class="w-full flex items-center px-3 py-2 text-sm text-dim hover:bg-panel hover:text-paper text-left">
@@ -226,11 +228,45 @@
                                         <span class="h-px flex-1 bg-steel"></span>
                                     </div>
 
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                                         x-data="{
+                                            password: '',
+                                            get score() {
+                                                let s = 0;
+                                                if (this.password.length >= 8) s++;
+                                                if (this.password.length >= 12) s++;
+                                                if (/[a-z]/.test(this.password)) s++;
+                                                if (/[A-Z]/.test(this.password)) s++;
+                                                if (/[0-9]/.test(this.password)) s++;
+                                                if (/[^A-Za-z0-9]/.test(this.password)) s++;
+                                                return s;
+                                            },
+                                            get level() {
+                                                if (this.password.length === 0) return null;
+                                                if (this.score <= 2) return 'bajo';
+                                                if (this.score <= 4) return 'medio';
+                                                return 'alto';
+                                            },
+                                         }">
                                         <div>
                                             <x-input-label for="password" :value="__('Contraseña')" />
-                                            <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
+                                            <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required
+                                                          autocomplete="new-password" x-model="password" />
                                             <x-input-error :messages="$errors->get('password')" class="mt-2" />
+
+                                            <div class="mt-2">
+                                                <div class="flex gap-1 h-1.5">
+                                                    <span class="flex-1 rounded-full" :class="score >= 1 ? (level === 'bajo' ? 'bg-red-500' : level === 'medio' ? 'bg-yellow-500' : 'bg-brand-500') : 'bg-steel'"></span>
+                                                    <span class="flex-1 rounded-full" :class="score >= 3 ? (level === 'medio' ? 'bg-yellow-500' : level === 'alto' ? 'bg-brand-500' : 'bg-steel') : 'bg-steel'"></span>
+                                                    <span class="flex-1 rounded-full" :class="level === 'alto' ? 'bg-brand-500' : 'bg-steel'"></span>
+                                                </div>
+                                                <p class="mt-1 text-xs"
+                                                   :class="level === 'bajo' ? 'text-red-500' : level === 'medio' ? 'text-yellow-500' : level === 'alto' ? 'text-brand-400' : 'text-dim-2'">
+                                                    {{ __('Seguridad:') }}
+                                                    <span x-text="level === 'bajo' ? '{{ __('Baja') }}' : level === 'medio' ? '{{ __('Media') }}' : level === 'alto' ? '{{ __('Alta') }}' : '{{ __('—') }}'"></span>
+                                                </p>
+                                            </div>
+                                            <p class="mt-1 text-xs text-dim-2">{{ __('Mínimo 8 caracteres, con mayúsculas, minúsculas, números y un carácter especial.') }}</p>
                                         </div>
                                         <div>
                                             <x-input-label for="password_confirmation" :value="__('Confirmar contraseña')" />

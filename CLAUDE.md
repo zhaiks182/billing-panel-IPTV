@@ -163,6 +163,17 @@ del formulario de registro.
 - Los desplegables de código de país telefónico y de país de la dirección usan `bg-ink` (el mismo
   fondo que el resto de la página) en vez de `bg-panel-alt`, que se veía como un tono distinto
   flotando sobre el formulario — a pedido del usuario, 2026-08-05.
+- ⚠️ **El formulario de registro está duplicado**: `resources/views/orders/create.blade.php`
+  (checkout al comprar un paquete, `OrderController@registerGuest`) tiene una copia casi
+  idéntica de todo el bloque de "Información Personal" + "Dirección de Facturación" +
+  "Seguridad de la Cuenta" de `auth/register.blade.php` (mismos campos, mismos selectores de
+  país/teléfono, mismo patrón de contraseña) — porque un pedido puede crear la cuenta del
+  cliente al vuelo si compra sin estar registrado. **Cualquier cambio a la validación o al
+  formulario de registro (campos obligatorios, formato, medidor de contraseña, colores de los
+  desplegables) hay que replicarlo también aquí**, o quedan inconsistentes. Ya pasó una vez
+  (2026-08-05): se agregó todo lo anterior primero solo en `register.blade.php`/
+  `RegisteredUserController`, y hubo que copiarlo después a `orders/create.blade.php`/
+  `OrderController@registerGuest` al notar la duplicación.
 - Probado end-to-end en local: registro con datos válidos (verificado que el usuario queda
   guardado con todos los campos), y validación server-side probada directo con `Validator::make`
   para 5 casos (ciudad con números, código postal con letras, país no permitido, contraseña
@@ -433,3 +444,10 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   desplegables de país/código telefónico pasaron de `bg-panel-alt` a `bg-ink` para que coincidan
   con el fondo del resto del sitio. Verificado con JS en el navegador (color computado idéntico
   al del body, `rgb(15, 23, 32)`).
+- El usuario notó que "también debe aplicarse para los paquetes el registro" — se encontró que
+  `orders/create.blade.php` (checkout) duplica el formulario de registro completo. Se replicó
+  ahí todo lo hecho hoy en `register.blade.php`/`RegisteredUserController`: fondo `bg-ink` en
+  los desplegables, campos de dirección obligatorios + regex de ciudad/estado/código postal,
+  contraseña fuerte con medidor siempre visible. Se documentó la duplicación arriba para no
+  volver a olvidarla. Probado en navegador local (invitado, sin sesión): filtro de código
+  postal y medidor de contraseña funcionando igual que en el registro normal.
