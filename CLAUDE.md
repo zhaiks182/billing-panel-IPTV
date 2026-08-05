@@ -113,6 +113,21 @@ esta máquina; por eso se usa `git archive | ssh ... tar -x` en vez de `rsync -a
   `desarrollo.4livepro.com.conf` (+ `-le-ssl.conf` para HTTPS/Let's Encrypt).
 - Owner de los archivos en el VPS: `www-data`.
 
+## Repositorio GitHub
+
+- **https://github.com/zhaiks182/billing-panel-IPTV** (rama `main`) — **repo público**, creado
+  por el usuario y subido el 2026-08-05. Contiene todo el historial de git local (empieza en
+  el commit "Baseline: sincronizado con VPS..."). No tiene GitHub Actions/CI configurado.
+- Alias SSH en `~/.ssh/config` (Windows): **`github.com`** → usa la key dedicada
+  `~/.ssh/github_billing_panel` (generada el 2026-08-05 solo para este repo, sin passphrase).
+  La pública ya está agregada a la cuenta de GitHub del usuario (`zhaiks182`).
+- El remoto local se llama `origin`. Push normal: `git push` (ya trackea `origin/main`).
+- Es independiente del deploy a `desarrollo.4livepro.com` (que sigue siendo por
+  `git archive | ssh tar`, ver "Flujo de trabajo" arriba) — GitHub es solo respaldo/historial
+  por ahora, no dispara ningún deploy automático.
+- Se confirmó antes de subir que no hay secretos trackeados (`.env`, llaves, etc. — todos
+  excluidos por `.gitignore` desde el primer commit).
+
 ## Flujo de negocio principal
 
 1. Cliente ve paquetes por categoría (`PackageController@index/category`), agrega al
@@ -242,3 +257,8 @@ ssh whmcs-vps                                  # conectar al VPS de desarrollo/p
   (`git archive | ssh tar`). El script no se probó end-to-end en un servidor real todavía
   (sintaxis verificada con `bash -n`); probarlo en un LAMP limpio antes de confiar en él para
   un cliente real.
+- Se subió el proyecto a GitHub a pedido del usuario: **https://github.com/zhaiks182/billing-panel-IPTV**
+  (repo público — el usuario decidió mantenerlo así, no cambiarlo a privado). Se generó una
+  llave SSH dedicada (`~/.ssh/github_billing_panel`), se agregó a la cuenta de GitHub del
+  usuario, y se hizo `git push -u origin main` con todo el historial local. Se verificó antes
+  de subir que no hay `.env`/secretos trackeados en git.
