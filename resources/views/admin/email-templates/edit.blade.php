@@ -7,9 +7,15 @@
     </x-slot>
 
     <div class="py-12" x-data="{
+            subject: @js($template->subject),
             html: @js($template->html_body),
             text: @js($template->text_body),
             focused: 'html',
+            testing: false,
+            testResult: null,
+            testTo: '',
+            testFromAddress: '',
+            testFromName: '',
             insertVariable(name) {
                 const field = this.$refs[this.focused];
                 const placeholder = '{' + '{' + name + '}' + '}';
@@ -27,6 +33,31 @@
                 div.innerHTML = source;
                 this.text = div.innerText.replace(/\n{3,}/g, '\n\n').trim();
             },
+            testTemplate() {
+                this.testing = true;
+                this.testResult = null;
+
+                fetch('{{ route('admin.email-templates.test', $template) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                    },
+                    body: JSON.stringify({
+                        to: this.testTo,
+                        from_address: this.testFromAddress,
+                        from_name: this.testFromName,
+                        subject: this.subject,
+                        html_body: this.html,
+                        text_body: this.text,
+                    }),
+                })
+                    .then((response) => response.json())
+                    .then((data) => { this.testResult = data; })
+                    .catch(() => { this.testResult = { success: false, message: '{{ __('Error de red al enviar la prueba.') }}' }; })
+                    .finally(() => { this.testing = false; });
+            },
         }">
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
             @if (session('status'))
@@ -43,6 +74,7 @@
                     <div class="bg-panel border border-steel rounded-lg p-6">
                         <x-input-label for="subject" value="{{ __('Asunto') }}" />
                         <x-text-input id="subject" name="subject" type="text" class="mt-1 block w-full" required
+                                      x-model="subject"
                                       value="{{ old('subject', $template->subject) }}" />
                         <x-input-error :messages="$errors->get('subject')" class="mt-2" />
                     </div>
@@ -81,6 +113,49 @@
                         <a href="{{ route('admin.email-templates.index') }}" class="text-sm text-dim hover:text-paper">{{ __('Cancelar') }}</a>
                     </div>
                 </form>
+
+                <div class="bg-panel border border-steel rounded-lg p-6 lg:col-span-3">
+                    <p class="text-sm font-semibold text-paper mb-1">{{ __('Probar esta plantilla') }}</p>
+                    <p class="text-xs text-dim-2 mb-4">
+                        {{ __('Envía un correo de prueba con el asunto, HTML y texto que tienes escritos ahora mismo (aunque no hayas guardado), reemplazando las variables con datos de ejemplo.') }}
+                    </p>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <x-input-label for="test_to" value="{{ __('Enviar a') }}" />
+                            <input id="test_to" type="email" x-model="testTo" placeholder="tu-correo@ejemplo.com"
+                                   class="mt-1 block w-full rounded-md border-steel bg-panel text-paper placeholder-dim-2 shadow-sm text-sm">
+                        </div>
+                        <div>
+                            <x-input-label for="test_from_address" value="{{ __('Remitente (opcional)') }}" />
+                            <input id="test_from_address" type="email" x-model="testFromAddress"
+                                   placeholder="{{ __('usar el de Configuración de correo') }}"
+                                   class="mt-1 block w-full rounded-md border-steel bg-panel text-paper placeholder-dim-2 shadow-sm text-sm">
+                        </div>
+                        <div>
+                            <x-input-label for="test_from_name" value="{{ __('Nombre del remitente (opcional)') }}" />
+                            <input id="test_from_name" type="text" x-model="testFromName"
+                                   placeholder="{{ config('app.name') }}"
+                                   class="mt-1 block w-full rounded-md border-steel bg-panel text-paper placeholder-dim-2 shadow-sm text-sm">
+                        </div>
+                    </div>
+
+                    <p class="mt-3 text-xs text-dim-2">
+                        {{ __('Si tu proveedor SMTP no permite cambiar el remitente, el envío puede fallar — el mensaje de error te lo va a indicar.') }}
+                    </p>
+
+                    <div class="mt-4">
+                        <x-secondary-button type="button" @click="testTemplate()" ::disabled="testing || !testTo">
+                            <span x-show="!testing">{{ __('Enviar correo de prueba') }}</span>
+                            <span x-show="testing" x-cloak>{{ __('Enviando…') }}</span>
+                        </x-secondary-button>
+                        <p class="mt-2 text-sm"
+                           x-show="testResult"
+                           x-cloak
+                           :class="testResult && testResult.success ? 'text-brand-400' : 'text-danger'"
+                           x-text="testResult && testResult.message"></p>
+                    </div>
+                </div>
 
                 <div class="lg:col-span-1">
                     <div class="bg-panel border border-steel rounded-lg p-4 sticky top-6">

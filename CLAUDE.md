@@ -212,6 +212,15 @@ vista previa en vivo, y versión en texto plano con un botón para regenerarla d
 - Las 4 filas se insertan **directo en la migración** (no en `DatabaseSeeder`, que es opcional)
   porque sin ellas ningún correo se puede enviar — `EmailTemplate::render()` usa `firstOrFail()`.
   El editor del admin no tiene botón de eliminar, a propósito.
+- **"Probar esta plantilla"**: cada editor tiene un envío de prueba real (`EmailTemplateController@test`,
+  ruta `POST /admin/plantillas-correo/{template}/probar`). Envía el asunto/HTML/texto que hay
+  **ahora mismo en el formulario** (aunque no se haya guardado, igual que "Probar conexión" de
+  Telegram), sustituyendo variables con datos de ejemplo (`EmailTemplate::sampleVariables()`,
+  hardcodeados por plantilla, ajustar si cambian las variables reales). Permite indicar un
+  remitente (correo + nombre) distinto al configurado por defecto, vía `Mail::send(...)` con
+  `$message->from(...)` — si el proveedor SMTP no permite ese remitente, el error se muestra tal
+  cual en la respuesta. No pasa por `EmailTemplate::mail()` (esa función lee la plantilla ya
+  guardada en BD; el test usa lo que está escrito en pantalla, por eso arma el mensaje a mano).
 - El editor (`resources/views/admin/email-templates/edit.blade.php`) usa Alpine.js: textarea de
   HTML con `x-model` + `<iframe :srcdoc="html">` para vista previa en vivo, botón "Generar desde
   el HTML" que usa `div.innerText` del navegador para derivar el texto plano, y botones de
@@ -346,3 +355,7 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   de ejemplo (sustitución de variables, sin `{{...}}` sin reemplazar), las dos vistas del admin
   renderizadas por tinker, y la vista `edit.blade.php` compilada a mano para atrapar el bug de
   `{{`/`}}` literales antes de subir (ver advertencia en la sección de arriba).
+- Se agregó "Probar esta plantilla" (envío de correo de prueba con remitente configurable) a
+  cada editor, a pedido del usuario. Probado localmente por tinker: sustitución con datos de
+  ejemplo, `Mail::send` con remitente custom, contenido verificado en `storage/logs/laravel.log`
+  (mailer `log` en desarrollo) — se ve el HTML final ya con las variables reemplazadas.

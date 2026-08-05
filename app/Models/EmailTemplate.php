@@ -57,6 +57,44 @@ class EmailTemplate extends Model
     }
 
     /**
+     * Datos de ejemplo para el botón "Enviar correo de prueba" del editor, ya que ahí no
+     * existe un pedido/línea real todavía sobre el cual construir las variables.
+     */
+    public function sampleVariables(): array
+    {
+        return match ($this->key) {
+            'verify_email' => [
+                'user_name' => 'Juan Pérez',
+                'verification_url' => url('/verify-email/ejemplo'),
+            ],
+            'order_approved' => [
+                'user_name' => 'Juan Pérez',
+                'order_id' => '1042',
+                'package_name' => '1 mes - 1 pantalla',
+                'xui_username' => 'usuario_demo',
+                'xui_password' => 'clave_demo123',
+                'm3u_url' => 'http://tu-panel.com:2082/playlist/usuario_demo/clave_demo123/m3u_plus',
+                'line_expires_at' => now()->addDays(30)->format('d/m/Y'),
+                'dashboard_url' => route('dashboard'),
+            ],
+            'order_rejected' => [
+                'user_name' => 'Juan Pérez',
+                'order_id' => '1042',
+                'admin_note' => 'El comprobante no coincide con el monto del pedido.',
+                'orders_url' => route('orders.index'),
+            ],
+            'line_expiring_soon' => [
+                'user_name' => 'Juan Pérez',
+                'package_name' => '1 mes - 1 pantalla',
+                'line_expires_at' => now()->addDays(2)->format('d/m/Y H:i'),
+                'days_label' => 'en 2 días',
+                'renew_url' => route('home'),
+            ],
+            default => [],
+        };
+    }
+
+    /**
      * Sustituye {{variable}} (con o sin espacios) por su valor. Las variables sin
      * valor provisto se dejan tal cual, para que un typo en el template sea visible.
      */

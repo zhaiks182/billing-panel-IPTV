@@ -72,6 +72,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/plantillas-correo', [EmailTemplateController::class, 'index'])->name('email-templates.index');
         Route::get('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'edit'])->name('email-templates.edit');
         Route::put('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'update'])->name('email-templates.update');
+        Route::post('/plantillas-correo/{emailTemplate}/probar', [EmailTemplateController::class, 'test'])->name('email-templates.test');
     });
 });
 
