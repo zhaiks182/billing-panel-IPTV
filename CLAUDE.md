@@ -12,40 +12,67 @@ un admin aprueba el pedido y el sistema provisiona automáticamente la línea en
 
 ## ⚠️ Estado de infraestructura (importante)
 
-- **No hay repositorio git** ni en local (`C:\Claude\Billing Panel`) ni en el VPS
-  (`/var/www/desarrollo.4livepro.com`). No hay control de versiones, no hay forma
-  de revertir cambios ni de diffear local vs. producción salvo comparando archivos a mano.
-  **Recomendado:** inicializar git localmente y usarlo como fuente de verdad, luego
-  desplegar al VPS (rsync/git pull) en lugar de editar ambos lados por separado.
 - Existen **dos carpetas locales** con el mismo proyecto:
   - `C:\Claude\Billing Panel` ← **la real, activa** (tiene `vendor/`, `node_modules/`,
-    `database.sqlite`, toda la app). Trabajar siempre aquí.
+    `database.sqlite`, toda la app, y ahora el repo git). Trabajar siempre aquí.
   - `C:\Users\Jbrito\OneDrive\Desktop\Claude Code\Billing Panel` ← esqueleto vacío de
     Laravel recién instalado (quedó de una creación inicial). **No usar.** Considerar
     borrarla para evitar confusión en el futuro.
+- Hay **dos repos git independientes** (no comparten historial, es intencional):
+  uno en local (`C:\Claude\Billing Panel`) que es el que se usa para desarrollar, y otro
+  en el VPS (`/var/www/desarrollo.4livepro.com`) que solo sirve de red de seguridad por si
+  se edita algo ahí directamente. El flujo normal es local → VPS, nunca al revés.
 
 ## Flujo de trabajo (decidido 2026-08-05)
 
-**Se trabaja directo sobre el VPS por SSH**, no en local. El usuario no quiere levantar
-XAMPP/Laragon para cada sesión. Esto implica:
+**Se edita en local (`C:\Claude\Billing Panel`) y se despliega al VPS después.** El usuario
+no quiere depender de un servidor local (XAMPP/Laragon) para cada sesión, así que la
+previsualización real se hace en https://desarrollo.4livepro.com, pero el código fuente
+vive y se versiona en local.
 
-- Todos los cambios de código se hacen en `/var/www/desarrollo.4livepro.com` vía `ssh whmcs-vps`.
-- Para editar un archivo: se descarga a un temporal local (scratchpad), se edita ahí con
-  las herramientas normales, y se sube de vuelta (`scp`) — nunca se mantiene una copia
-  local persistente sincronizada a mano.
-- Tras escribir en `storage/` o `bootstrap/cache/`, devolver el ownership a `www-data:www-data`
-  (Apache corre como `www-data`; si quedan archivos de `root` con permisos insuficientes
-  puede romper cachés/logs).
-- Comandos artisan/composer/npm se ejecutan por SSH: `ssh whmcs-vps "cd /var/www/desarrollo.4livepro.com && php artisan ..."`.
-- Previsualización: directamente en https://desarrollo.4livepro.com (no hay entorno local activo).
-- **Se inicializó git en el VPS hoy** (no existía antes) con un commit base
-  (`Initial snapshot: estado del proyecto al 2026-08-05`) para poder revertir cambios.
-  `git config --global --add safe.directory /var/www/desarrollo.4livepro.com` ya quedó
-  configurado (necesario porque se conecta como `root` sobre archivos de `www-data`).
-- Pendiente/opcional: limpiar `storage/framework/views/*.php` del historial de git (cachés
-  de Blade compiladas que quedaron en el primer commit sin querer) y añadirlas a `.gitignore`.
-- La carpeta local `C:\Claude\Billing Panel` queda solo como referencia/lectura de este
-  `CLAUDE.md`; no se edita código ahí de forma rutinaria.
+1. Editar archivos normalmente en `C:\Claude\Billing Panel` (Read/Edit/Write).
+2. Probar localmente si hace falta ejecutar algo (`php artisan ...`, tests) usando el PHP
+   de Laragon (`C:\laragon\bin\php\php-8.3.30-Win32-vs16-x64\php.exe`) — no es obligatorio
+   levantar el servidor completo solo para editar código.
+3. Commit local:
+   ```bash
+   git add -A && git commit -m "mensaje descriptivo"
+   ```
+4. Desplegar al VPS (empaqueta el commit actual y lo extrae en el servidor):
+   ```bash
+   git archive HEAD | ssh whmcs-vps "tar -x -C /var/www/desarrollo.4livepro.com"
+   ssh whmcs-vps "chown -R www-data:www-data /var/www/desarrollo.4livepro.com/storage /var/www/desarrollo.4livepro.com/bootstrap/cache && chmod +x /var/www/desarrollo.4livepro.com/artisan"
+   ```
+   Si el commit agrega migraciones nuevas, correrlas también en el VPS:
+   ```bash
+   ssh whmcs-vps "cd /var/www/desarrollo.4livepro.com && php artisan migrate --force"
+   ```
+5. Si el deploy tocó `resources/` (Blade/CSS/JS) y depende de assets compilados, correr
+   `npm run build` en el VPS y verificar `public/build`.
+6. Verificar en https://desarrollo.4livepro.com.
+
+**Nota sobre `git archive | tar`:** solo agrega/sobrescribe archivos, no borra los que ya
+no estén en el commit (si se elimina un archivo en local, hay que borrarlo a mano en el VPS
+también). Tras el primer deploy grande de hoy, el `tar` dejó algunos archivos con dueño
+`root` en `storage/` y quitó el bit ejecutable de `artisan` — por eso el `chown`/`chmod`
+del paso 4 son parte fija del proceso, no algo puntual.
+
+**Nota sobre línea de comandos en Windows:** `rsync` no está disponible en el Git Bash de
+esta máquina; por eso se usa `git archive | ssh ... tar -x` en vez de `rsync -avz`. `scp` y
+`md5sum`/`sha1sum` sí están disponibles y sirven para comparar archivos sueltos si hace falta.
+
+- **git en el VPS**: inicializado hoy (no existía antes), con
+  `git config --global --add safe.directory /var/www/desarrollo.4livepro.com` (necesario
+  porque se conecta como `root` sobre archivos de `www-data`). Sirve como respaldo/rollback
+  local del servidor, no como el repo de desarrollo.
+- **git en local**: inicializado hoy también. Historial empieza en
+  `Baseline: sincronizado con VPS (desarrollo.4livepro.com) al 2026-08-05`, que se verificó
+  archivo por archivo (hash md5) contra el VPS antes de crear el commit — estaban casi
+  idénticos, con 4 diferencias que ya se resolvieron (ver bitácora).
+- Pendiente/opcional: limpiar `storage/framework/views/*.php` cacheado que quedó en el
+  primer commit del VPS sin querer, y las 3 vistas huérfanas (`admin/index.blade.php`,
+  `login.blade.php`, `navigation.blade.php` en la raíz de `resources/views/`) que no las
+  referencia ningún controller — parecen restos de una reorganización anterior.
 
 ## Entornos
 
@@ -156,4 +183,15 @@ ssh whmcs-vps                                  # conectar al VPS de desarrollo/p
   de la sesión a `C:\Claude\Billing Panel` — confirmado correcto.
 - Se verificó acceso SSH al VPS (`whmcs-vps`, `167.148.33.82`) — funcional.
 - Se creó este archivo `CLAUDE.md` como documentación viva del proyecto.
+- Se definió el flujo de trabajo: **local (`C:\Claude\Billing Panel`) es la fuente de
+  verdad, se despliega al VPS después de cada commit** (ver sección "Flujo de trabajo").
+  Primero se probó "editar directo en el VPS" pero el usuario pidió cambiarlo a local-first.
+- Se inicializó git en el VPS (`Initial snapshot...`) y luego en local
+  (`Baseline: sincronizado con VPS...`), tras verificar por hash que ambas copias
+  coincidían casi al 100% (4 diferencias, resueltas: `resources/js/app.js` y 3 vistas
+  huérfanas traídas de VPS a local).
+- Se hizo el primer deploy real local → VPS (`git archive | ssh tar`), subiendo `CLAUDE.md`.
+  Se detectó y corrigió: pérdida del bit ejecutable de `artisan` y archivos de `storage/`
+  quedando con dueño `root` tras el `tar` — ambos ahora son pasos fijos del proceso de deploy.
+  Se verificó que el sitio sigue respondiendo (HTTP 200) después del deploy.
 - Pendiente: decidir próxima tarea de desarrollo con el usuario.
