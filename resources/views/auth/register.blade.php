@@ -71,7 +71,7 @@
                                     <input type="hidden" name="phone_country_code" :value="selected?.dial">
 
                                     <div x-show="open" x-cloak x-transition
-                                         class="absolute z-20 mt-1 w-72 max-h-64 overflow-y-auto bg-panel-alt border border-steel rounded-md shadow-lg py-1">
+                                         class="absolute z-20 mt-1 w-72 max-h-64 overflow-y-auto bg-ink border border-steel rounded-md shadow-lg py-1">
                                         <template x-for="c in countries" :key="c.name">
                                             <button type="button" @click="selected = c; open = false"
                                                     class="w-full flex items-center gap-2 px-3 py-2 text-sm text-dim hover:bg-panel hover:text-paper text-left">
@@ -144,7 +144,7 @@
                                 <input type="hidden" name="country" :value="selected?.name">
 
                                 <div x-show="open" x-cloak x-transition
-                                     class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto bg-panel-alt border border-steel rounded-md shadow-lg py-1">
+                                     class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto bg-ink border border-steel rounded-md shadow-lg py-1">
                                     <template x-for="c in countries" :key="c.name">
                                         <button type="button" @click="selected = c; open = false"
                                                 class="w-full flex items-center px-3 py-2 text-sm text-dim hover:bg-panel hover:text-paper text-left">
@@ -189,16 +189,16 @@
                                           autocomplete="new-password" x-model="password" />
                             <x-input-error :messages="$errors->get('password')" class="mt-2" />
 
-                            <div class="mt-2" x-show="level" x-cloak>
+                            <div class="mt-2">
                                 <div class="flex gap-1 h-1.5">
                                     <span class="flex-1 rounded-full" :class="score >= 1 ? (level === 'bajo' ? 'bg-red-500' : level === 'medio' ? 'bg-yellow-500' : 'bg-brand-500') : 'bg-steel'"></span>
                                     <span class="flex-1 rounded-full" :class="score >= 3 ? (level === 'medio' ? 'bg-yellow-500' : level === 'alto' ? 'bg-brand-500' : 'bg-steel') : 'bg-steel'"></span>
                                     <span class="flex-1 rounded-full" :class="level === 'alto' ? 'bg-brand-500' : 'bg-steel'"></span>
                                 </div>
                                 <p class="mt-1 text-xs"
-                                   :class="level === 'bajo' ? 'text-red-500' : level === 'medio' ? 'text-yellow-500' : 'text-brand-400'">
+                                   :class="level === 'bajo' ? 'text-red-500' : level === 'medio' ? 'text-yellow-500' : level === 'alto' ? 'text-brand-400' : 'text-dim-2'">
                                     {{ __('Seguridad:') }}
-                                    <span x-text="level === 'bajo' ? '{{ __('Baja') }}' : level === 'medio' ? '{{ __('Media') }}' : '{{ __('Alta') }}'"></span>
+                                    <span x-text="level === 'bajo' ? '{{ __('Baja') }}' : level === 'medio' ? '{{ __('Media') }}' : level === 'alto' ? '{{ __('Alta') }}' : '{{ __('—') }}'"></span>
                                 </p>
                             </div>
                             <p class="mt-1 text-xs text-dim-2">{{ __('Mínimo 8 caracteres, con mayúsculas, minúsculas, números y un carácter especial.') }}</p>

@@ -157,7 +157,12 @@ del formulario de registro.
 - **Medidor de fuerza** (bajo/medio/alto) en el propio formulario: Alpine.js calcula un puntaje
   0-6 (longitud ≥8, longitud ≥12, minúscula, mayúscula, número, símbolo) y lo muestra como barra +
   texto mientras el usuario escribe, sin llamada al servidor. Es solo indicativo — quien decide
-  si la contraseña es válida sigue siendo la regla de Laravel en el backend.
+  si la contraseña es válida sigue siendo la regla de Laravel en el backend. **Siempre visible**
+  (a pedido del usuario, 2026-08-05) — con el campo vacío muestra la barra en gris y "Seguridad: —",
+  no se oculta hasta que se empieza a escribir.
+- Los desplegables de código de país telefónico y de país de la dirección usan `bg-ink` (el mismo
+  fondo que el resto de la página) en vez de `bg-panel-alt`, que se veía como un tono distinto
+  flotando sobre el formulario — a pedido del usuario, 2026-08-05.
 - Probado end-to-end en local: registro con datos válidos (verificado que el usuario queda
   guardado con todos los campos), y validación server-side probada directo con `Validator::make`
   para 5 casos (ciudad con números, código postal con letras, país no permitido, contraseña
@@ -423,3 +428,8 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   navegador real (Laragon local): registro completo exitoso con datos guardados correctamente,
   medidor de contraseña mostrando Baja/Alta según lo escrito, y Belice/Haití visibles en el
   selector de país. Validación de casos inválidos confirmada con `Validator::make` directo.
+- Dos ajustes rápidos al mismo formulario, a pedido del usuario tras ver capturas: la barra de
+  fuerza de contraseña ahora es siempre visible (antes solo aparecía al escribir), y los
+  desplegables de país/código telefónico pasaron de `bg-panel-alt` a `bg-ink` para que coincidan
+  con el fondo del resto del sitio. Verificado con JS en el navegador (color computado idéntico
+  al del body, `rgb(15, 23, 32)`).
