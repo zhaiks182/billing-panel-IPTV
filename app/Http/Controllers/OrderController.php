@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\PaymentMethod;
+use App\Models\TurnstileSetting;
 use App\Models\User;
 use App\Notifications\OrderApproved;
+use App\Rules\ValidTurnstile;
 use App\Services\Xui\XuiApiException;
 use App\Services\Xui\XuiLineService;
 use Illuminate\Auth\Events\Registered;
@@ -31,9 +33,11 @@ class OrderController extends Controller
         $trialAlreadyUsed = $package->is_trial && $user && $this->hasUsedTrial($user);
         $needsVerificationGate = $package->is_trial && ! ($user && $user->hasVerifiedEmail());
 
-        $countries = config('countries');
+        $turnstileSiteKey = TurnstileSetting::current()->isActive()
+            ? TurnstileSetting::current()->site_key
+            : null;
 
-        return view('orders.create', compact('package', 'paymentMethods', 'trialAlreadyUsed', 'needsVerificationGate', 'countries'));
+        return view('orders.create', compact('package', 'paymentMethods', 'trialAlreadyUsed', 'needsVerificationGate', 'turnstileSiteKey'));
     }
 
     public function status(Order $order)
@@ -100,6 +104,7 @@ class OrderController extends Controller
             'postal_code' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
             'country' => ['required', 'string', Rule::in(collect(config('countries'))->pluck('name'))],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'cf-turnstile-response' => [new ValidTurnstile],
         ], [
             'city.regex' => 'La ciudad solo puede contener letras.',
             'state.regex' => 'El estado/provincia solo puede contener letras.',

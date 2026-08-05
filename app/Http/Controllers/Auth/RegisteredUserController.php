@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\TurnstileSetting;
 use App\Models\User;
+use App\Rules\ValidTurnstile;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +23,11 @@ class RegisteredUserController extends Controller
      */
     public function create(): View
     {
-        return view('auth.register');
+        $turnstileSiteKey = TurnstileSetting::current()->isActive()
+            ? TurnstileSetting::current()->site_key
+            : null;
+
+        return view('auth.register', compact('turnstileSiteKey'));
     }
 
     /**
@@ -43,6 +49,7 @@ class RegisteredUserController extends Controller
             'postal_code' => ['required', 'string', 'max:20', 'regex:/^[0-9]+$/'],
             'country' => ['required', 'string', Rule::in(collect(config('countries'))->pluck('name'))],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'cf-turnstile-response' => [new ValidTurnstile],
         ], [
             'city.regex' => 'La ciudad solo puede contener letras.',
             'state.regex' => 'El estado/provincia solo puede contener letras.',

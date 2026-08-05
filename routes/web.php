@@ -26,7 +26,7 @@ Route::post('/carro/vaciar', [CartController::class, 'destroy'])->name('cart.des
 Route::post('/carro/{package:slug}', [CartController::class, 'store'])->name('cart.store');
 
 Route::get('/paquetes/{package:slug}/comprar', [OrderController::class, 'create'])->name('orders.create');
-Route::post('/paquetes/{package:slug}/comprar', [OrderController::class, 'store'])->name('orders.store');
+Route::post('/paquetes/{package:slug}/comprar', [OrderController::class, 'store'])->name('orders.store')->middleware('throttle:10,1');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware('auth')

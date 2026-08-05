@@ -56,24 +56,37 @@ vive y se versiona en local.
    ```bash
    git add -A && git commit -m "mensaje descriptivo"
    ```
-4. Desplegar al VPS (empaqueta el commit actual y lo extrae en el servidor):
+4. Desplegar al VPS con **[`deploy.sh`](deploy.sh)** (agregado 2026-08-05, ver más abajo):
    ```bash
-   git archive HEAD | ssh whmcs-vps "tar -x -C /var/www/desarrollo.4livepro.com"
-   ssh whmcs-vps "chown -R www-data:www-data /var/www/desarrollo.4livepro.com/storage /var/www/desarrollo.4livepro.com/bootstrap/cache && chmod +x /var/www/desarrollo.4livepro.com/artisan"
+   ./deploy.sh                # deploy normal
+   ./deploy.sh --migrate      # si el commit agrega migraciones nuevas
+   ./deploy.sh --no-build     # si no tocaste resources/css o resources/js (más rápido)
    ```
-   Si el commit agrega migraciones nuevas, correrlas también en el VPS:
-   ```bash
-   ssh whmcs-vps "cd /var/www/desarrollo.4livepro.com && php artisan migrate --force"
-   ```
-5. Si el deploy tocó `resources/` (Blade/CSS/JS) y depende de assets compilados, correr
-   `npm run build` en el VPS y verificar `public/build`.
-6. Verificar en https://desarrollo.4livepro.com.
+5. Verificar en https://desarrollo.4livepro.com (el script ya hace un `curl` de verificación
+   al final, pero conviene mirarlo en el navegador también).
+
+### `deploy.sh`
+
+Reemplaza la secuencia manual de comandos que se venía repitiendo a mano en cada deploy
+(`git archive | tar`, `chown`, `npm run build`, `optimize:clear`...). Se creó después de un
+incidente real: un `chown` que solo corría al principio del deploy dejó una ventana de unos
+segundos donde `storage/framework/views/` no era escribible por `www-data`, y un cliente real
+que probó registrarse justo en ese momento se topó con un error 500 (ver "Incidente 2026-08-05"
+más abajo). El script:
+1. Exige que no haya cambios sin commitear (si los hay, aborta).
+2. `git archive HEAD | ssh tar -x` al VPS.
+3. `chown`/`chmod` de permisos — **antes** de tocar cachés.
+4. Migraciones (`--migrate`, opcional).
+5. `npm install && npm run build` + `chown` de `public/build` (salvo `--no-build`).
+6. `php artisan optimize:clear`.
+7. `chown` de permisos **otra vez** — por si `optimize:clear` recreó algo como root.
+8. Commit de respaldo en el git local del VPS.
+9. `curl` de verificación — si el sitio no responde 200, el script termina con error.
 
 **Nota sobre `git archive | tar`:** solo agrega/sobrescribe archivos, no borra los que ya
-no estén en el commit (si se elimina un archivo en local, hay que borrarlo a mano en el VPS
-también). Tras el primer deploy grande de hoy, el `tar` dejó algunos archivos con dueño
-`root` en `storage/` y quitó el bit ejecutable de `artisan` — por eso el `chown`/`chmod`
-del paso 4 son parte fija del proceso, no algo puntual.
+no estén en el commit — si se elimina un archivo en local (como pasó hoy con las 3 vistas
+huérfanas), `deploy.sh` no lo borra del VPS automáticamente, hay que hacerlo a mano con
+`ssh whmcs-vps "rm /var/www/desarrollo.4livepro.com/ruta/al/archivo"`.
 
 ⚠️ **Incidente 2026-08-05**: un usuario real intentó registrarse (`jorgeevil182@gmail.com`,
 compra de la demo) justo durante/después de un deploy y le dio error 500 silencioso (el botón
@@ -183,21 +196,31 @@ del formulario de registro.
 - Los desplegables de código de país telefónico y de país de la dirección usan `bg-ink` (el mismo
   fondo que el resto de la página) en vez de `bg-panel-alt`, que se veía como un tono distinto
   flotando sobre el formulario — a pedido del usuario, 2026-08-05.
-- ⚠️ **El formulario de registro está duplicado**: `resources/views/orders/create.blade.php`
-  (checkout al comprar un paquete, `OrderController@registerGuest`) tiene una copia casi
-  idéntica de todo el bloque de "Información Personal" + "Dirección de Facturación" +
-  "Seguridad de la Cuenta" de `auth/register.blade.php` (mismos campos, mismos selectores de
-  país/teléfono, mismo patrón de contraseña) — porque un pedido puede crear la cuenta del
-  cliente al vuelo si compra sin estar registrado. **Cualquier cambio a la validación o al
-  formulario de registro (campos obligatorios, formato, medidor de contraseña, colores de los
-  desplegables) hay que replicarlo también aquí**, o quedan inconsistentes. Ya pasó una vez
-  (2026-08-05): se agregó todo lo anterior primero solo en `register.blade.php`/
-  `RegisteredUserController`, y hubo que copiarlo después a `orders/create.blade.php`/
-  `OrderController@registerGuest` al notar la duplicación.
-- Probado end-to-end en local: registro con datos válidos (verificado que el usuario queda
-  guardado con todos los campos), y validación server-side probada directo con `Validator::make`
-  para 5 casos (ciudad con números, código postal con letras, país no permitido, contraseña
-  débil, todo válido) — los primeros 4 se rechazan, el último se acepta.
+- ✅ **Duplicación resuelta (2026-08-05)**: el bloque de "Información Personal" +
+  "Dirección de Facturación" + "Seguridad de la Cuenta" que antes estaba copiado y pegado
+  en `auth/register.blade.php` y `orders/create.blade.php` ahora vive en un solo componente,
+  [`<x-guest-registration-fields />`](resources/views/components/guest-registration-fields.blade.php),
+  usado por los dos. Un cambio a esos campos ahora se hace una sola vez. `orders/create.blade.php`
+  sigue usándolo dentro de su propio `@guest` (solo aplica cuando el que compra no tiene cuenta
+  todavía) — `OrderController@registerGuest` y `RegisteredUserController@store` siguen siendo
+  dos validaciones separadas (reglas iguales, pero cada una con su propio flujo de creación de
+  usuario), eso no se unificó.
+- **Cloudflare Turnstile conectado (2026-08-05)**: existía todo el módulo de configuración
+  (`TurnstileSetting`, `ValidTurnstile`, Admin > Cloudflare Turnstile) pero nunca se usaba en
+  ningún formulario. Ahora [`<x-turnstile-widget :site-key="..." />`](resources/views/components/turnstile-widget.blade.php)
+  se incluye en el registro y en el checkout de invitado, y `cf-turnstile-response` se valida
+  con la regla `ValidTurnstile` en ambos controllers. Si Turnstile no está activado/configurado
+  en Admin, el componente no renderiza nada (`$siteKey` null) y la regla de validación no
+  falla (`ValidTurnstile` ya hacía ese chequeo de `isActive()` internamente) — cero impacto si
+  el admin no lo configura.
+- **Rate limiting agregado**: `throttle:10,1` (10 intentos por minuto por IP) en `POST /register`
+  y en `POST /paquetes/{package}/comprar` — antes no tenían ningún límite, a diferencia de
+  login/verificación de correo que sí lo traen por defecto de Breeze.
+- Probado end-to-end en local, con servidor limpio (pestaña nueva, sesión cerrada) para evitar
+  falsos positivos de sesiones/timers de pruebas anteriores: registro completo y checkout de
+  demo, ambos con datos guardados correctamente después del refactor a componente compartido.
+  Validación server-side probada antes directo con `Validator::make` para 5 casos (ciudad con
+  números, código postal con letras, país no permitido, contraseña débil, todo válido).
 
 ## Flujo de negocio principal
 
@@ -554,3 +577,15 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   al usuario que esto expone un vacío real ya documentado arriba (`hasUsedTrial()`), pero pidió
   no tocarlo. Probado en navegador forzando el estado `timeout` manualmente (sin esperar los
   10 minutos reales) y confirmando que el botón "Cerrar" cierra el modal correctamente.
+- El usuario pidió aplicar todas las mejoras sugeridas **excepto** probar `install.sh` en un
+  servidor real y la renovación de líneas en XUI. Se hicieron las 5 restantes en un solo lote:
+  1. Turnstile conectado al registro y checkout (antes solo existía la configuración, sin usarse).
+  2. Rate limiting (`throttle:10,1`) en registro y compra de pedidos.
+  3. Borradas las 3 vistas huérfanas (`admin/index.blade.php`, `login.blade.php`,
+     `navigation.blade.php` en la raíz de `resources/views/`).
+  4. Extraído el bloque duplicado de registro/checkout a `<x-guest-registration-fields />`
+     (ver sección "Registro de usuarios" arriba).
+  5. Creado [`deploy.sh`](deploy.sh) para no repetir a mano la secuencia de deploy (ver sección
+     "Flujo de trabajo" arriba) — este mismo commit se desplegó usándolo por primera vez.
+  Todo probado en local antes de subir (lint de PHP, compilación de Blade a mano, y pruebas
+  end-to-end en navegador de registro + checkout después del refactor a componente compartido).
