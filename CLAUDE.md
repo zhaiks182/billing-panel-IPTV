@@ -864,3 +864,28 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
     aparece **antes** que "Tu línea está activa - Pedido #32" — usuario, pedido y línea de
     prueba eliminados después (⚠️ esto activó una línea trial real en el XUI configurado, igual
     que advertencias anteriores de pruebas similares en este documento).
+- **El widget de Cloudflare Turnstile no se reiniciaba tras un intento fallido en el formulario
+  de prueba gratuita** (2026-08-05). Tras corregir el bug de JSON de más arriba, el usuario
+  probó de nuevo el registro y vio "La verificación de seguridad falló. Inténtalo de nuevo."
+  aunque el widget seguía mostrando "¡Operación exitosa!". Causa: un token de Turnstile es de
+  **un solo uso y expira** (~5 min) — en registro/checkout normal esto nunca se nota porque
+  cualquier error recarga la página completa (nuevo token automático), pero `trialGateForm`
+  muestra el error **sin recargar** (es todo por `fetch`), así que el widget se queda
+  mostrando el check verde de un token ya consumido/expirado, y cualquier reintento reenvía
+  ese mismo token inservible — falla siempre hasta que el usuario recarga la página a mano.
+  Esto también explica los reintentos fallidos repetidos que se vieron en el log de Apache
+  antes del fix de JSON (cada uno reenviaba el mismo token ya gastado por el primero).
+  - Fix en [`resources/js/app.js`](resources/js/app.js): nuevo método `resetTurnstile()` en
+    `trialGateForm` que llama `window.turnstile.reset(container)` sobre el `div.cf-turnstile`
+    del formulario — se invoca en la rama de error de validación de `submit()`, así que
+    después de cualquier fallo (Turnstile inválido, correo duplicado, etc.) el widget queda
+    listo para un nuevo intento sin recargar la página. No hace nada si Turnstile no está
+    activo/configurado (`window.turnstile` no existe) — mismo patrón defensivo que el resto
+    del componente.
+  - Probado en el navegador local (`npm run build` + preview): con Turnstile desactivado
+    localmente se confirmó que `resetTurnstile()` no lanza error (guard `container` es `null`,
+    no hace nada) al forzar un 422 real (correo duplicado, `admin@example.com`) — el mensaje de
+    error se mostró correctamente en pantalla y la consola no tuvo errores nuevos. No se pudo
+    probar el reset real del widget en sí porque Turnstile solo está activo en
+    `desarrollo.4livepro.com`, no en local — verificar ahí con el sitio real si el problema
+    persiste tras desplegar.

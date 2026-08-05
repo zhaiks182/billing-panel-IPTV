@@ -71,6 +71,7 @@ window.trialGateForm = function () {
                         this.errorMessage = data.message
                             || Object.values(data.errors || {}).flat()[0]
                             || 'No se pudo enviar el formulario. Revisa los datos e intenta de nuevo.';
+                        this.resetTurnstile();
                     }
                 })
                 .catch((error) => {
@@ -81,6 +82,18 @@ window.trialGateForm = function () {
                         ? 'El servidor tardó demasiado en responder. Intenta de nuevo.'
                         : 'Ocurrió un error de red. Revisa tu conexión e intenta de nuevo.';
                 });
+        },
+
+        // Un token de Turnstile es de un solo uso y expira a los pocos minutos. Como este
+        // formulario no recarga la página al fallar (a diferencia de registro/checkout normal),
+        // el widget se queda mostrando "¡Operación exitosa!" con un token ya inservible si no
+        // se reinicia a mano — de ahí que reintentar sin esto repita el mismo error siempre.
+        resetTurnstile() {
+            const container = this.rootEl?.querySelector('.cf-turnstile');
+
+            if (window.turnstile && container) {
+                window.turnstile.reset(container);
+            }
         },
 
         pollStatus(orderId) {
