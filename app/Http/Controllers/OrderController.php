@@ -158,6 +158,8 @@ class OrderController extends Controller
             'status' => 'pending',
         ]);
 
+        $user->notify(new OrderInvoice($order));
+
         session()->forget('cart_package_id');
 
         if (! $user->hasVerifiedEmail()) {

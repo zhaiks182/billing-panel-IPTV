@@ -55,7 +55,7 @@
                 </td>
                 <td>
                     <span class="info-label">Método de pago</span>
-                    {{ $order->paymentMethod?->name ?: '—' }}
+                    {{ $order->package->is_trial ? 'Prueba gratuita' : ($order->paymentMethod?->name ?: '—') }}
                 </td>
             </tr>
         </table>

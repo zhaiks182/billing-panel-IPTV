@@ -16,10 +16,11 @@ class InvoicePdfService
     {
         $order->loadMissing(['user', 'package', 'paymentMethod']);
 
-        $statusLabel = match ($order->status) {
-            'approved' => 'Pagada',
-            'rejected' => 'Rechazada',
-            'error' => 'Error',
+        $statusLabel = match (true) {
+            $order->package->is_trial => 'Prueba gratuita',
+            $order->status === 'approved' => 'Pagada',
+            $order->status === 'rejected' => 'Rechazada',
+            $order->status === 'error' => 'Error',
             default => 'Pendiente de pago',
         };
 

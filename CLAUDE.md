@@ -402,6 +402,33 @@ a pedido explícito del usuario: "para generar los PDF debes hacerlo en el servi
   `--composer` (corre `COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader`
   en el VPS, ya que se conecta como `root`) — **usarla cada vez que `composer.json`/`composer.lock`
   cambien**, si no el VPS nunca instala el paquete nuevo y la app tira "Class not found".
+- **Los paquetes demo/trial también reciben esta factura por correo** (2026-08-05, a pedido
+  del usuario: "puedes agregar para que a los paquetes demo llegue el pdf y el correo").
+  `OrderController::storeTrial()` llama `$user->notify(new OrderInvoice($order))` justo
+  después de crear el pedido (antes solo lo hacía el flujo de pedido pagado en `store()`) —
+  se envía siempre al crear el pedido, sin importar si la línea se activa de inmediato o
+  queda esperando verificación de correo. Como un trial no tiene comprobante ni método de
+  pago, tanto el correo como el PDF necesitaban texto distinto al de "pendiente de pago":
+  - `EmailTemplate::mail('order_invoice', [...])` ahora recibe `status_label` (`"Prueba
+    gratuita"` vs `"Pendiente de pago"`) e `intro_text` (párrafo de saludo distinto para
+    cada caso) — variables nuevas en `variableCatalog()`/`sampleVariables()` de
+    [`EmailTemplate`](app/Models/EmailTemplate.php). La fila `order_invoice` en BD ya no
+    tiene "Pendiente de pago" fijo en el asunto/insignia/texto: se reemplazó por
+    `{{status_label}}`/`{{intro_text}}` vía la migración de datos
+    `2026_08_05_161000_update_order_invoice_template_for_trials.php` (mismo patrón `strtr()`
+    que la migración que quitó "IPTV").
+  - `InvoicePdfService::generate()` calcula `statusLabel` con `match(true)`, chequeando
+    `$order->package->is_trial` **antes** que `$order->status` (un trial siempre está en
+    `pending` mientras espera verificación, así que sin este chequeo se habría mostrado
+    "Pendiente de pago" igual). La vista `pdf/invoice.blade.php` también muestra "Prueba
+    gratuita" en la fila de "Método de pago" en vez de `—` (los trials no tienen
+    `payment_method_id`).
+  - Probado end-to-end en local con un pedido trial real (`is_trial=true`, `amount=0`,
+    `payment_method_id=null`): correo revisado en `storage/logs/laravel.log` (asunto
+    "Factura #29 - Prueba gratuita", insignia y método de pago correctos, intro distinta a
+    la de un pedido pagado) y el PDF adjunto generado e inspeccionado directamente
+    (insignia ámbar "PRUEBA GRATUITA", $0.00 USD, dirección completa, logo) — usuario y
+    pedido de prueba eliminados después.
 
 ## Puntos abiertos / riesgos conocidos
 
@@ -735,3 +762,17 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   `Content-Type: application/pdf; name=factura-N.pdf` con `Content-Disposition: attachment`,
   confirmando que el adjunto llega correctamente. Se agregó la flag `--composer` a `deploy.sh`
   (ver sección dedicada) para este y futuros cambios de dependencias PHP.
+- **La factura (correo + PDF) ahora también se envía en pedidos de paquetes demo/trial**, a
+  pedido del usuario ("puedes agregar para que a los paquetes demo llegue el pdf y el correo")
+  — antes `OrderInvoice` solo se disparaba en `OrderController@store` (pedidos de pago). Se
+  agregó la misma llamada en `storeTrial()`, justo después de crear el pedido. Como un trial
+  no tiene comprobante ni método de pago, se agregaron las variables `status_label` e
+  `intro_text` (ver sección "PDF de facturas" arriba para el detalle completo) para que el
+  correo y el PDF digan "Prueba gratuita" en vez de "Pendiente de pago", con un párrafo de
+  saludo distinto. Migración de datos nueva
+  (`2026_08_05_161000_update_order_invoice_template_for_trials.php`) que reemplaza el texto
+  fijo de la plantilla `order_invoice` ya existente por los placeholders nuevos, mismo patrón
+  `strtr()` que las migraciones de datos anteriores. Probado end-to-end en local con un pedido
+  trial real: correo con asunto "Factura #N - Prueba gratuita" e intro correcta en
+  `storage/logs/laravel.log`, y PDF adjunto inspeccionado directamente (insignia ámbar "PRUEBA
+  GRATUITA", $0.00 USD) — usuario y pedido de prueba eliminados después.

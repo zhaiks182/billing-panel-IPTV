@@ -32,13 +32,18 @@ class OrderInvoice extends Notification
         $this->order->loadMissing(['user', 'package', 'paymentMethod']);
 
         $pdf = app(InvoicePdfService::class);
+        $isTrial = $this->order->package->is_trial;
 
         return EmailTemplate::mail('order_invoice', [
             'user_name' => $notifiable->name,
             'order_id' => (string) $this->order->id,
             'package_name' => $this->order->package->name,
             'amount' => '$'.number_format((float) $this->order->amount, 2).' USD',
-            'payment_method_name' => $this->order->paymentMethod?->name ?: '—',
+            'payment_method_name' => $isTrial ? 'Prueba gratuita' : ($this->order->paymentMethod?->name ?: '—'),
+            'status_label' => $isTrial ? 'Prueba gratuita' : 'Pendiente de pago',
+            'intro_text' => $isTrial
+                ? 'recibimos tu solicitud de prueba gratuita. Este es el comprobante de tu pedido — en cuanto verifiques tu correo, activaremos tu línea automáticamente.'
+                : 'recibimos tu pedido y el comprobante de pago que subiste. Está en revisión — en cuanto lo confirmemos, activaremos tu línea y te avisaremos por correo.',
             'issued_date' => $this->order->created_at->format('d/m/Y'),
             'billing_address' => $this->billingAddressLines($notifiable, '<br>'),
             'billing_address_text' => $this->billingAddressLines($notifiable, "\n"),
