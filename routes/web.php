@@ -66,6 +66,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/configuracion-telegram', [TelegramSettingController::class, 'edit'])->name('telegram.edit');
         Route::put('/configuracion-telegram', [TelegramSettingController::class, 'update'])->name('telegram.update');
+        Route::post('/configuracion-telegram/probar', [TelegramSettingController::class, 'test'])->name('telegram.test');
     });
 });
 

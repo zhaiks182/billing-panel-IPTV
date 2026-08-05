@@ -16,6 +16,32 @@ class TelegramSettingController extends Controller
         return view('admin.telegram-settings.edit', compact('settings'));
     }
 
+    public function test(Request $request, TelegramNotifier $telegram)
+    {
+        $validated = $request->validate([
+            'bot_token' => ['nullable', 'string', 'max:255'],
+            'chat_id' => ['required', 'string', 'max:255'],
+        ]);
+
+        $botToken = $validated['bot_token'] ?: TelegramSetting::current()->bot_token;
+
+        if (! $botToken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Debes indicar el Bot Token.',
+            ], 422);
+        }
+
+        $sent = $telegram->sendTo($botToken, $validated['chat_id'], '✅ Prueba de conexión desde el panel de administración de 4LivePro Latino.');
+
+        return response()->json([
+            'success' => $sent,
+            'message' => $sent
+                ? 'Mensaje de prueba enviado correctamente. Revisa tu Telegram.'
+                : 'No se pudo enviar el mensaje. Revisa el Bot Token y el Chat ID.',
+        ]);
+    }
+
     public function update(Request $request, TelegramNotifier $telegram)
     {
         $validated = $request->validate([

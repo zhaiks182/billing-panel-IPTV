@@ -33,7 +33,33 @@
                     </ol>
                 </div>
 
-                <form method="POST" action="{{ route('admin.telegram.update') }}" x-data="{ enabled: {{ old('enabled', $settings->enabled) ? 'true' : 'false' }} }">
+                <form method="POST" action="{{ route('admin.telegram.update') }}"
+                      x-data="{
+                          enabled: {{ old('enabled', $settings->enabled) ? 'true' : 'false' }},
+                          testing: false,
+                          testResult: null,
+                          testConnection() {
+                              this.testing = true;
+                              this.testResult = null;
+
+                              fetch('{{ route('admin.telegram.test') }}', {
+                                  method: 'POST',
+                                  headers: {
+                                      'Content-Type': 'application/json',
+                                      'Accept': 'application/json',
+                                      'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                  },
+                                  body: JSON.stringify({
+                                      bot_token: document.getElementById('bot_token').value,
+                                      chat_id: document.getElementById('chat_id').value,
+                                  }),
+                              })
+                                  .then((response) => response.json())
+                                  .then((data) => { this.testResult = data; })
+                                  .catch(() => { this.testResult = { success: false, message: '{{ __('Error de red al probar la conexión.') }}' }; })
+                                  .finally(() => { this.testing = false; });
+                          },
+                      }">
                     @csrf
                     @method('PUT')
 
@@ -56,6 +82,18 @@
                                       placeholder="123456789"
                                       value="{{ old('chat_id', $settings->chat_id) }}" />
                         <x-input-error :messages="$errors->get('chat_id')" class="mt-2" />
+                    </div>
+
+                    <div class="mt-6" x-show="enabled" x-cloak>
+                        <x-secondary-button type="button" @click="testConnection()" :disabled="testing">
+                            <span x-show="!testing">{{ __('Probar conexión') }}</span>
+                            <span x-show="testing" x-cloak>{{ __('Probando…') }}</span>
+                        </x-secondary-button>
+                        <p class="mt-2 text-sm"
+                           x-show="testResult"
+                           x-cloak
+                           :class="testResult && testResult.success ? 'text-brand-400' : 'text-danger'"
+                           x-text="testResult && testResult.message"></p>
                     </div>
 
                     <div class="mt-6 flex items-center gap-3">
