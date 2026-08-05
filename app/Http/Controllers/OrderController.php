@@ -163,8 +163,6 @@ class OrderController extends Controller
             'status' => 'pending',
         ]);
 
-        $user->notify(new OrderInvoice($order));
-
         session()->forget('cart_package_id');
 
         if (! $user->hasVerifiedEmail()) {
@@ -184,6 +182,7 @@ class OrderController extends Controller
             $line = $xui->activate($order);
 
             $order->update(['status' => 'approved', 'approved_at' => now()]);
+            $user->notify(new OrderInvoice($order));
             $user->notify(new OrderApproved($order, $line));
 
             if ($request->wantsJson()) {

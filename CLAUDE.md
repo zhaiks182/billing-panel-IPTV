@@ -834,3 +834,33 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
     válido → sigue devolviendo `200 {"status":"pending_verification",...}` sin cambios; mismo
     usuario reintentando la prueba → `422 {"status":"trial_already_used","message":"..."}`.
     Desplegado a `desarrollo.4livepro.com` sin migraciones nuevas.
+- **La factura de prueba gratuita ya no se envía al crear el pedido, sino al activarse la
+  línea** (2026-08-05), a pedido del usuario: "no debe enviarse antes, sino existe la
+  confirmacion del correo. Primero se debe confirmar el correo y hay debera llegar la factura
+  de prueba gratuita seguido del correo con la linea". Antes `OrderInvoice` se disparaba justo
+  al crear el pedido trial (`OrderController::storeTrial()`), sin importar si el correo ya
+  estaba verificado — quedaba raro facturar algo que todavía podía no llegar a activarse nunca
+  (correo falso sin verificar). Se movió el envío al momento real de activación, en los dos
+  lugares donde eso ocurre:
+  - `App\Services\Xui\TrialActivator::activatePendingFor()` — el flujo normal (usuario nuevo,
+    sin verificar al pedir la demo): ahora, justo después de `$order->update(['status' =>
+    'approved', ...])` y **antes** de `OrderApproved`, llama `$user->notify(new
+    OrderInvoice($order))`. Este método también lo usa `Admin\UserController::verify()`
+    (verificación manual desde el admin), así que ambos caminos quedan cubiertos con un solo
+    cambio.
+  - `OrderController::storeTrial()` — el caso menos común de un usuario que YA tenía el correo
+    verificado al pedir la demo (se activa la línea al toque, sin esperar nada): se movió la
+    misma línea `$user->notify(new OrderInvoice($order))` de justo-después-de-crear-el-pedido a
+    justo-antes-de-`OrderApproved`, dentro del bloque `try` que llama `$xui->activate($order)`.
+  - Orden final de correos para una demo: verificación de cuenta (al registrarse) → [usuario
+    hace clic en el enlace] → factura "Prueba gratuita" → línea activada. Si la activación en
+    XUI falla (`XuiApiException`), el pedido queda en `error` y **no** se envía ninguna
+    factura — coherente con no facturar algo que no se activó.
+  - Probado end-to-end en local simulando el flujo completo: pedido trial creado con usuario
+    sin verificar (`email_verified_at = null`) → confirmado que no hay ningún correo de
+    factura en `storage/logs/laravel.log` en ese punto → se marcó el correo como verificado y
+    se llamó `TrialActivator::activatePendingFor()` directamente (mismo método que usa
+    `VerifyEmailController`) → confirmado en el log que la "Factura #32 - Prueba gratuita"
+    aparece **antes** que "Tu línea está activa - Pedido #32" — usuario, pedido y línea de
+    prueba eliminados después (⚠️ esto activó una línea trial real en el XUI configurado, igual
+    que advertencias anteriores de pruebas similares en este documento).
