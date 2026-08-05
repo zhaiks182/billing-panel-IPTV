@@ -146,7 +146,7 @@
                                                         </template>
                                                     </div>
                                                 </div>
-                                                <x-text-input id="phone" class="block w-full" type="tel" name="phone" :value="old('phone')" required autocomplete="tel" placeholder="987654321" />
+                                                <x-text-input id="phone" class="block w-full" type="tel" name="phone" :value="old('phone')" required autocomplete="tel" />
                                             </div>
                                             <x-input-error :messages="$errors->get('phone_country_code')" class="mt-2" />
                                             <x-input-error :messages="$errors->get('phone')" class="mt-2" />

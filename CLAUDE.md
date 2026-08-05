@@ -75,6 +75,19 @@ también). Tras el primer deploy grande de hoy, el `tar` dejó algunos archivos 
 `root` en `storage/` y quitó el bit ejecutable de `artisan` — por eso el `chown`/`chmod`
 del paso 4 son parte fija del proceso, no algo puntual.
 
+⚠️ **Incidente 2026-08-05**: un usuario real intentó registrarse (`jorgeevil182@gmail.com`,
+compra de la demo) justo durante/después de un deploy y le dio error 500 silencioso (el botón
+se quedó en "Enviando...", sin popup, sin correo). En el log:
+`tempnam(): file created in the system's temporary directory` al compilar una vista Blade —
+`storage/framework/views/` no era escribible por `www-data` en ese momento. Causa probable:
+el `chown` del paso 4 corre **antes** de `php artisan optimize:clear` (que borra la caché de
+vistas compilada); si un visitante real pega justo en esa ventana de unos segundos mientras
+Laravel recompila las vistas, puede toparse con permisos inconsistentes. Se verificó que ya
+no persiste (chown posterior lo corrigió solo), pero **agregar un `chown -R www-data:www-data
+storage bootstrap/cache` también al final de cada deploy** (después de `optimize:clear`), no
+solo al principio, para cerrar esa ventana. El usuario no llegó a crearse en la BD (la request
+falló antes de guardar nada), así que no hay que limpiar datos a medias.
+
 **Nota sobre línea de comandos en Windows:** `rsync` no está disponible en el Git Bash de
 esta máquina; por eso se usa `git archive | ssh ... tar -x` en vez de `rsync -avz`. `scp` y
 `md5sum`/`sha1sum` sí están disponibles y sirven para comparar archivos sueltos si hace falta.
@@ -489,3 +502,14 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   yo hiciera; parece que Laragon/el usuario cambió el motor de BD local. No afecta nada en git
   ni en el VPS (`.env` nunca se versiona), solo dejarlo anotado por si algo local se comporta
   distinto a lo esperado en sesiones futuras.
+- El usuario probó registrar `jorgeevil182@gmail.com` (paquete demo) y reportó: botón atascado
+  en "Enviando...", sin correo, sin popup. Se investigó por SSH: el usuario/pedido **nunca se
+  creó** en la BD del VPS; el log mostró un error 500 de permisos en `storage/framework/views/`
+  (ver "Incidente 2026-08-05" en la sección de despliegue arriba) — coincidió con la ventana de
+  un deploy reciente. Se verificó con una petición real simulada (`curl` con token CSRF real)
+  que el endpoint ya responde `200 {"status":"pending_verification",...}` correctamente; se
+  limpiaron los datos de prueba. SMTP confirmado configurado (Gmail) — el correo no llegó
+  porque la petición nunca llegó a completarse, no por un problema de envío de correo en sí.
+  Se le pidió al usuario reintentar el registro.
+- Se quitó el placeholder `987654321` del campo de teléfono (registro y checkout) — a pedido
+  del usuario, se veía como si ya hubiera un número escrito.
