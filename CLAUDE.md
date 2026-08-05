@@ -284,7 +284,14 @@ del formulario de registro.
   `/admin/paquetes`, `/admin/categorias`, `/admin/metodos-pago`)
 - Configuración: XUI ONE, Correo (SMTP con test de envío), Turnstile (captcha Cloudflare),
   Telegram (bot notificaciones)
-- Usuarios: listar, verificar email manualmente, eliminar
+- Usuarios: listar, verificar email manualmente, eliminar. La tabla no tenía cómo mostrar
+  dirección/ciudad/país (sí se guardan en `users`, solo no se mostraban) — agregado
+  (2026-08-05): clic en el nombre abre un modal con esos datos. Implementado sin ruta ni
+  petición nueva: `admin/users/index.blade.php` serializa `usersData` (un array con los
+  campos de dirección de cada usuario de la página actual) vía `@js()` en el `x-data` de la
+  tabla, y el modal es un `x-show` que busca por id — mismo patrón que el modal de espera del
+  demo (`orders/create.blade.php`). No escala a miles de usuarios por página (manda todos los
+  datos igual estén abiertos o no), pero con paginación de 20 no es un problema.
 - Plantillas de correo (`/admin/plantillas-correo`): ver sección dedicada abajo.
 
 ## Plantillas de correo
@@ -323,6 +330,14 @@ vista previa en vivo, y versión en texto plano con un botón para regenerarla d
   editó una plantilla a mano, esta migración de todos modos la sobreescribe — solo se pensó para
   correr una vez, al desplegar esta mejora; **no volver a correrla** si ya se personalizaron las
   plantillas después (usar `php artisan migrate:status` para confirmar si ya corrió).
+- **Se quitó la palabra "IPTV" de las 4 plantillas** (2026-08-05, a pedido del usuario) vía
+  otra migración de datos (`2026_08_05_151005_remove_iptv_word_from_email_templates.php`),
+  con `strtr()` sobre frases completas conocidas (no un `str_replace('IPTV', '')` genérico,
+  para no dejar espacios dobles o gramática rota) — afectaba el footer común
+  ("4LivePro Latino — IPTV Premium" → "4LivePro Latino") y el asunto/cuerpo de
+  `order_approved` y `line_expiring_soon` ("tu línea IPTV" → "tu línea"). Mismo aviso que la
+  migración anterior: si se vuelve a correr después de que el admin edite las plantillas a
+  mano, las sobreescribe.
 - **"Probar esta plantilla"**: cada editor tiene un envío de prueba real (`EmailTemplateController@test`,
   ruta `POST /admin/plantillas-correo/{template}/probar`). Envía el asunto/HTML/texto que hay
   **ahora mismo en el formulario** (aunque no se haya guardado, igual que "Probar conexión" de
@@ -595,3 +610,9 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
      "Flujo de trabajo" arriba) — este mismo commit se desplegó usándolo por primera vez.
   Todo probado en local antes de subir (lint de PHP, compilación de Blade a mano, y pruebas
   end-to-end en navegador de registro + checkout después del refactor a componente compartido).
+- El usuario notó que Admin > Usuarios no mostraba dirección/país aunque sí se guardan — se
+  agregó el modal de detalle al hacer clic en el nombre (ver sección "Panel de administración"
+  arriba). También pidió quitar la palabra "IPTV" de las plantillas de correo — se hizo con
+  una migración de datos dedicada (ver sección "Plantillas de correo" arriba). Verificado con
+  tinker: 0 ocurrencias de "IPTV" en las 4 plantillas después de correr la migración, variables
+  `{{...}}` intactas, y las 4 plantillas siguen renderizando sin placeholders sin reemplazar.
