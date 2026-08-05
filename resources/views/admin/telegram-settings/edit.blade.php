@@ -85,7 +85,7 @@
                     </div>
 
                     <div class="mt-6" x-show="enabled" x-cloak>
-                        <x-secondary-button type="button" @click="testConnection()" :disabled="testing">
+                        <x-secondary-button type="button" @click="testConnection()" ::disabled="testing">
                             <span x-show="!testing">{{ __('Probar conexión') }}</span>
                             <span x-show="testing" x-cloak>{{ __('Probando…') }}</span>
                         </x-secondary-button>
