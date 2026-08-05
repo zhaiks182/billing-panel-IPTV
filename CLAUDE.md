@@ -194,4 +194,24 @@ ssh whmcs-vps                                  # conectar al VPS de desarrollo/p
   Se detectó y corrigió: pérdida del bit ejecutable de `artisan` y archivos de `storage/`
   quedando con dueño `root` tras el `tar` — ambos ahora son pasos fijos del proceso de deploy.
   Se verificó que el sitio sigue respondiendo (HTTP 200) después del deploy.
-- Pendiente: decidir próxima tarea de desarrollo con el usuario.
+- Se reescribió el texto de ayuda de `admin/telegram-settings/edit.blade.php` (pasos para
+  crear el bot con @BotFather y obtener Chat ID) a pedido del usuario.
+- Se agregó un botón real de **"Probar conexión"** en notificaciones de Telegram (antes solo
+  existía "Guardar y enviar mensaje de prueba", que requería guardar primero):
+  - `TelegramNotifier::sendTo($botToken, $chatId, $message)` — nuevo método que envía sin
+    depender de `TelegramSetting` guardado en BD.
+  - `TelegramSettingController@test` — nueva ruta `POST /admin/configuracion-telegram/probar`.
+  - En la vista, el botón usa Alpine.js (`fetch`) para probar con los valores actuales del
+    formulario sin necesidad de guardar antes.
+  - **Bug encontrado y corregido**: usar `:disabled="testing"` sobre un componente Blade
+    (`<x-secondary-button>`) causó `Error 500: Undefined constant "testing"`. Blade interpreta
+    `:atributo="expr"` en tags `<x-...>` como "evalúa `expr` como PHP", chocando con la
+    sintaxis de binding de Alpine.js que usa la misma notación. **Regla para el futuro:**
+    en componentes Blade (`<x-...>`), cualquier atributo de Alpine que empiece con `:`
+    (`:disabled`, `:class`, etc.) debe escribirse con doble dos-puntos `::disabled="..."`
+    para que Blade lo pase como texto literal en vez de evaluarlo. En tags HTML normales
+    (no componentes) no hace falta escapar, ahí no hay conflicto.
+  - Verificado renderizando la vista completa por `tinker` en el servidor (sin credenciales
+    de admin a mano para probar por navegador) — compila y el botón aparece correctamente.
+- Pendiente: decidir próxima tarea de desarrollo con el usuario. Pendiente también que el
+  usuario confirme visualmente en el navegador que "Probar conexión" funciona con un bot real.
