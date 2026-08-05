@@ -25,7 +25,9 @@
                         <x-input-error :messages="$errors->get('email')" class="mt-2" />
                     </div>
 
-                    <x-turnstile-widget :site-key="$turnstileSiteKey" />
+                    <div class="mt-4">
+                        <x-turnstile-widget :site-key="$turnstileSiteKey" />
+                    </div>
 
                     <div class="flex items-center justify-end mt-6">
                         <x-primary-button>
