@@ -1,35 +1,34 @@
 # Billing Panel — 4LivePro Latino
 
-Panel de reventa de IPTV construido en Laravel. Los clientes compran paquetes M3U, suben su
-comprobante de pago, un administrador aprueba el pedido y el sistema provisiona automáticamente
-la línea en un panel **XUI ONE** vía su API de reseller.
+IPTV reseller billing panel, deployed on a Linux VPS with a LAMP stack (Apache + MySQL + PHP).
+Customers buy M3U packages, upload their payment proof, an administrator approves the order,
+and the system automatically provisions the line on a **XUI ONE** panel via its reseller API.
 
-## Funcionalidades
+## Features
 
-- Catálogo de paquetes por categoría, con paquetes de prueba (demo/trial) y de pago.
-- Carrito de compra y flujo de pedido con comprobante de pago (transferencia, Zelle, etc.).
-- Panel de administración: pedidos (aprobar/rechazar/reintentar), paquetes, categorías,
-  métodos de pago, usuarios.
-- Integración con **XUI ONE** para crear/consultar líneas M3U automáticamente al aprobar un pedido.
-- Activación automática de líneas de prueba tras verificar el correo (evita abuso con correos falsos).
-- Notificaciones por **Telegram** (pedidos nuevos, líneas activadas) y por **correo**
-  (SMTP configurable desde el propio panel, sin tocar `.env`).
-- Recordatorios de vencimiento de líneas por correo (`php artisan lines:send-expiration-reminders`).
-- Protección con Cloudflare Turnstile configurable desde el admin.
+- Package catalog by category, with trial/demo packages and paid packages.
+- Shopping cart and order flow with payment proof upload (bank transfer, Zelle, etc.).
+- Admin panel: orders (approve/reject/retry), packages, categories, payment methods, users.
+- **XUI ONE** integration to automatically create/query M3U lines when an order is approved.
+- Automatic activation of trial lines after email verification (prevents abuse with fake emails).
+- **Telegram** notifications (new orders, activated lines) and **email** notifications
+  (SMTP configurable from the admin panel itself, no need to touch `.env`).
+- Line expiration reminders by email (`php artisan lines:send-expiration-reminders`).
+- Cloudflare Turnstile protection, configurable from the admin panel.
 
 ## Stack
 
-Laravel 13 (PHP 8.3) · Breeze (auth) · Blade + Tailwind CSS + Alpine.js · Vite · MySQL en
-producción / SQLite en desarrollo local.
+PHP 8.3 · Apache · MySQL (production) / SQLite (local development) · Blade + Tailwind CSS +
+Alpine.js · Vite.
 
-## Documentación
+## Documentation
 
-- [`CLAUDE.md`](CLAUDE.md) — arquitectura, flujo de negocio, modelo de datos, infraestructura
-  (VPS, despliegue, repos) y bitácora de cambios. Punto de partida para entender el proyecto.
-- [`INSTALL.md`](INSTALL.md) — cómo instalar este panel en un servidor LAMP nuevo (prerrequisitos,
-  base de datos, usuario administrador) usando [`install.sh`](install.sh).
+- [`CLAUDE.md`](CLAUDE.md) — architecture, business flow, data model, infrastructure (VPS,
+  deployment, repos) and change log. Start here to understand the project.
+- [`INSTALL.md`](INSTALL.md) — how to install this panel on a fresh LAMP server
+  (prerequisites, database, admin user) using [`install.sh`](install.sh).
 
-## Desarrollo local
+## Local development
 
 ```bash
 composer install
@@ -37,12 +36,12 @@ cp .env.example .env
 php artisan key:generate
 touch database/database.sqlite
 php artisan migrate
-php artisan db:seed          # carga categoría/paquetes/métodos de pago de ejemplo
-php artisan app:create-admin admin@ejemplo.com "tu-clave" --name="Administrador"
+php artisan db:seed          # loads sample category/packages/payment methods
+php artisan app:create-admin admin@example.com "your-password" --name="Administrator"
 npm install && npm run dev
 php artisan serve
 ```
 
-## Licencia
+## License
 
-Proyecto privado de 4LivePro Latino. No es software de código abierto para redistribuir.
+Private project of 4LivePro Latino. Not open-source software for redistribution.
