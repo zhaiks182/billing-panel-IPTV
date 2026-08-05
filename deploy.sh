@@ -10,6 +10,7 @@
 #   ./deploy.sh                # deploy normal
 #   ./deploy.sh --migrate      # además corre `php artisan migrate --force`
 #   ./deploy.sh --no-build     # no corre npm install/build (más rápido si no tocaste CSS/JS)
+#   ./deploy.sh --composer     # corre `composer install` (usar si composer.json/lock cambió)
 #
 set -euo pipefail
 
@@ -19,12 +20,14 @@ DOMAIN="https://desarrollo.4livepro.com"
 
 RUN_MIGRATE=0
 RUN_BUILD=1
+RUN_COMPOSER=0
 
 for arg in "$@"; do
     case "$arg" in
         --migrate) RUN_MIGRATE=1 ;;
         --no-build) RUN_BUILD=0 ;;
-        -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
+        --composer) RUN_COMPOSER=1 ;;
+        -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
         *) echo "Argumento desconocido: $arg (usa --help)" >&2; exit 1 ;;
     esac
 done
@@ -45,6 +48,11 @@ git archive HEAD | ssh "$SSH_HOST" "tar -x -C '$REMOTE_PATH'"
 
 step "Permisos (antes de tocar cachés)"
 ssh "$SSH_HOST" "chown -R www-data:www-data '$REMOTE_PATH/storage' '$REMOTE_PATH/bootstrap/cache' && chmod +x '$REMOTE_PATH/artisan' '$REMOTE_PATH/install.sh' 2>/dev/null || true"
+
+if [ "$RUN_COMPOSER" -eq 1 ]; then
+    step "Dependencias PHP (composer install)"
+    ssh "$SSH_HOST" "cd '$REMOTE_PATH' && COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader"
+fi
 
 if [ "$RUN_MIGRATE" -eq 1 ]; then
     step "Migraciones"

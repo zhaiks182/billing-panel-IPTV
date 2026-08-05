@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use App\Models\EmailTemplate;
 use App\Models\Order;
+use App\Services\InvoicePdfService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -28,7 +29,9 @@ class OrderInvoice extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $this->order->loadMissing(['package', 'paymentMethod']);
+        $this->order->loadMissing(['user', 'package', 'paymentMethod']);
+
+        $pdf = app(InvoicePdfService::class);
 
         return EmailTemplate::mail('order_invoice', [
             'user_name' => $notifiable->name,
@@ -40,6 +43,8 @@ class OrderInvoice extends Notification
             'billing_address' => $this->billingAddressLines($notifiable, '<br>'),
             'billing_address_text' => $this->billingAddressLines($notifiable, "\n"),
             'orders_url' => route('orders.index'),
+        ])->attachData($pdf->generate($this->order), $pdf->filename($this->order), [
+            'mime' => 'application/pdf',
         ]);
     }
 

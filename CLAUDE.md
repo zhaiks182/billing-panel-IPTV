@@ -372,6 +372,37 @@ versión en texto plano con un botón para regenerarla desde el HTML).
   escribirlo directo, se verificó compilando la vista a mano con
   `app('blade.compiler')->compileString(...)` + `php -l` antes de confiar en que funcionaba.
 
+## PDF de facturas
+
+El correo `order_invoice` lleva el PDF de la factura **adjunto**, generado 100% en el
+servidor con [`barryvdh/laravel-dompdf`](https://github.com/barryvdh/laravel-dompdf)
+(dompdf puro PHP, sin Node/Chromium/binarios externos — corre bien en cualquier LAMP,
+a pedido explícito del usuario: "para generar los PDF debes hacerlo en el servidor LAMP").
+
+- [`App\Services\InvoicePdfService`](app/Services/InvoicePdfService.php): `generate(Order $order): string`
+  devuelve los bytes crudos del PDF (`Pdf::loadView('pdf.invoice', [...])->output()`).
+  `App\Notifications\OrderInvoice` lo adjunta con `->attachData(...)`.
+- Vista dedicada [`resources/views/pdf/invoice.blade.php`](resources/views/pdf/invoice.blade.php)
+  — **no** reutiliza el HTML de `EmailTemplate` (ese vive como texto en la BD con
+  `{{variable}}` para sustitución simple; el PDF usa Blade normal con `$order`, `$order->user`,
+  etc. directo). Tampoco tiene por qué mantenerse igual al diseño del correo — es un documento
+  aparte, inspirado en el mismo formato de referencia que el usuario compartió (número de
+  factura, insignia de estado, cajas "Emitida por"/"Facturada a", tabla de ítems).
+- El logo se embebe como **base64 (`data:image/png;base64,...`)**, no como URL remota —
+  dompdf puede cargar imágenes remotas pero requiere `isRemoteEnabled` en su config (riesgo de
+  SSRF si alguna vez esa URL dependiera de datos de usuario) y depende de que el servidor
+  pueda alcanzarse a sí mismo por HTTP; con base64 no hace falta ninguna petición de red.
+  CSS limitado a lo que dompdf soporta bien: tablas para layouts de columnas (nada de flexbox).
+- No hay ruta para descargar la factura después por la web (solo llega por correo). Si se pide
+  eso a futuro, es agregar una ruta que llame a `InvoicePdfService::generate()` y la devuelva
+  con `response($bytes)->header('Content-Type', 'application/pdf')` — el servicio ya está
+  listo para reutilizarse así.
+- **`deploy.sh` no corría `composer install`** — no hacía falta hasta ahora porque nunca se
+  había agregado una dependencia PHP nueva desde que existe el script. Se agregó la flag
+  `--composer` (corre `COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader`
+  en el VPS, ya que se conecta como `root`) — **usarla cada vez que `composer.json`/`composer.lock`
+  cambien**, si no el VPS nunca instala el paquete nuevo y la app tira "Class not found".
+
 ## Puntos abiertos / riesgos conocidos
 
 - **Renovación en XUI**: el comentario en `XuiOneClient` dice explícitamente que el
@@ -693,3 +724,14 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   subido vía `curl -F`): correo verificado en `storage/logs/laravel.log` con los datos reales
   del pedido (paquete, monto, método de pago, dirección) correctamente sustituidos, sin
   placeholders sueltos, tanto en HTML como en texto plano.
+- El usuario preguntó si el correo de factura lleva el PDF adjunto (no lo llevaba) y pidió
+  que la generación fuera **en el servidor LAMP** (no en el navegador/cliente). Se instaló
+  `barryvdh/laravel-dompdf` y se armó todo el sistema de generación — ver sección dedicada
+  "PDF de facturas" arriba. Probado en local: PDF real generado con datos de un pedido
+  (`InvoicePdfService::generate()`), verificado visualmente con el propio `Read` de Claude
+  (confirma cabecera con logo, insignia "Pendiente de pago", cajas de emitida-por/facturada-a,
+  tabla de ítems — mismo formato que la referencia del usuario, con nuestra marca), y probado
+  el flujo end-to-end completo con un pedido real por `curl`: el correo en el log muestra
+  `Content-Type: application/pdf; name=factura-N.pdf` con `Content-Disposition: attachment`,
+  confirmando que el adjunto llega correctamente. Se agregó la flag `--composer` a `deploy.sh`
+  (ver sección dedicada) para este y futuros cambios de dependencias PHP.
