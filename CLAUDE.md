@@ -200,12 +200,37 @@ esta máquina; por eso se usa `git archive | ssh ... tar -x` en vez de `rsync -a
 ```bash
 php artisan serve                              # local
 php artisan migrate                            # aplicar migraciones
-php artisan db:seed                            # datos demo (admin@example.com / password)
+php artisan db:seed                            # catálogo demo (categoría/paquetes/métodos de pago, sin usuarios)
+php artisan app:create-admin correo clave      # crear/actualizar el usuario admin
 php artisan lines:send-expiration-reminders    # recordatorios de vencimiento (cron)
 npm run dev                                    # vite dev
 npm run build                                  # vite build
 ssh whmcs-vps                                  # conectar al VPS de desarrollo/producción
+git push                                       # subir a github.com/zhaiks182/billing-panel-IPTV
 ```
+
+## Si mueves el proyecto a otra computadora
+
+Este archivo (`CLAUDE.md`) viaja con el proyecto porque está dentro del repo git. Pero hay dos
+cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se mueven solas:
+
+1. **Llaves SSH** (`C:\Users\<usuario>\.ssh\`):
+   - `4livepro_deploy` (+ `.pub`) — acceso al VPS (`whmcs-vps`).
+   - `github_billing_panel` (+ `.pub`) — push a GitHub. Si generas una nueva en la otra
+     máquina en vez de copiar esta, hay que agregar la nueva pública en
+     https://github.com/settings/keys (GitHub permite varias llaves por cuenta).
+   - El archivo `~/.ssh/config` con los `Host whmcs-vps` y `Host github.com` que apuntan a
+     esas llaves (ver secciones "VPS / SSH" y "Repositorio GitHub" arriba). Sin esto, los
+     comandos `ssh whmcs-vps` y `git push`/`git pull` de este documento no van a funcionar
+     hasta reconfigurarlo.
+2. **El repo remoto** ya tiene todo el código e historial —
+   `git clone git@github.com:zhaiks182/billing-panel-IPTV.git` en la computadora nueva trae
+   el proyecto completo (una vez configurada la llave SSH de GitHub ahí). Después:
+   `composer install`, copiar/crear `.env` (nunca viaja por git, hay que rearmarlo o copiarlo
+   a mano — ver `.env.example`), `npm install`.
+3. **Para retomar el trabajo**, lo primero que debe leer cualquier sesión nueva (humana o de
+   IA) es este `CLAUDE.md` completo: explica qué es el proyecto, dónde está desplegado, cómo
+   se despliega, y el historial de decisiones en la bitácora de abajo.
 
 ## Bitácora de sesiones
 
@@ -262,3 +287,12 @@ ssh whmcs-vps                                  # conectar al VPS de desarrollo/p
   llave SSH dedicada (`~/.ssh/github_billing_panel`), se agregó a la cuenta de GitHub del
   usuario, y se hizo `git push -u origin main` con todo el historial local. Se verificó antes
   de subir que no hay `.env`/secretos trackeados en git.
+- Se reescribió `README.md` (tenía el contenido genérico de Laravel sin relación con el
+  proyecto) y luego se tradujo al inglés a pedido del usuario, quitando la frase "built with
+  Laravel" — el proyecto se presenta como un panel IPTV **desplegado en un VPS LAMP**, con
+  Laravel mencionado solo como parte del stack técnico.
+- Se agregó la sección "Si mueves el proyecto a otra computadora" en este documento: aclara
+  que las llaves SSH (`4livepro_deploy`, `github_billing_panel`) y `~/.ssh/config` viven fuera
+  del repo (en el perfil de Windows) y no se mueven solas al cambiar de computadora — hay que
+  copiarlas a mano o generar unas nuevas. El pedido del usuario fue justamente "documentar todo
+  para poder entender el proyecto si toca mover los archivos a otro ordenador".
