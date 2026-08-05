@@ -48,6 +48,11 @@ class EmailTemplate extends Model
                 'days_label' => 'Texto de días restantes (ej. "mañana" o "en 3 días")',
                 'renew_url' => 'Enlace para renovar',
             ],
+            'password_reset' => [
+                'user_name' => 'Nombre del usuario',
+                'reset_url' => 'Enlace para restablecer la contraseña',
+                'expire_minutes' => 'Minutos antes de que expire el enlace',
+            ],
         ];
     }
 
@@ -89,6 +94,11 @@ class EmailTemplate extends Model
                 'line_expires_at' => now()->addDays(2)->format('d/m/Y H:i'),
                 'days_label' => 'en 2 días',
                 'renew_url' => route('home'),
+            ],
+            'password_reset' => [
+                'user_name' => 'Juan Pérez',
+                'reset_url' => url('/reset-password/ejemplo'),
+                'expire_minutes' => (string) config('auth.passwords.users.expire', 60),
             ],
             default => [],
         };

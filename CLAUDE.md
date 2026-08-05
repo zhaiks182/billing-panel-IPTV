@@ -296,23 +296,31 @@ del formulario de registro.
 
 ## Plantillas de correo
 
-Los 4 correos transaccionales del sistema (verificación de cuenta, pedido aprobado/línea
-activada, pedido rechazado, recordatorio de vencimiento) **ya no tienen el diseño por defecto
-de Laravel** — cada uno se edita desde Admin > Plantillas de correo (asunto, diseño HTML con
-vista previa en vivo, y versión en texto plano con un botón para regenerarla desde el HTML).
+Los 5 correos transaccionales del sistema (verificación de cuenta, pedido aprobado/línea
+activada, pedido rechazado, recordatorio de vencimiento, restablecer contraseña) **ya no
+tienen el diseño por defecto de Laravel** — cada uno se edita desde Admin > Plantillas de
+correo (asunto, diseño HTML con vista previa en vivo, y versión en texto plano con un botón
+para regenerarla desde el HTML).
 
 - Modelo [`EmailTemplate`](app/Models/EmailTemplate.php): una fila por `key`
-  (`verify_email`, `order_approved`, `order_rejected`, `line_expiring_soon`), con `subject`,
-  `html_body`, `text_body`. `EmailTemplate::mail($key, $variables)` sustituye `{{variable}}`
+  (`verify_email`, `order_approved`, `order_rejected`, `line_expiring_soon`, `password_reset`),
+  con `subject`, `html_body`, `text_body`. `EmailTemplate::mail($key, $variables)` sustituye `{{variable}}`
   por su valor (regex, tolera espacios: `{{ variable }}` también funciona) y devuelve un
   `MailMessage` con `->view(['html' => 'emails.template-html', 'text' => 'emails.template-text'], ...)`
   — esas dos vistas son solo un wrapper mínimo (`{!! $html !!}` / `{{ $text }}`), sin ningún
   layout de Laravel de por medio.
-- Cada notificación (`OrderApproved`, `OrderRejected`, `LineExpiringSoon`) y el closure
-  `VerifyEmail::toMailUsing` en [`AppServiceProvider`](app/Providers/AppServiceProvider.php)
-  construyen el array de variables desde sus datos y llaman a `EmailTemplate::mail(...)` en vez
-  de armar el mensaje a mano con `->line()`/`->action()` (que es lo que generaba el diseño
-  genérico azul de Laravel).
+- Cada notificación (`OrderApproved`, `OrderRejected`, `LineExpiringSoon`) y los closures
+  `VerifyEmail::toMailUsing` / `ResetPassword::toMailUsing` en
+  [`AppServiceProvider`](app/Providers/AppServiceProvider.php) construyen el array de
+  variables desde sus datos y llaman a `EmailTemplate::mail(...)` en vez de armar el mensaje
+  a mano con `->line()`/`->action()` (que es lo que generaba el diseño genérico azul/inglés
+  de Laravel — `ResetPassword` es el mismo caso que `VerifyEmail` tenía antes: el reset de
+  contraseña de Breeze usa la notificación estándar de Laravel si no se sobreescribe, agregado
+  2026-08-05 a pedido del usuario, junto con la plantilla `password_reset` en una migración de
+  datos nueva (`2026_08_05_153041_add_password_reset_email_template.php`) — el enlace se arma
+  igual que el `ResetPassword` original de Laravel (`route('password.reset', ['token'=>...,
+  'email'=>...], false)`), y `{{expire_minutes}}` sale de `config('auth.passwords.users.expire')`
+  (60 por defecto) en vez de estar hardcodeado en el texto.
 - Variables disponibles por plantilla: hardcodeadas en `EmailTemplate::variableCatalog()` — si
   agregas una variable nueva a una notificación, agrégala ahí también para que aparezca en el
   editor del admin.
@@ -616,3 +624,11 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   una migración de datos dedicada (ver sección "Plantillas de correo" arriba). Verificado con
   tinker: 0 ocurrencias de "IPTV" en las 4 plantillas después de correr la migración, variables
   `{{...}}` intactas, y las 4 plantillas siguen renderizando sin placeholders sin reemplazar.
+- El usuario notó que faltaba conectar la plantilla de "olvidé mi contraseña" (seguía en inglés,
+  sin el diseño de las demás — usaba el `ResetPassword` genérico de Laravel, el mismo problema
+  que tenía `VerifyEmail` antes de conectarlo). Se agregó la 5ª plantilla `password_reset` (ver
+  sección "Plantillas de correo" arriba). Probado end-to-end en local: `Password::sendResetLink()`
+  real para el admin, correo verificado en `storage/logs/laravel.log` (mailer `log`) — asunto en
+  español, URL de reset con token real, "60 minutos" sustituido correctamente desde `config()`,
+  y el editor del admin muestra la plantilla y sus variables sin cambios adicionales (la lista
+  del admin no tiene claves hardcodeadas, lee todo de la tabla).

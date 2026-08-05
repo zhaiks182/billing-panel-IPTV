@@ -8,6 +8,7 @@ use App\Models\MailSetting;
 use App\Models\Order;
 use App\Observers\LineObserver;
 use App\Observers\OrderObserver;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
@@ -37,6 +38,19 @@ class AppServiceProvider extends ServiceProvider
             return EmailTemplate::mail('verify_email', [
                 'user_name' => $notifiable->name,
                 'verification_url' => $url,
+            ]);
+        });
+
+        ResetPassword::toMailUsing(function ($notifiable, string $token) {
+            $url = url(route('password.reset', [
+                'token' => $token,
+                'email' => $notifiable->getEmailForPasswordReset(),
+            ], false));
+
+            return EmailTemplate::mail('password_reset', [
+                'user_name' => $notifiable->name,
+                'reset_url' => $url,
+                'expire_minutes' => (string) config('auth.passwords.users.expire', 60),
             ]);
         });
     }
