@@ -112,6 +112,13 @@ esta máquina; por eso se usa `git archive | ssh ... tar -x` en vez de `rsync -a
 - Servidor web: Apache (no nginx). Vhosts en `/etc/apache2/sites-available/`:
   `desarrollo.4livepro.com.conf` (+ `-le-ssl.conf` para HTTPS/Let's Encrypt).
 - Owner de los archivos en el VPS: `www-data`.
+- **Node.js 20 instalado el 2026-08-05** (vía NodeSource, `apt install nodejs`) — no venía en el
+  VPS originalmente. Necesario porque `public/build` (Vite) está en `.gitignore`, así que el
+  deploy normal (`git archive | ssh tar`) nunca lo toca: **cualquier cambio en `resources/css` o
+  `resources/js` requiere correr `npm install && npm run build` a mano en el VPS después de
+  desplegar**, si no los estilos/JS quedan desactualizados en el servidor aunque el código fuente
+  ya esté ahí. Antes de esa fecha no había Node en el VPS y `public/build` llevaba desde el
+  04-08 sin actualizarse (nadie lo había necesitado hasta el cambio de scrollbar).
 
 ## Repositorio GitHub
 
@@ -451,3 +458,10 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   contraseña fuerte con medidor siempre visible. Se documentó la duplicación arriba para no
   volver a olvidarla. Probado en navegador local (invitado, sin sesión): filtro de código
   postal y medidor de contraseña funcionando igual que en el registro normal.
+- Scroll delgado y oscuro (clase `.scrollbar-dark` en `resources/css/app.css`, vía
+  `scrollbar-width`/`scrollbar-color` + pseudo-elementos `::-webkit-scrollbar`) para los
+  desplegables de país/teléfono en registro y checkout, a pedido del usuario (mostró una captura
+  de otro proyecto como referencia de estilo). **Este cambio expuso que el VPS no tenía
+  Node/npm instalado** — se instaló Node 20 (ver sección "VPS / SSH"). Verificado localmente con
+  `npm run build` + navegador (computed `scrollbar-width: thin`, `scrollbar-color` con el gris
+  "steel" del tema) antes de desplegar y compilar también en el VPS.

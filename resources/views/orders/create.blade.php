@@ -136,7 +136,7 @@
                                                     <input type="hidden" name="phone_country_code" :value="selected?.dial">
 
                                                     <div x-show="open" x-cloak x-transition
-                                                         class="absolute z-20 mt-1 w-72 max-h-64 overflow-y-auto bg-ink border border-steel rounded-md shadow-lg py-1">
+                                                         class="absolute z-20 mt-1 w-72 max-h-64 overflow-y-auto scrollbar-dark bg-ink border border-steel rounded-md shadow-lg py-1">
                                                         <template x-for="c in countries" :key="c.name">
                                                             <button type="button" @click="selected = c; open = false"
                                                                     class="w-full flex items-center gap-2 px-3 py-2 text-sm text-dim hover:bg-panel hover:text-paper text-left">
@@ -209,7 +209,7 @@
                                                 <input type="hidden" name="country" :value="selected?.name">
 
                                                 <div x-show="open" x-cloak x-transition
-                                                     class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto bg-ink border border-steel rounded-md shadow-lg py-1">
+                                                     class="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto scrollbar-dark bg-ink border border-steel rounded-md shadow-lg py-1">
                                                     <template x-for="c in countries" :key="c.name">
                                                         <button type="button" @click="selected = c; open = false"
                                                                 class="w-full flex items-center px-3 py-2 text-sm text-dim hover:bg-panel hover:text-paper text-left">
