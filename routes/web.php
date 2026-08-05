@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\EmailTemplateController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PackageCategoryController as AdminPackageCategoryController;
 use App\Http\Controllers\Admin\PackageController as AdminPackageController;
@@ -67,6 +68,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/configuracion-telegram', [TelegramSettingController::class, 'edit'])->name('telegram.edit');
         Route::put('/configuracion-telegram', [TelegramSettingController::class, 'update'])->name('telegram.update');
         Route::post('/configuracion-telegram/probar', [TelegramSettingController::class, 'test'])->name('telegram.test');
+
+        Route::get('/plantillas-correo', [EmailTemplateController::class, 'index'])->name('email-templates.index');
+        Route::get('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'edit'])->name('email-templates.edit');
+        Route::put('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'update'])->name('email-templates.update');
     });
 });
 

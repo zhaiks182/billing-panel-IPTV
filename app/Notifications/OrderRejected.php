@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\EmailTemplate;
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -22,12 +23,12 @@ class OrderRejected extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject("Tu pedido #{$this->order->id} fue rechazado")
-            ->line('No pudimos validar tu comprobante de pago.')
-            ->when($this->order->admin_note, fn ($mail) => $mail->line("Motivo: {$this->order->admin_note}"))
-            ->line('Si crees que es un error, contáctanos o sube un nuevo comprobante.')
-            ->action('Ver mis pedidos', route('orders.index'));
+        return EmailTemplate::mail('order_rejected', [
+            'user_name' => $notifiable->name,
+            'order_id' => (string) $this->order->id,
+            'admin_note' => $this->order->admin_note ?: 'No se especificó un motivo.',
+            'orders_url' => route('orders.index'),
+        ]);
     }
 
     public function toArray(object $notifiable): array

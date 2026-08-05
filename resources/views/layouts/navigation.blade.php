@@ -46,6 +46,7 @@
                                     <x-dropdown-link :href="route('admin.mail.edit')">{{ __('Configuración de correo') }}</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.turnstile.edit')">{{ __('Cloudflare Turnstile') }}</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.telegram.edit')">{{ __('Notificaciones Telegram') }}</x-dropdown-link>
+                                    <x-dropdown-link :href="route('admin.email-templates.index')">{{ __('Plantillas de correo') }}</x-dropdown-link>
                                 </div>
                             </div>
                         @endif
@@ -161,6 +162,7 @@
                         <x-responsive-nav-link :href="route('admin.mail.edit')" :active="request()->routeIs('admin.mail.*')">{{ __('Configuración de correo') }}</x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('admin.turnstile.edit')" :active="request()->routeIs('admin.turnstile.*')">{{ __('Cloudflare Turnstile') }}</x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('admin.telegram.edit')" :active="request()->routeIs('admin.telegram.*')">{{ __('Notificaciones Telegram') }}</x-responsive-nav-link>
+                        <x-responsive-nav-link :href="route('admin.email-templates.index')" :active="request()->routeIs('admin.email-templates.*')">{{ __('Plantillas de correo') }}</x-responsive-nav-link>
                     </div>
                 @endif
             @endauth

@@ -2,9 +2,9 @@
 
 namespace App\Notifications;
 
+use App\Models\EmailTemplate;
 use App\Models\Line;
 use App\Models\Order;
-use App\Models\XuiSetting;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -26,15 +26,18 @@ class OrderApproved extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject("Tu línea IPTV está activa - Pedido #{$this->order->id}")
-            ->line('Tu pago fue aprobado y tu línea M3U ya está activa.')
-            ->when(XuiSetting::current()->server_url, fn ($mail, $server) => $mail->line("Servidor: {$server}"))
-            ->line("Usuario: {$this->line->xui_username}")
-            ->line("Contraseña: {$this->line->xui_password}")
-            ->when($this->line->m3u_url, fn ($mail) => $mail->line("URL M3U: {$this->line->m3u_url}"))
-            ->line("Vence el: {$this->line->expires_at->format('d/m/Y')}")
-            ->action('Ver mi panel', route('dashboard'));
+        $this->order->loadMissing('package');
+
+        return EmailTemplate::mail('order_approved', [
+            'user_name' => $notifiable->name,
+            'order_id' => (string) $this->order->id,
+            'package_name' => $this->order->package->name,
+            'xui_username' => $this->line->xui_username,
+            'xui_password' => $this->line->xui_password,
+            'm3u_url' => $this->line->m3u_url ?: '—',
+            'line_expires_at' => $this->line->expires_at->format('d/m/Y'),
+            'dashboard_url' => route('dashboard'),
+        ]);
     }
 
     public function toArray(object $notifiable): array

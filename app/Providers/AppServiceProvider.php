@@ -2,13 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\EmailTemplate;
 use App\Models\Line;
 use App\Models\MailSetting;
 use App\Models\Order;
 use App\Observers\LineObserver;
 use App\Observers\OrderObserver;
 use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -34,11 +34,10 @@ class AppServiceProvider extends ServiceProvider
         Line::observe(LineObserver::class);
 
         VerifyEmail::toMailUsing(function ($notifiable, string $url) {
-            return (new MailMessage)
-                ->subject('Verifica tu correo electrónico')
-                ->line('Por favor haz clic en el botón de abajo para verificar tu correo electrónico.')
-                ->action('Verificar correo electrónico', $url)
-                ->line('Si no creaste una cuenta, no necesitas hacer nada más.');
+            return EmailTemplate::mail('verify_email', [
+                'user_name' => $notifiable->name,
+                'verification_url' => $url,
+            ]);
         });
     }
 

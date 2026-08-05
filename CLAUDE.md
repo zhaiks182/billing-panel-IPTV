@@ -170,6 +170,12 @@ esta máquina; por eso se usa `git archive | ssh ... tar -x` en vez de `rsync -a
 - `mail_settings`, `telegram_settings`, `turnstile_settings`: configuración dinámica en BD
   editable desde el admin, en vez de solo `.env` (patrón repetido: modelo singleton +
   controller `edit/update` que aplica los valores a `Config::set(...)` en runtime cuando aplica).
+- `email_templates`: **una fila fija por cada correo transaccional** (`verify_email`,
+  `order_approved`, `order_rejected`, `line_expiring_soon` — clave en `key`, único). Cada fila
+  tiene `subject`, `html_body`, `text_body`. Editable desde Admin > Plantillas de correo. Ver
+  sección "Plantillas de correo" más abajo — estas filas son requeridas para que el sistema
+  pueda enviar cualquier correo, por eso se insertan directo en la migración
+  (`2026_08_05_103226_create_email_templates_table.php`), no en el seeder opcional.
 
 ## Panel de administración (`/admin`, middleware `admin` → `EnsureUserIsAdmin`)
 
@@ -179,6 +185,43 @@ esta máquina; por eso se usa `git archive | ssh ... tar -x` en vez de `rsync -a
 - Configuración: XUI ONE, Correo (SMTP con test de envío), Turnstile (captcha Cloudflare),
   Telegram (bot notificaciones)
 - Usuarios: listar, verificar email manualmente, eliminar
+- Plantillas de correo (`/admin/plantillas-correo`): ver sección dedicada abajo.
+
+## Plantillas de correo
+
+Los 4 correos transaccionales del sistema (verificación de cuenta, pedido aprobado/línea
+activada, pedido rechazado, recordatorio de vencimiento) **ya no tienen el diseño por defecto
+de Laravel** — cada uno se edita desde Admin > Plantillas de correo (asunto, diseño HTML con
+vista previa en vivo, y versión en texto plano con un botón para regenerarla desde el HTML).
+
+- Modelo [`EmailTemplate`](app/Models/EmailTemplate.php): una fila por `key`
+  (`verify_email`, `order_approved`, `order_rejected`, `line_expiring_soon`), con `subject`,
+  `html_body`, `text_body`. `EmailTemplate::mail($key, $variables)` sustituye `{{variable}}`
+  por su valor (regex, tolera espacios: `{{ variable }}` también funciona) y devuelve un
+  `MailMessage` con `->view(['html' => 'emails.template-html', 'text' => 'emails.template-text'], ...)`
+  — esas dos vistas son solo un wrapper mínimo (`{!! $html !!}` / `{{ $text }}`), sin ningún
+  layout de Laravel de por medio.
+- Cada notificación (`OrderApproved`, `OrderRejected`, `LineExpiringSoon`) y el closure
+  `VerifyEmail::toMailUsing` en [`AppServiceProvider`](app/Providers/AppServiceProvider.php)
+  construyen el array de variables desde sus datos y llaman a `EmailTemplate::mail(...)` en vez
+  de armar el mensaje a mano con `->line()`/`->action()` (que es lo que generaba el diseño
+  genérico azul de Laravel).
+- Variables disponibles por plantilla: hardcodeadas en `EmailTemplate::variableCatalog()` — si
+  agregas una variable nueva a una notificación, agrégala ahí también para que aparezca en el
+  editor del admin.
+- Las 4 filas se insertan **directo en la migración** (no en `DatabaseSeeder`, que es opcional)
+  porque sin ellas ningún correo se puede enviar — `EmailTemplate::render()` usa `firstOrFail()`.
+  El editor del admin no tiene botón de eliminar, a propósito.
+- El editor (`resources/views/admin/email-templates/edit.blade.php`) usa Alpine.js: textarea de
+  HTML con `x-model` + `<iframe :srcdoc="html">` para vista previa en vivo, botón "Generar desde
+  el HTML" que usa `div.innerText` del navegador para derivar el texto plano, y botones de
+  variables que insertan `{{nombre}}` en el campo (HTML o texto) que tenía el foco.
+  ⚠️ **Cuidado al tocar ese archivo**: escribir literalmente `{{` seguido de `}}` en el código
+  JS/PHP de una vista Blade (fuera de `@php`/`@js`) rompe la compilación, porque Blade lo
+  interpreta como su propia sintaxis de echo. Por eso el JS construye el placeholder como
+  `'{' + '{' + name + '}' + '}'` en vez de `'{{' + name + '}}'` — ya nos pasó una vez al
+  escribirlo directo, se verificó compilando la vista a mano con
+  `app('blade.compiler')->compileString(...)` + `php -l` antes de confiar en que funcionaba.
 
 ## Puntos abiertos / riesgos conocidos
 
@@ -296,3 +339,10 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   del repo (en el perfil de Windows) y no se mueven solas al cambiar de computadora — hay que
   copiarlas a mano o generar unas nuevas. El pedido del usuario fue justamente "documentar todo
   para poder entender el proyecto si toca mover los archivos a otro ordenador".
+- Se construyó el módulo **Plantillas de correo** (a pedido del usuario, quitando además todo
+  rastro del diseño por defecto de Laravel en los correos). Ver sección dedicada arriba.
+  Se probó todo en local antes de desplegar: migración corrida contra el sqlite de
+  `C:\Claude\Billing Panel`, `EmailTemplate::render()`/`mail()` probados por tinker con datos
+  de ejemplo (sustitución de variables, sin `{{...}}` sin reemplazar), las dos vistas del admin
+  renderizadas por tinker, y la vista `edit.blade.php` compilada a mano para atrapar el bug de
+  `{{`/`}}` literales antes de subir (ver advertencia en la sección de arriba).
