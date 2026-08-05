@@ -16,24 +16,38 @@ window.trialGateForm = function () {
         modalOpen: false,
         state: 'waiting',
         email: '',
+        errorMessage: '',
         pollTimer: null,
+        rootEl: null,
 
-        submit() {
+        init() {
+            // $el varía según qué directiva lo evalúa (en @submit apunta al <form>,
+            // no al div raíz), así que se guarda una referencia estable acá.
+            this.rootEl = this.$el;
+        },
+
+        submit(event) {
             this.submitting = true;
+            this.errorMessage = '';
 
-            const form = this.$el.querySelector('form');
+            const form = event.target;
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 20000);
 
             fetch(form.action, {
                 method: 'POST',
                 headers: { Accept: 'application/json' },
                 body: new FormData(form),
+                signal: controller.signal,
             })
                 .then(async (response) => {
+                    clearTimeout(timeout);
                     const data = await response.json().catch(() => null);
 
                     if (!data) {
+                        console.error('trialGateForm: respuesta no es JSON', response.status);
                         this.submitting = false;
-                        alert('Ocurrió un error. Intenta de nuevo.');
+                        this.errorMessage = `Ocurrió un error (código ${response.status}). Intenta de nuevo.`;
                         return;
                     }
 
@@ -41,25 +55,36 @@ window.trialGateForm = function () {
                         this.email = data.email;
                         this.state = 'waiting';
                         this.modalOpen = true;
-                        this.pollStatus(form, data.order_id);
+                        this.submitting = false;
+                        this.pollStatus(data.order_id);
                     } else if (data.status === 'approved') {
                         this.state = 'ready';
                         this.modalOpen = true;
                         this.submitting = false;
-                    } else {
+                    } else if (response.ok) {
                         this.state = 'error';
                         this.modalOpen = true;
                         this.submitting = false;
+                    } else {
+                        console.error('trialGateForm: error de validacion', data);
+                        this.submitting = false;
+                        this.errorMessage = data.message
+                            || Object.values(data.errors || {}).flat()[0]
+                            || 'No se pudo enviar el formulario. Revisa los datos e intenta de nuevo.';
                     }
                 })
-                .catch(() => {
+                .catch((error) => {
+                    clearTimeout(timeout);
+                    console.error('trialGateForm: fallo el envio', error);
                     this.submitting = false;
-                    alert('Ocurrió un error de red. Intenta de nuevo.');
+                    this.errorMessage = error.name === 'AbortError'
+                        ? 'El servidor tardó demasiado en responder. Intenta de nuevo.'
+                        : 'Ocurrió un error de red. Revisa tu conexión e intenta de nuevo.';
                 });
         },
 
-        pollStatus(form, orderId) {
-            const statusUrl = this.$el.dataset.statusUrlTemplate.replace('__ORDER_ID__', orderId);
+        pollStatus(orderId) {
+            const statusUrl = this.rootEl.dataset.statusUrlTemplate.replace('__ORDER_ID__', orderId);
 
             this.pollTimer = setInterval(() => {
                 fetch(statusUrl, { headers: { Accept: 'application/json' } })
@@ -68,13 +93,12 @@ window.trialGateForm = function () {
                         if (data.status === 'approved') {
                             clearInterval(this.pollTimer);
                             this.state = 'ready';
-                            this.submitting = false;
                         } else if (data.status === 'error') {
                             clearInterval(this.pollTimer);
                             this.state = 'error';
-                            this.submitting = false;
                         }
-                    });
+                    })
+                    .catch((error) => console.error('trialGateForm: fallo el sondeo de estado', error));
             }, 3000);
         },
     };

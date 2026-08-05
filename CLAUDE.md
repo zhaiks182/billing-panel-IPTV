@@ -513,3 +513,24 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   Se le pidió al usuario reintentar el registro.
 - Se quitó el placeholder `987654321` del campo de teléfono (registro y checkout) — a pedido
   del usuario, se veía como si ya hubiera un número escrito.
+- El usuario reintentó el registro de `jorgeevil182@gmail.com` y **volvió a quedarse en
+  "Enviando..."** — pero esta vez sin ninguna entrada nueva en el log del VPS (el log llevaba
+  desde las 12:36 sin tocarse, hora del servidor 13:50), o sea el error ya no era de permisos.
+  Se reprodujo en local con un click real (`btn.click()`, no una llamada manual a la función)
+  y se encontró el bug real: **`this.$el` en Alpine no es fijo al elemento raíz del `x-data`**
+  — depende de qué directiva lo evalúa. Como `@submit.prevent="submit"` está en el `<form>`
+  (no en el div con `x-data` que lo envuelve), dentro de `submit()`, `this.$el` apuntaba al
+  propio `<form>`, así que `this.$el.querySelector('form')` buscaba un `<form>` DENTRO del
+  form (no existe) → `null` → `form.action` lanzaba `Cannot read properties of null` de forma
+  síncrona, ANTES de llegar al `fetch()` — por eso `submitting` quedaba en `true` para siempre
+  sin ninguna petición de red, sin popup, sin log en el servidor (el error nunca llegó a viajar).
+  Esto explica también por qué mi primera prueba "funcionó": llamé `Alpine.$data(root).submit()`
+  directo (sin pasar por la directiva `@submit`), y en ese contexto `$el` sí resolvía al div raíz.
+  **Fix**: se agregó `init() { this.rootEl = this.$el }` (el hook `init()` de Alpine sí corre
+  con `$el` = raíz del componente, de forma confiable) y se guarda esa referencia; `submit()`
+  ahora recibe el evento (`@submit.prevent="submit($event)"`) y usa `event.target` para obtener
+  el `<form>` directamente, sin depender de `$el`. De paso se agregó manejo de errores visible
+  (antes solo había `alert()`, que puede pasar desapercibido): mensaje de error en pantalla,
+  timeout de 20s con `AbortController` para no quedar colgado indefinidamente si la red falla,
+  y `console.error` en cada rama de fallo para poder diagnosticar más rápido la próxima vez.
+  Verificado con un click real end-to-end: modal se abre, correo correcto, sin errores en consola.

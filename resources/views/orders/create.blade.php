@@ -82,7 +82,7 @@
                     @else
                         <div @if ($needsVerificationGate) x-data="trialGateForm()" data-status-url-template="{{ route('orders.status', ['order' => '__ORDER_ID__']) }}" @endif>
                         <form method="POST" action="{{ route('orders.store', $package) }}" enctype="multipart/form-data" class="space-y-6"
-                              @if ($needsVerificationGate) @submit.prevent="submit" @endif>
+                              @if ($needsVerificationGate) @submit.prevent="submit($event)" @endif>
                             @csrf
 
                             @guest
@@ -309,6 +309,7 @@
                                                 <path fill-rule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clip-rule="evenodd" />
                                             </svg>
                                         </x-primary-button>
+                                        <p class="mt-2 text-sm text-danger" x-show="errorMessage" x-cloak x-text="errorMessage"></p>
                                     @else
                                         <x-primary-button class="w-full justify-center py-3 gap-2">
                                             {{ __('Activar prueba gratis') }}
