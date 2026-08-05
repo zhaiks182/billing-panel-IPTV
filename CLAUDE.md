@@ -7,8 +7,26 @@ un admin aprueba el pedido y el sistema provisiona automáticamente la línea en
 
 - Laravel 13 (PHP 8.3), Breeze (auth con verificación de email obligatoria)
 - Blade + Tailwind CSS 3 + Alpine.js, Vite
-- Base de datos: SQLite en desarrollo (`database/database.sqlite`)
-- Sin cola real en producción por ahora: `QUEUE_CONNECTION` a revisar (ver `.env`)
+- Base de datos: SQLite en desarrollo (`database/database.sqlite`), MySQL en instalaciones
+  nuevas vía `install.sh` (ver [INSTALL.md](INSTALL.md))
+- Sin cola real en producción por ahora: no hay ningún `ShouldQueue`, las notificaciones se
+  envían sync. `QUEUE_CONNECTION=database` está seteado por si se necesita a futuro.
+
+## Instalación en un servidor nuevo
+
+Ver [INSTALL.md](INSTALL.md) y [install.sh](install.sh) — instalador para un LAMP (Debian/Ubuntu
++ Apache) nuevo: crea la base de datos MySQL, el `.env` de producción, corre migraciones,
+crea el admin, configura el VirtualHost y el cron. Pensado para instalar este panel en el
+servidor de un cliente/reseller nuevo (no solo para `desarrollo.4livepro.com`).
+
+- El admin del sistema **ya no se crea por seeder** (antes `DatabaseSeeder` dejaba
+  `admin@example.com` / `password` fijo — riesgo de seguridad en producción). Ahora se crea
+  con `php artisan app:create-admin {email} {password} --name="..."`
+  ([app/Console/Commands/CreateAdminUser.php](app/Console/Commands/CreateAdminUser.php)),
+  idempotente (si el correo ya existe, actualiza clave y lo vuelve admin). `install.sh` lo
+  llama automáticamente con lo que el usuario indique.
+- `database/seeders/DatabaseSeeder.php` solo carga catálogo de ejemplo (categoría, paquetes,
+  métodos de pago) — ya no crea usuarios.
 
 ## ⚠️ Estado de infraestructura (importante)
 
@@ -215,3 +233,12 @@ ssh whmcs-vps                                  # conectar al VPS de desarrollo/p
     de admin a mano para probar por navegador) — compila y el botón aparece correctamente.
 - Pendiente: decidir próxima tarea de desarrollo con el usuario. Pendiente también que el
   usuario confirme visualmente en el navegador que "Probar conexión" funciona con un bot real.
+- Se creó [install.sh](install.sh) + [INSTALL.md](INSTALL.md): instalador para desplegar este
+  panel en un servidor LAMP nuevo (prerrequisitos, directorio recomendado, base de datos MySQL,
+  usuario/clave admin del sistema). Se refactorizó `DatabaseSeeder` (ya no crea el admin por
+  defecto) y se agregó el comando `app:create-admin` para crear/actualizar el admin de forma
+  segura e idempotente. **No se corrió `install.sh` en `desarrollo.4livepro.com`** (ya está
+  instalado con SQLite) — solo se desplegaron los archivos nuevos/editados con el flujo normal
+  (`git archive | ssh tar`). El script no se probó end-to-end en un servidor real todavía
+  (sintaxis verificada con `bash -n`); probarlo en un LAMP limpio antes de confiar en él para
+  un cliente real.

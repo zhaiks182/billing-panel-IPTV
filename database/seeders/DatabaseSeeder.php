@@ -5,34 +5,22 @@ namespace Database\Seeders;
 use App\Models\Package;
 use App\Models\PackageCategory;
 use App\Models\PaymentMethod;
-use App\Models\User;
 use App\Models\XuiSetting;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
+/**
+ * Datos de catálogo iniciales (categorías, paquetes, métodos de pago).
+ * No crea ningún usuario: el admin se crea con `php artisan app:create-admin`
+ * (ver install.sh) para no dejar una contraseña por defecto en producción.
+ */
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
     public function run(): void
     {
-        User::firstOrCreate(
-            ['email' => 'admin@example.com'],
-            [
-                'name' => 'Administrador',
-                'password' => bcrypt('password'),
-                'role' => 'admin',
-                'email_verified_at' => now(),
-            ]
-        );
-
-        User::factory()->create([
-            'name' => 'Cliente Demo',
-            'email' => 'cliente@example.com',
-            'email_verified_at' => now(),
-        ]);
-
         $category = PackageCategory::firstOrCreate(['slug' => 'iptv-full'], [
             'name' => 'IPTV Full [+8,500 Canales]',
             'description' => 'Latinoamérica, USA, España y Eventos Diarios. Elige qué canales encender según tus necesidades.',
