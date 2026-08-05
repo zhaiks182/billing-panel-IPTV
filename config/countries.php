@@ -1,0 +1,27 @@
+<?php
+
+return [
+    ['name' => 'Ecuador', 'dial' => '+593', 'flag' => '🇪🇨'],
+    ['name' => 'Colombia', 'dial' => '+57', 'flag' => '🇨🇴'],
+    ['name' => 'Perú', 'dial' => '+51', 'flag' => '🇵🇪'],
+    ['name' => 'México', 'dial' => '+52', 'flag' => '🇲🇽'],
+    ['name' => 'Argentina', 'dial' => '+54', 'flag' => '🇦🇷'],
+    ['name' => 'Chile', 'dial' => '+56', 'flag' => '🇨🇱'],
+    ['name' => 'Venezuela', 'dial' => '+58', 'flag' => '🇻🇪'],
+    ['name' => 'Bolivia', 'dial' => '+591', 'flag' => '🇧🇴'],
+    ['name' => 'Paraguay', 'dial' => '+595', 'flag' => '🇵🇾'],
+    ['name' => 'Uruguay', 'dial' => '+598', 'flag' => '🇺🇾'],
+    ['name' => 'Panamá', 'dial' => '+507', 'flag' => '🇵🇦'],
+    ['name' => 'Costa Rica', 'dial' => '+506', 'flag' => '🇨🇷'],
+    ['name' => 'Guatemala', 'dial' => '+502', 'flag' => '🇬🇹'],
+    ['name' => 'Honduras', 'dial' => '+504', 'flag' => '🇭🇳'],
+    ['name' => 'El Salvador', 'dial' => '+503', 'flag' => '🇸🇻'],
+    ['name' => 'Nicaragua', 'dial' => '+505', 'flag' => '🇳🇮'],
+    ['name' => 'República Dominicana', 'dial' => '+1', 'flag' => '🇩🇴'],
+    ['name' => 'Puerto Rico', 'dial' => '+1', 'flag' => '🇵🇷'],
+    ['name' => 'Cuba', 'dial' => '+53', 'flag' => '🇨🇺'],
+    ['name' => 'España', 'dial' => '+34', 'flag' => '🇪🇸'],
+    ['name' => 'Estados Unidos', 'dial' => '+1', 'flag' => '🇺🇸'],
+    ['name' => 'Canadá', 'dial' => '+1', 'flag' => '🇨🇦'],
+    ['name' => 'Brasil', 'dial' => '+55', 'flag' => '🇧🇷'],
+];
