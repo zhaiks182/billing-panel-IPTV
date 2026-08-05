@@ -801,3 +801,36 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
     intro, método de pago real) y el PDF de la versión "Pagada" inspeccionado directamente
     (insignia ámbar "PAGADA", método de pago correcto) — usuario y pedido de prueba eliminados
     después.
+- ⚠️ **Bug real encontrado y corregido: el formulario de prueba gratuita (`trialGateForm`)
+  mostraba "Ocurrió un error (código 200). Intenta de nuevo." en vez del error real** cada vez
+  que la validación fallaba (Turnstile expirado/inválido, ya usó su prueba, etc.). El usuario lo
+  reportó probando el registro manual en `desarrollo.4livepro.com`. Se confirmó viendo el log de
+  Apache (`/var/log/apache2/desarrollo-access.log`): cada intento de `POST
+  /paquetes/.../comprar` devolvía **302** (no 200/422 JSON), y `fetch()` seguía el redirect
+  transparentemente, aterrizando en la página HTML de vuelta con status 200 — de ahí el mensaje
+  engañoso, ya que `trialGateForm.submit()` solo sabe mostrar el `response.status` cuando el
+  body no es JSON parseable (ver `resources/js/app.js`).
+  - **Causa raíz real**: [`bootstrap/app.php`](bootstrap/app.php) tenía
+    `$exceptions->shouldRenderJsonWhen(fn ($request) => $request->is('api/*'))` — esto es
+    scaffolding por defecto de Laravel 13 que **nunca se tocó** desde el commit baseline. Esa
+    línea **reemplaza por completo** la detección normal de Laravel (`$request->expectsJson()`,
+    que mira el header `Accept`) por una que solo mira la URL. Como este proyecto no tiene
+    ninguna ruta bajo `/api/*`, **ninguna excepción de validación en toda la app se renderizaba
+    como JSON**, sin importar qué `Accept` mandara el cliente — afectaba a cualquier fetch/AJAX
+    del sitio, no solo al trial. Confirmado reproduciendo el POST real con `curl -H "Accept:
+    application/json"` contra producción: siempre 302, nunca JSON, incluso con Turnstile
+    inválido a propósito.
+  - **Fix**: `fn ($request) => $request->is('api/*') || $request->expectsJson()` — mantiene el
+    comportamiento para `/api/*` y además restaura la detección estándar por header `Accept`
+    para el resto de la app.
+  - De paso se corrigió un segundo bug relacionado en `OrderController::store()`: la rama
+    "ya usaste tu prueba gratuita" (`hasUsedTrial()`) hacía un `redirect()` a secas sin mirar
+    `$request->wantsJson()` — ahora responde `response()->json(['status' =>
+    'trial_already_used', 'message' => ...], 422)` cuando el cliente pide JSON, igual que el
+    resto de `storeTrial()`.
+  - Probado en local simulando los 3 casos con `curl` contra `php artisan serve` (con Turnstile
+    desactivado localmente, se usó un campo requerido faltante para forzar la validación):
+    validación fallida → antes 302 HTML, ahora `422 {"message":"...","errors":{...}}`; registro
+    válido → sigue devolviendo `200 {"status":"pending_verification",...}` sin cambios; mismo
+    usuario reintentando la prueba → `422 {"status":"trial_already_used","message":"..."}`.
+    Desplegado a `desarrollo.4livepro.com` sin migraciones nuevas.

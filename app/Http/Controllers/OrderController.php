@@ -60,8 +60,13 @@ class OrderController extends Controller
 
         if ($package->is_trial) {
             if ($this->hasUsedTrial($user)) {
-                return redirect()->route('orders.create', $package)
-                    ->with('status', 'Ya usaste tu prueba gratuita. Si quieres seguir disfrutando del servicio, elige uno de nuestros planes de pago.');
+                $message = 'Ya usaste tu prueba gratuita. Si quieres seguir disfrutando del servicio, elige uno de nuestros planes de pago.';
+
+                if ($request->wantsJson()) {
+                    return response()->json(['status' => 'trial_already_used', 'message' => $message], 422);
+                }
+
+                return redirect()->route('orders.create', $package)->with('status', $message);
             }
 
             return $this->storeTrial($request, $package, $xui, $user);
