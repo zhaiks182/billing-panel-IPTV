@@ -71,6 +71,9 @@ ssh "$SSH_HOST" "cd '$REMOTE_PATH' && php artisan optimize:clear"
 step "Permisos (después de limpiar cachés — por si algo se recreó como root)"
 ssh "$SSH_HOST" "chown -R www-data:www-data '$REMOTE_PATH/storage' '$REMOTE_PATH/bootstrap/cache'"
 
+step "Reiniciando el worker de colas (para que tome el código nuevo)"
+ssh "$SSH_HOST" "cd '$REMOTE_PATH' && php artisan queue:restart" || true
+
 step "Respaldo en el git local del VPS"
 ssh "$SSH_HOST" "cd '$REMOTE_PATH' && git add -A && git commit -q -m 'Deploy: ${COMMIT_SHA} ${COMMIT_MSG}' --allow-empty"
 

@@ -5,10 +5,11 @@ namespace App\Notifications;
 use App\Models\EmailTemplate;
 use App\Models\Ticket;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class TicketReplied extends Notification
+class TicketReplied extends Notification implements ShouldQueue
 {
     use Queueable;
 

@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\MailSetting;
+use App\Jobs\SendNewTicketAdminAlert;
+use App\Jobs\SendTicketReplyAdminAlert;
 use App\Models\Ticket;
 use App\Models\TurnstileSetting;
 use App\Notifications\TicketCreated;
 use App\Rules\ValidTurnstile;
-use App\Services\Telegram\TelegramNotifier;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -35,7 +34,7 @@ class TicketController extends Controller
         ]);
     }
 
-    public function store(Request $request, TelegramNotifier $telegram)
+    public function store(Request $request)
     {
         $user = $request->user();
 
@@ -85,77 +84,9 @@ class TicketController extends Controller
             Notification::route('mail', $validated['guest_email'])->notify(new TicketCreated($ticket, $validated['message']));
         }
 
-        $telegram->send(
-            "🎫 <b>Nuevo ticket #{$ticket->id}</b>\n\n".
-            "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
-            "Categoría: {$ticket->categoryLabel()}\n".
-            "Prioridad: {$ticket->priorityLabel()}\n".
-            "Asunto: {$ticket->subject}\n\n".
-            'Ver ticket: '.route('admin.tickets.show', $ticket)
-        );
-
-        $this->notifyAdminEmail($ticket);
+        SendNewTicketAdminAlert::dispatch($ticket, $validated['message']);
 
         return redirect($ticket->publicUrl())->with('status', "Tu ticket #{$ticket->id} fue creado correctamente.");
-    }
-
-    /**
-     * Correo interno a la bandeja de soporte cuando se abre un ticket, con el mismo
-     * contenido que el aviso de Telegram — a pedido del usuario, 2026-08-06. Se manda al
-     * `username` configurado en Admin > Configuración de correo (la cuenta SMTP real, ej.
-     * soporte@4livepro.com), no a un destinatario nuevo configurable — no hace nada si no
-     * hay correo configurado.
-     */
-    private function notifyAdminEmail(Ticket $ticket): void
-    {
-        $adminEmail = MailSetting::current()->username;
-
-        if (! $adminEmail) {
-            return;
-        }
-
-        Mail::raw(
-            "Nuevo ticket #{$ticket->id}\n\n".
-            "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
-            "Categoría: {$ticket->categoryLabel()}\n".
-            "Prioridad: {$ticket->priorityLabel()}\n".
-            "Asunto: {$ticket->subject}\n\n".
-            "Ver ticket: ".route('admin.tickets.show', $ticket),
-            function ($message) use ($adminEmail, $ticket) {
-                $message->to($adminEmail)
-                    ->replyTo($ticket->customerEmail(), $ticket->customerName())
-                    ->subject("🎫 Nuevo ticket #{$ticket->id} - {$ticket->subject}");
-            }
-        );
-    }
-
-    /**
-     * Correo interno a la bandeja de soporte cuando el cliente/invitado responde un ticket
-     * ya existente — mismo patrón que `notifyAdminEmail()` (ticket nuevo), pero para
-     * respuestas posteriores. Bug encontrado por el usuario: antes solo se avisaba por
-     * Telegram y sin el texto del mensaje, ahora ambos avisos (Telegram y correo) incluyen
-     * el mensaje completo.
-     */
-    private function notifyAdminEmailReply(Ticket $ticket, string $message): void
-    {
-        $adminEmail = MailSetting::current()->username;
-
-        if (! $adminEmail) {
-            return;
-        }
-
-        Mail::raw(
-            "Nueva respuesta de cliente en ticket #{$ticket->id}\n\n".
-            "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
-            "Asunto: {$ticket->subject}\n\n".
-            "Mensaje:\n{$message}\n\n".
-            "Ver ticket: ".route('admin.tickets.show', $ticket),
-            function ($mail) use ($adminEmail, $ticket) {
-                $mail->to($adminEmail)
-                    ->replyTo($ticket->customerEmail(), $ticket->customerName())
-                    ->subject("💬 Nueva respuesta en ticket #{$ticket->id} - {$ticket->subject}");
-            }
-        );
     }
 
     public function show(Request $request, Ticket $ticket)
@@ -170,7 +101,7 @@ class TicketController extends Controller
         ]);
     }
 
-    public function reply(Request $request, Ticket $ticket, TelegramNotifier $telegram)
+    public function reply(Request $request, Ticket $ticket)
     {
         $this->authorizeAccess($request, $ticket);
 
@@ -184,15 +115,7 @@ class TicketController extends Controller
 
         $ticket->update(['status' => 'open', 'closed_at' => null]);
 
-        $telegram->send(
-            "💬 <b>Nueva respuesta de cliente en ticket #{$ticket->id}</b>\n\n".
-            "Cliente: {$ticket->customerName()}\n".
-            "Asunto: {$ticket->subject}\n\n".
-            "Mensaje:\n{$validated['message']}\n\n".
-            'Ver ticket: '.route('admin.tickets.show', $ticket)
-        );
-
-        $this->notifyAdminEmailReply($ticket, $validated['message']);
+        SendTicketReplyAdminAlert::dispatch($ticket, $validated['message']);
 
         return back()->with('status', 'Tu respuesta fue enviada.');
     }

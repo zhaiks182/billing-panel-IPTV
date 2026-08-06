@@ -12,8 +12,14 @@ un admin aprueba el pedido y el sistema provisiona automáticamente la línea en
   algún punto de una sesión anterior, ver bitácora del 05-08; el driver `sqlite` sigue
   soportado por Laravel si hiciera falta volver). MySQL también en instalaciones nuevas vía
   `install.sh` (ver [INSTALL.md](INSTALL.md)) y en el VPS de desarrollo.
-- Sin cola real en producción por ahora: no hay ningún `ShouldQueue`, las notificaciones se
-  envían sync. `QUEUE_CONNECTION=database` está seteado por si se necesita a futuro.
+- Colas: `QUEUE_CONNECTION=database` (tabla `jobs`, migración base de Laravel). La mayoría de
+  notificaciones sigue síncrona — solo el módulo de Tickets usa cola por ahora (`ShouldQueue`
+  en `TicketCreated`/`TicketReplied`/`TicketClosed` + los Jobs `SendNewTicketAdminAlert`/
+  `SendTicketReplyAdminAlert`, ver "Módulo de Tickets de Soporte"). Requiere un worker
+  corriendo: en el VPS es el servicio systemd `billing-panel-queue`
+  (`systemctl status billing-panel-queue`); en local no hay worker persistente, correr
+  `php artisan queue:work` a mano si hace falta procesar algo encolado (si no, los jobs
+  quedan pendientes en la tabla `jobs` sin ejecutarse).
 
 ## Mapa de archivos clave
 
@@ -67,6 +73,10 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
 - `Ticket`, `TicketMessage`, `TicketAttachment` — ver "Módulo de Tickets de Soporte".
 - `XuiSetting`, `MailSetting`, `TurnstileSetting`, `TelegramSetting` — singletons de config
   (patrón `::current()`, un solo registro en la tabla, se crea vacío si no existe).
+
+**Jobs en cola** (`app/Jobs`) — únicos jobs de la app, ver "Módulo de Tickets de Soporte":
+`SendNewTicketAdminAlert`, `SendTicketReplyAdminAlert` (Telegram + correo interno, encolados
+porque bloqueaban la respuesta HTTP varios segundos).
 
 **Servicios** (`app/Services`)
 - `InvoicePdfService` — genera el PDF de factura con dompdf, ver "PDF de facturas".
@@ -669,6 +679,42 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   llamado también desde `reply()`. Probado por reflexión directa sobre el método privado
   (mismo patrón usado para probar `notifyAdminEmail()` antes) — el correo sale con el
   mensaje completo y el `Reply-To` correcto.
+- **Colas activadas para los avisos internos de tickets (2026-08-06)** — el usuario reportó
+  que responder un ticket tardaba ~6 segundos (el navegador esperaba a que Laravel llamara a
+  la API de Telegram y al SMTP de Gmail, ambas síncronas, antes de devolver la página) y que
+  a veces el aviso de Telegram simplemente no llegaba (falla silenciosa: `TelegramNotifier`
+  atrapa las excepciones y solo loguea un warning, nunca hace que la request falle). Las dos
+  cosas se resuelven con el mismo cambio: mover esas llamadas de red a la cola en vez de
+  ejecutarlas dentro de la petición HTTP.
+  - `notifyAdminEmail()`/`notifyAdminEmailReply()` (los métodos privados del punto anterior)
+    se movieron a dos Jobs nuevos: [`App\Jobs\SendNewTicketAdminAlert`](app/Jobs/SendNewTicketAdminAlert.php)
+    y [`App\Jobs\SendTicketReplyAdminAlert`](app/Jobs/SendTicketReplyAdminAlert.php)
+    (`implements ShouldQueue`, `$tries = 3` — con colas, un fallo transitorio de Telegram ya
+    se reintenta solo en vez de perderse). `TicketController::store()`/`reply()` ahora solo
+    hacen `::dispatch($ticket, $mensaje)`, que inserta una fila en `jobs` y regresa al
+    instante — el trabajo pesado (Telegram + `Mail::raw()`) corre después, en el worker.
+  - Las notificaciones al cliente (`TicketCreated`, `TicketReplied`, `TicketClosed`, ya
+    existentes) ahora también implementan `ShouldQueue` — antes se enviaban sync igual que el
+    resto de notificaciones de la app (`$user->notify(...)` sin cola, ver "Stack": *"Sin cola
+    real en producción por ahora"*). Estas 3 son las únicas notificaciones que se movieron a
+    cola por ahora; el resto de la app (`OrderInvoice`, `OrderApproved`, etc.) sigue síncrono
+    — no se tocó nada fuera del alcance de lo reportado.
+  - **`QUEUE_CONNECTION=database` ya estaba seteado desde el inicio del proyecto pero nunca
+    se había usado** (la tabla `jobs` existe desde la migración base de Laravel, sin usar).
+    Para que algo puesto en cola realmente se procese hace falta un worker corriendo tiempo
+    completo — se creó `/etc/systemd/system/billing-panel-queue.service` en el VPS
+    (`php artisan queue:work --sleep=1 --tries=3 --max-time=3600`, usuario `www-data`,
+    `Restart=always`, log en `storage/logs/queue-worker.log`), habilitado con
+    `systemctl enable --now billing-panel-queue` — arranca solo si el VPS se reinicia.
+    **`deploy.sh` ahora corre `php artisan queue:restart` al final de cada deploy** (después
+    de `optimize:clear`): esto no detiene el servicio, solo le avisa al worker que termine su
+    trabajo actual y salga; como el `systemd` tiene `Restart=always`, se reinicia solo con el
+    código nuevo ya cargado — sin este paso, el worker seguiría corriendo el código viejo en
+    memoria indefinidamente después de cada deploy.
+  - Probado en local: `DB::table('jobs')->count()` confirmó que el job queda pendiente en la
+    tabla (no se ejecuta al despachar), y `php artisan queue:work --once` lo procesó
+    correctamente (confirmado el correo en `storage/logs/laravel.log`). En el VPS,
+    `systemctl status billing-panel-queue` confirma el proceso corriendo tras instalarlo.
 
 ## Plantillas de correo
 
@@ -835,6 +881,9 @@ php artisan app:create-admin correo clave      # crear/actualizar el usuario adm
 php artisan lines:send-expiration-reminders    # recordatorios de vencimiento (cron, diario 9am)
 php artisan telegram:daily-summary             # resumen de ventas por Telegram (cron, diario 10pm)
 php artisan schedule:list                      # ver qué comandos están programados y cuándo corren
+php artisan queue:work                         # procesar la cola a mano (local, sin worker persistente)
+systemctl status billing-panel-queue           # (en el VPS) ver si el worker de colas está corriendo
+journalctl -u billing-panel-queue -f           # (en el VPS) ver logs en vivo del worker de colas
 npm run dev                                    # vite dev
 npm run build                                  # vite build
 ssh whmcs-vps                                  # conectar al VPS de desarrollo/producción
