@@ -87,9 +87,10 @@ class TicketController extends Controller
         }
 
         $telegram->send(
-            "🎫 <b>Nuevo ticket #{$ticket->id}</b>\n".
+            "🎫 <b>Nuevo ticket #{$ticket->id}</b>\n\n".
             "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
-            "Categoría: {$ticket->categoryLabel()} — Prioridad: {$ticket->priorityLabel()}\n".
+            "Categoría: {$ticket->categoryLabel()}\n".
+            "Prioridad: {$ticket->priorityLabel()}\n".
             "Asunto: {$ticket->subject}\n\n".
             'Ver ticket: '.route('admin.tickets.show', $ticket)
         );
@@ -115,9 +116,10 @@ class TicketController extends Controller
         }
 
         Mail::raw(
-            "Nuevo ticket #{$ticket->id}\n".
+            "Nuevo ticket #{$ticket->id}\n\n".
             "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
-            "Categoría: {$ticket->categoryLabel()} — Prioridad: {$ticket->priorityLabel()}\n".
+            "Categoría: {$ticket->categoryLabel()}\n".
+            "Prioridad: {$ticket->priorityLabel()}\n".
             "Asunto: {$ticket->subject}\n\n".
             "Ver ticket: ".route('admin.tickets.show', $ticket),
             function ($message) use ($adminEmail, $ticket) {
