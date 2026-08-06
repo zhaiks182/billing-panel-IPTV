@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-md mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
             <div class="bg-panel border border-steel rounded-lg p-6">
                 <form method="POST" action="{{ route('password.store') }}">
                     @csrf

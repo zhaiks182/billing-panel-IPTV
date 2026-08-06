@@ -9,7 +9,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             <nav class="flex items-center gap-2 text-sm text-dim-2 mb-6">
                 <a href="{{ route('home') }}" class="hover:text-paper">{{ __('Inicio') }}</a>
                 <span>&rsaquo;</span>

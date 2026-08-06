@@ -937,3 +937,28 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
     apertura de los desplegables Alpine se hicieron disparando eventos reales vía
     `element.click()`/`fetch()` con `javascript_tool`, que sí dispara los listeners de Alpine
     correctamente al ser un evento DOM genuino, no una llamada directa a la función.
+- **Segundo bug de responsive, mucho más grave: el contenedor principal de página no tenía
+  padding lateral en mobile** (2026-08-06). El usuario mandó una captura real de iPhone del
+  checkout: la tarjeta "Resumen del pedido" tocaba los dos bordes de la pantalla, sin ningún
+  margen — se veía "sin marcos". Causa: el contenedor estándar que usa **prácticamente cada
+  vista del sitio** (`<div class="max-w-* mx-auto sm:px-6 lg:px-8">`, heredado tal cual del
+  scaffolding de Laravel Breeze) solo define padding horizontal desde el breakpoint `sm:`
+  (640px) hacia arriba — **por debajo de eso (cualquier smartphone en vertical) no hay padding
+  en absoluto**, así que el contenido queda pegado a los bordes de la pantalla. A diferencia
+  del bug de las tablas (que solo se notaba con contenido ancho), este afectaba a **toda página
+  del sitio sin excepción**, tanto pública como de admin.
+  - Fix: se agregó `px-4` como base a los **31 archivos** que usaban este patrón (`grep -rl
+    'max-w-.*mx-auto sm:px-' resources/views` → reemplazo `sed` de `sm:px-6 lg:px-8` por
+    `px-4 sm:px-6 lg:px-8` en todos). Cubre absolutamente todas las páginas: home/categorías
+    (esas ya tenían su propio padding porque usan otro layout, no se vieron afectadas),
+    checkout, carrito, mis pedidos, dashboard de cliente, todo el panel de admin (dashboard,
+    pedidos, paquetes, categorías, métodos de pago, plantillas de correo, usuarios,
+    configuración de XUI/correo/Turnstile/Telegram, formularios create/edit) y las vistas de
+    auth (login, registro, forgot-password, reset-password, verify-email, confirm-password).
+  - Las 31 vistas se compilaron una por una con `app('blade.compiler')->compileString(...)` +
+    `php -l` antes de desplegar (mismo patrón de verificación que el resto del proyecto).
+    Verificado también en el navegador local, midiendo la tarjeta "Resumen del pedido" del
+    checkout con `getBoundingClientRect()` en viewport 375px: antes del fix estaba pegada a
+    ambos bordes (0px de margen), después queda a 16px simétricos de cada lado.
+  - Solo Blade (ninguna clase de Tailwind nueva, `px-4` ya existe en el CSS compilado) —
+    desplegado con `deploy.sh --no-build`, sin necesidad de `npm run build`.

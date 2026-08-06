@@ -7,7 +7,7 @@
     </x-slot>
 
     <div class="py-12" x-data @keydown.escape.window="window.location = '{{ route('admin.dashboard') }}'">
-        <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             @if (session('status'))
                 <div class="mb-6 bg-brand-500/10 border border-brand-800 text-brand-300 px-4 py-3 rounded-lg">
                     {{ session('status') }}

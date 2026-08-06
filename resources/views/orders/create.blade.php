@@ -9,7 +9,7 @@
     </x-slot>
 
     <div class="py-8" x-data @keydown.escape.window="window.location = '{{ route('home') }}'">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             @if (session('status'))
                 <div class="bg-amber/10 border border-amber text-amber px-4 py-3 rounded-lg mb-6">
                     {{ session('status') }}
