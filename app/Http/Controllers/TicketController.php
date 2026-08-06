@@ -46,6 +46,7 @@ class TicketController extends Controller
             'priority' => ['required', Rule::in(self::PRIORITIES)],
             'message' => ['required', 'string', 'max:5000'],
             'attachments.*' => ['nullable', 'file', 'mimes:jpg,gif,jpeg,png,txt,pdf', 'max:5120'],
+            'cf-turnstile-response' => [new ValidTurnstile],
         ];
 
         if ($user) {
@@ -53,7 +54,6 @@ class TicketController extends Controller
         } else {
             $rules['guest_name'] = ['required', 'string', 'max:255'];
             $rules['guest_email'] = ['required', 'email', 'max:255'];
-            $rules['cf-turnstile-response'] = [new ValidTurnstile];
         }
 
         $validated = $request->validate($rules);

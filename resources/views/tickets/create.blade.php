@@ -113,9 +113,7 @@
                         <x-input-error :messages="$errors->get('attachments.0')" class="mt-2" />
                     </div>
 
-                    @guest
-                        <x-turnstile-widget :site-key="$turnstileSiteKey" />
-                    @endguest
+                    <x-turnstile-widget :site-key="$turnstileSiteKey" />
 
                     <x-primary-button class="w-full justify-center py-3">
                         {{ __('Enviar ticket') }}
