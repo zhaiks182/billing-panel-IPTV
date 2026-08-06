@@ -39,6 +39,7 @@ class SendNewTicketAdminAlert implements ShouldQueue
             "Categoría: {$ticket->categoryLabel()}\n".
             "Prioridad: {$ticket->priorityLabel()}\n".
             "Asunto: {$ticket->subject}\n\n".
+            "Mensaje:\n{$this->firstMessage}\n\n".
             'Ver ticket: '.route('admin.tickets.show', $ticket)
         );
 
