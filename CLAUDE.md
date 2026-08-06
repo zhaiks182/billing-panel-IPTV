@@ -637,6 +637,28 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   tanto el de "nuevo ticket" como el de "nueva respuesta de cliente" ahora terminan con
   `Ver ticket: {{ route('admin.tickets.show', $ticket) }}`, mismo patrón que el enlace que
   ya llevaba el aviso de "nuevo pedido" (ver "Flujo de negocio principal").
+- **Formato del mensaje de "nuevo ticket" ajustado** (Telegram y el correo interno a
+  soporte@4livepro.com, que comparten el mismo texto) — salto de línea extra entre el
+  título y los datos del cliente, y "Categoría"/"Prioridad" en líneas separadas en vez de
+  `Categoría: X — Prioridad: Y` en una sola línea.
+- **`Reply-To` agregado al correo interno de "nuevo ticket"** — el usuario reportó que al
+  presionar "Responder" en Gmail sobre ese correo, la respuesta iba de vuelta a
+  `soporte@4livepro.com` (el remitente) en vez de al cliente real. Se agregó
+  `->replyTo($ticket->customerEmail(), $ticket->customerName())` al mensaje. Aclarado también
+  que esto es solo un atajo de contacto directo por correo — **no** actualiza el ticket en la
+  base de datos ni aparece en el hilo; no hay integración de correo entrante (IMAP/webhook)
+  que capture esas respuestas, sería una funcionalidad nueva y más grande si se pide después.
+- **Turnstile agregado también al formulario de responder un ticket** (`tickets/show.blade.php`,
+  cliente/invitado, no el de admin) — antes solo estaba en la creación del ticket. Mismo
+  patrón que el resto del módulo: siempre visible/validado, sin condicional `@guest`. Se
+  extrajo `TicketController::turnstileSiteKey()` (antes ese cálculo estaba duplicado inline
+  en `create()`) para reusarlo también en `show()`. Al probarlo se descubrió que
+  `Auth\LoginRequest` **también exige Turnstile** cuando está activo — no es nuevo de esta
+  sesión, ya existía; solo complicó las pruebas por `curl` (login fallaba con 422 hasta
+  desactivar Turnstile temporalmente para poder iniciar sesión, reactivarlo después para
+  probar el formulario de respuesta).
+- Más espaciado (`space-y-6`) en el formulario de responder de `tickets/show.blade.php` —
+  el usuario insistió en que seguía viéndose apretado tras el primer ajuste a `space-y-5`.
 
 ## Plantillas de correo
 

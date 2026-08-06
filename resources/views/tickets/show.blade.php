@@ -76,7 +76,7 @@
                         <h3 class="text-base font-semibold text-paper mb-4">
                             {{ $ticket->status === 'closed' ? __('Responder para reabrir el ticket') : __('Responder') }}
                         </h3>
-                        <form method="POST" action="{{ $replyUrl }}" enctype="multipart/form-data" class="space-y-5">
+                        <form method="POST" action="{{ $replyUrl }}" enctype="multipart/form-data" class="space-y-6">
                             @csrf
                             <div>
                                 <textarea name="message" rows="4" required
@@ -86,6 +86,7 @@
                                 <input name="attachments[]" type="file" multiple accept=".jpg,.jpeg,.gif,.png,.txt,.pdf"
                                        class="block w-full text-sm text-dim">
                             </div>
+                            <x-turnstile-widget :site-key="$turnstileSiteKey" />
                             <x-primary-button>{{ __('Enviar respuesta') }}</x-primary-button>
                         </form>
                     </div>

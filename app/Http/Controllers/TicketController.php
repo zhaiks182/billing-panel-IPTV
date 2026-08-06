@@ -29,11 +29,10 @@ class TicketController extends Controller
 
         $orders = $user ? $user->orders()->latest()->get() : collect();
 
-        $turnstileSiteKey = TurnstileSetting::current()->isActive()
-            ? TurnstileSetting::current()->site_key
-            : null;
-
-        return view('tickets.create', compact('orders', 'turnstileSiteKey'));
+        return view('tickets.create', [
+            'orders' => $orders,
+            'turnstileSiteKey' => $this->turnstileSiteKey(),
+        ]);
     }
 
     public function store(Request $request, TelegramNotifier $telegram)
@@ -136,7 +135,10 @@ class TicketController extends Controller
 
         $ticket->load(['messages.user', 'messages.attachments', 'line', 'order', 'assignedAdmin']);
 
-        return view('tickets.show', compact('ticket'));
+        return view('tickets.show', [
+            'ticket' => $ticket,
+            'turnstileSiteKey' => $this->turnstileSiteKey(),
+        ]);
     }
 
     public function reply(Request $request, Ticket $ticket, TelegramNotifier $telegram)
@@ -146,6 +148,7 @@ class TicketController extends Controller
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:5000'],
             'attachments.*' => ['nullable', 'file', 'mimes:jpg,gif,jpeg,png,txt,pdf', 'max:5120'],
+            'cf-turnstile-response' => [new ValidTurnstile],
         ]);
 
         $this->storeMessage($request, $ticket, $request->user()?->id, $validated['message']);
@@ -182,6 +185,13 @@ class TicketController extends Controller
                 'original_name' => $file->getClientOriginalName(),
             ]);
         }
+    }
+
+    private function turnstileSiteKey(): ?string
+    {
+        return TurnstileSetting::current()->isActive()
+            ? TurnstileSetting::current()->site_key
+            : null;
     }
 
     private function authorizeAccess(Request $request, Ticket $ticket): void
