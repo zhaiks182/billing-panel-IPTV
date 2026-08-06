@@ -18,7 +18,7 @@
                 {{ __('Estos son los correos que el sistema envía automáticamente a los clientes. Puedes editar el asunto, el diseño HTML y la versión en texto plano de cada uno.') }}
             </p>
 
-            <div class="bg-panel border border-steel rounded-lg overflow-hidden">
+            <div class="bg-panel border border-steel rounded-lg overflow-x-auto">
                 <table class="min-w-full divide-y divide-steel">
                     <thead>
                         <tr>

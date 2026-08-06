@@ -104,7 +104,7 @@
             <div>
                 <h3 class="text-lg font-semibold text-paper mb-3">{{ __('Pedidos recientes') }}</h3>
 
-                <div class="bg-panel border border-steel rounded-lg overflow-hidden">
+                <div class="bg-panel border border-steel rounded-lg overflow-x-auto">
                     <table class="min-w-full divide-y divide-steel">
                         <thead>
                             <tr>

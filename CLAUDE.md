@@ -900,3 +900,40 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
     probar el reset real del widget en sí porque Turnstile solo está activo en
     `desarrollo.4livepro.com`, no en local — verificar ahí con el sitio real si el problema
     persiste tras desplegar.
+- **Bug real de responsive en mobile encontrado y corregido (2026-08-06)**: el usuario reportó
+  "el responsive para smartphone no está bien". Sin poder tomar capturas de pantalla en esta
+  sesión (el panel de Chrome no estaba visible del lado del usuario), se auditó midiendo
+  `scrollWidth` vs `innerWidth` por JS en viewport 375px (preset "mobile") en todas las páginas
+  principales. La mayoría no tenía problema (home, categorías, checkout, dashboards vacíos) —
+  el bug real apareció al probar tablas con datos reales: **8 vistas envolvían su `<table>` en
+  un `<div class="... overflow-hidden">` en vez de `overflow-x-auto`**, así que en vez de
+  poder hacer scroll horizontal para ver el contenido que no cabía en 375px, el contenido
+  simplemente se **cortaba/ocultaba sin ningún indicio visual** de que faltaba algo. Confirmado
+  midiendo una tabla real (`/pedidos` del cliente): la tabla mide 437px pero el contenedor solo
+  374px — antes de este fix esos 63px de contenido (la columna de fecha, parte del badge de
+  estado) quedaban invisibles.
+  - Vistas corregidas (mismo cambio en las 8: `overflow-hidden` → `overflow-x-auto` en el div
+    que envuelve la tabla): [`admin/dashboard.blade.php`](resources/views/admin/dashboard.blade.php)
+    (línea por vencer), [`admin/email-templates/index.blade.php`](resources/views/admin/email-templates/index.blade.php),
+    [`admin/package-categories/index.blade.php`](resources/views/admin/package-categories/index.blade.php),
+    [`admin/packages/index.blade.php`](resources/views/admin/packages/index.blade.php),
+    [`admin/payment-methods/index.blade.php`](resources/views/admin/payment-methods/index.blade.php),
+    [`cart/index.blade.php`](resources/views/cart/index.blade.php) (tabla de ítems del carrito,
+    **no** la tarjeta de resumen de al lado, esa sigue con `overflow-hidden` a propósito por
+    las esquinas redondeadas), [`dashboard.blade.php`](resources/views/dashboard.blade.php)
+    ("Mis Enlaces M3U"), [`orders/index.blade.php`](resources/views/orders/index.blade.php)
+    ("Mis Pedidos"). Los otros 3 usos restantes de `overflow-hidden` en el proyecto
+    (`cart/index.blade.php` línea 67, `components/modal.blade.php`, `layouts/guest.blade.php`)
+    son tarjetas/paneles normales, no tablas — se dejaron intactos.
+  - También se revisaron y **descartaron** como problema real: un grid de 2 columnas sin
+    prefijo responsive en el modal de detalle de usuario (`admin/users/index.blade.php`, campos
+    cortos tipo "Ciudad"/"Estado", cabe bien incluso en 375px) y los desplegables de país/código
+    de teléfono en el formulario de registro (`w-72`/`w-full`, medidos con
+    `getBoundingClientRect()` tras abrirlos por JS — ninguno se sale del viewport en 375px).
+  - Ya que este era un bug de solo Blade/Tailwind (ninguna clase nueva, solo la que ya existía
+    en el resto del proyecto), no requirió `npm run build` — se desplegó con `deploy.sh --no-build`.
+  - Login/pruebas en el navegador local hechas sin poder usar clicks reales del `computer` tool
+    (el panel de Chrome no compositaba frames en esta sesión) — en su lugar, login/logout y
+    apertura de los desplegables Alpine se hicieron disparando eventos reales vía
+    `element.click()`/`fetch()` con `javascript_tool`, que sí dispara los listeners de Alpine
+    correctamente al ser un evento DOM genuino, no una llamada directa a la función.

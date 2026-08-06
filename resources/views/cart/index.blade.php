@@ -18,7 +18,7 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                 <div class="lg:col-span-2 order-2 lg:order-1">
-                    <div class="bg-panel border border-steel rounded-lg overflow-hidden">
+                    <div class="bg-panel border border-steel rounded-lg overflow-x-auto">
                         <table class="min-w-full divide-y divide-steel">
                             <thead>
                                 <tr>
