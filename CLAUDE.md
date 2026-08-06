@@ -75,8 +75,11 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
   (patrón `::current()`, un solo registro en la tabla, se crea vacío si no existe).
 
 **Jobs en cola** (`app/Jobs`) — únicos jobs de la app, ver "Módulo de Tickets de Soporte":
-`SendNewTicketAdminAlert`, `SendTicketReplyAdminAlert` (Telegram + correo interno, encolados
-porque bloqueaban la respuesta HTTP varios segundos).
+`SendNewTicketAdminAlert`, `SendTicketReplyAdminAlert` (Telegram + correo interno cuando el
+cliente/invitado crea o responde un ticket, encolados porque bloqueaban la respuesta HTTP
+varios segundos), `SendAdminReplyTelegramNotice`, `SendTicketClosedTelegramNotice` (solo
+Telegram, cuando el **admin** responde o cierra un ticket — antes esas dos acciones no
+avisaban nada a Telegram, solo mandaban el correo al cliente).
 
 **Servicios** (`app/Services`)
 - `InvoicePdfService` — genera el PDF de factura con dompdf, ver "PDF de facturas".
@@ -747,6 +750,23 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
     `queue:work --once`, confirmando en `storage/logs/laravel.log` el HTML completo (header
     con logo, badges de categoría/prioridad, caja del mensaje, botón "Ver ticket"), el texto
     plano de respaldo, y el header `Reply-To` correcto — datos de prueba eliminados después.
+- ⚠️ **Bug real: cuando el admin respondía o cerraba un ticket, nunca se avisaba nada a
+  Telegram** (el usuario probó ambas acciones seguidas y no llegó nada). Causa: los avisos a
+  Telegram solo existían para las acciones del cliente/invitado (ticket nuevo, respuesta del
+  cliente) — `Admin\TicketController::reply()`/`update()` solo llamaban a `notifyCustomer()`
+  (correo al cliente), sin ningún equivalente para Telegram. Se agregaron dos Jobs nuevos,
+  mismo patrón que los existentes (`ShouldQueue`, `$tries = 3`, solo Telegram — estas dos
+  acciones no necesitan un correo interno nuevo, el admin ya sabe que las hizo):
+  [`App\Jobs\SendAdminReplyTelegramNotice`](app/Jobs/SendAdminReplyTelegramNotice.php)
+  (despachado al final de `reply()`, con el mensaje completo del admin) y
+  [`App\Jobs\SendTicketClosedTelegramNotice`](app/Jobs/SendTicketClosedTelegramNotice.php)
+  (despachado dentro del mismo `if` que ya evita reenviar el correo si el ticket ya estaba
+  cerrado, con la `resolution` incluida). Probado en local: ticket de prueba creado por
+  tinker, `dispatch()` de ambos Jobs + `queue:work --once` — ambos terminan en `DONE` sin
+  excepciones; sin bot de Telegram configurado en local, `TelegramNotifier::send()` no
+  intenta nada (mismo patrón defensivo que el resto de la app, confirmado sin warnings nuevos
+  en `storage/logs/laravel.log`) — verificar el envío real en `desarrollo.4livepro.com` tras
+  desplegar. Ticket de prueba eliminado después.
 
 ## Plantillas de correo
 

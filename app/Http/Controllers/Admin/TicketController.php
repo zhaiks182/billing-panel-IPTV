@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendAdminReplyTelegramNotice;
+use App\Jobs\SendTicketClosedTelegramNotice;
 use App\Models\Ticket;
 use App\Models\TurnstileSetting;
 use App\Models\User;
@@ -69,6 +71,7 @@ class TicketController extends Controller
         ]);
 
         $this->notifyCustomer($ticket, new TicketReplied($ticket, $validated['message']));
+        SendAdminReplyTelegramNotice::dispatch($ticket, $validated['message']);
 
         return back()->with('status', 'Respuesta enviada.');
     }
@@ -98,6 +101,7 @@ class TicketController extends Controller
 
         if ($validated['status'] === 'closed' && ! $wasClosed) {
             $this->notifyCustomer($ticket, new TicketClosed($ticket));
+            SendTicketClosedTelegramNotice::dispatch($ticket);
         }
 
         return back()->with('status', 'Ticket actualizado.');
