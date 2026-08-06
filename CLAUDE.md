@@ -962,3 +962,29 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
     ambos bordes (0px de margen), después queda a 16px simétricos de cada lado.
   - Solo Blade (ninguna clase de Tailwind nueva, `px-4` ya existe en el CSS compilado) —
     desplegado con `deploy.sh --no-build`, sin necesidad de `npm run build`.
+- **Ahora sí existe `lang/es`, con un `validation.php` completo (2026-08-06)** — reemplaza la
+  decisión anterior (ver nota de "We have emailed your password reset link." más arriba, del
+  05-08) de evitar crear la carpeta `lang/es` a propósito. El usuario reportó en
+  `desarrollo.4livepro.com` que al pedir un demo con un correo ya registrado aparecía
+  **"The email has already been taken."** en inglés (sin popup ni correo de verificación —
+  eso último es correcto, no es un bug: al fallar la validación no se crea ningún pedido/usuario
+  nuevo, así que no hay nada que confirmar por correo). Causa: igual que el caso de
+  `passwords.*` del 05-08, pero esta vez para **cualquier regla de validación de todo el sitio**
+  (`required`, `email`, `unique`, `confirmed`, reglas de `Password::min()`, etc.) — sin
+  `lang/es/validation.php`, Laravel usa su archivo interno en inglés para cualquier mensaje no
+  sobreescrito a mano. La vez anterior el problema eran solo 5 claves puntuales (`passwords.*`)
+  y bastaba un array `STATUS_MESSAGES`; esta vez el problema es genérico y afecta a **cualquier**
+  formulario del sitio (registro, checkout, y también los ~10 formularios del admin que nunca se
+  habían probado con datos inválidos), así que esta vez sí se justificó crear
+  [`lang/es/validation.php`](lang/es/validation.php) completo — mensajes estándar de Laravel
+  traducidos + un array `attributes` con el nombre en español de **todos** los campos usados en
+  algún `validate()` de la app (recolectados con `grep` sobre `app/Http/Controllers`), para que
+  nunca se filtre un nombre de campo en snake_case en inglés (ej. "first_name" en vez de
+  "nombre"). Los 4 mensajes ya personalizados por campo (`city.regex`, `state.regex`,
+  `postal_code.regex`, `country.in`, en `RegisteredUserController`/`OrderController`) se
+  dejaron intactos — siguen funcionando igual porque un mensaje inline en el `validate()` de un
+  controller siempre gana sobre el archivo de idioma, no hubo conflicto ni duplicación real.
+  Probado en local con `Validator::make()` directo por tinker y con peticiones `fetch()` reales
+  contra `php artisan serve` (correo duplicado, campos vacíos, contraseña débil, país inválido,
+  confirmación de contraseña distinta, y un envío 100% válido de control) — todos los mensajes
+  salieron en español con el nombre de campo correcto, y el flujo válido no se vio afectado.
