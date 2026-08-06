@@ -32,6 +32,8 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
 - `ProfileController` — editar perfil / eliminar cuenta, 100% Breeze de fábrica, sin tocar.
 - `TelegramWebhookController` — único controlador público sin auth/CSRF, ver sección
   "Bot de Telegram" más abajo.
+- `TicketController` — módulo de soporte (clientes con sesión **e** invitados sin cuenta),
+  ver sección "Módulo de Tickets de Soporte".
 
 **Auth** (`app/Http/Controllers/Auth`) — Breeze de fábrica excepto donde se indica:
 - `RegisteredUserController` — **personalizado**, ver "Registro de usuarios".
@@ -54,12 +56,15 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
   `TelegramSettingController` — edición de cada singleton de configuración (`XuiSetting`,
   `MailSetting`, `TurnstileSetting`, `TelegramSetting`), cada uno con su propio botón de
   "probar" que no requiere guardar antes.
-- `EmailTemplateController` — editor de las 6 plantillas de correo, ver "Plantillas de correo".
+- `EmailTemplateController` — editor de las 9 plantillas de correo, ver "Plantillas de correo".
+- `TicketController` — listado/detalle/respuesta/gestión de tickets, ver "Módulo de Tickets
+  de Soporte".
 
 **Modelos** (`app/Models`)
 - `User` — `role` (customer/admin), dirección completa, `isAdmin()`, `hasVerifiedEmail()`.
 - `PackageCategory`, `Package`, `PaymentMethod`, `Order`, `Line` — ver "Modelo de datos".
 - `EmailTemplate` — ver "Plantillas de correo".
+- `Ticket`, `TicketMessage`, `TicketAttachment` — ver "Módulo de Tickets de Soporte".
 - `XuiSetting`, `MailSetting`, `TurnstileSetting`, `TelegramSetting` — singletons de config
   (patrón `::current()`, un solo registro en la tabla, se crea vacío si no existe).
 
@@ -79,7 +84,8 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
   entre `/ventashoy` y el resumen automático de las 10pm.
 
 **Notificaciones** (`app/Notifications`) — todas pasan por `EmailTemplate::mail()`, ver
-"Plantillas de correo": `OrderInvoice`, `OrderApproved`, `OrderRejected`, `LineExpiringSoon`.
+"Plantillas de correo": `OrderInvoice`, `OrderApproved`, `OrderRejected`, `LineExpiringSoon`,
+`TicketCreated`, `TicketReplied`, `TicketClosed`.
 (`VerifyEmail` y `ResetPassword` no son clases propias — se personalizan vía
 `Notification::toMailUsing()` en `AppServiceProvider`, no archivos en `app/Notifications`.)
 
@@ -368,12 +374,13 @@ del formulario de registro.
   editable desde el admin, en vez de solo `.env` (patrón repetido: modelo singleton +
   controller `edit/update` que aplica los valores a `Config::set(...)` en runtime cuando aplica).
 - `email_templates`: **una fila fija por cada correo transaccional** (`verify_email`,
-  `order_invoice`, `order_approved`, `order_rejected`, `line_expiring_soon`, `password_reset`
-  — 6 en total, clave en `key`, único). Cada fila
-  tiene `subject`, `html_body`, `text_body`. Editable desde Admin > Plantillas de correo. Ver
-  sección "Plantillas de correo" más abajo — estas filas son requeridas para que el sistema
-  pueda enviar cualquier correo, por eso se insertan directo en la migración
-  (`2026_08_05_103226_create_email_templates_table.php`), no en el seeder opcional.
+  `order_invoice`, `order_approved`, `order_rejected`, `line_expiring_soon`, `password_reset`,
+  `ticket_created`, `ticket_reply`, `ticket_closed` — 9 en total, clave en `key`, único). Cada
+  fila tiene `subject`, `html_body`, `text_body`. Editable desde Admin > Plantillas de correo.
+  Ver sección "Plantillas de correo" más abajo — estas filas son requeridas para que el
+  sistema pueda enviar cualquier correo, por eso se insertan directo en migraciones de datos,
+  no en el seeder opcional.
+- `tickets`, `ticket_messages`, `ticket_attachments` — ver "Módulo de Tickets de Soporte".
 
 ## Panel de administración (`/admin`, middleware `admin` → `EnsureUserIsAdmin`)
 
@@ -472,11 +479,124 @@ el bot ahora también **responde** cuando le escriben, vía webhook de Telegram.
     sí llega hasta el intento de `sendMessage` (falla por token falso, mismo patrón de
     verificación que el resto de la sesión) — configuración de prueba revertida después.
 
+## Módulo de Tickets de Soporte (2026-08-06)
+
+No existía ningún sistema de soporte — los clientes solo podían escribir por WhatsApp. El
+usuario pidió un módulo de tickets "igual a WHMCS", compartió una captura del formulario
+público de WHMCS como referencia visual, y después una lista específica de campos para el
+negocio (IPTV) que es la que definió el diseño final: Cliente, Línea relacionada, Pedido
+relacionado, Categoría, Prioridad, Estado, Administrador asignado, Mensajes, Archivos, Fecha
+de apertura, Tiempo de respuesta, Solución aplicada. Categorías: Instalación, Credenciales,
+Pago, Renovación, Límite de conexiones, Servicio intermitente, Canales o contenido, Otro.
+Se planificó con `EnterPlanMode`/`AskUserQuestion` antes de escribir código — decisiones
+confirmadas con el usuario:
+- **Mensaje**: `<textarea>` simple, no editor con formato (sin librerías JS nuevas).
+- **Quién abre tickets**: **ambos** — clientes con sesión iniciada y también invitados sin
+  cuenta (como el formulario público real de WHMCS).
+- **Estados**: 4 — Abierto → Respondido → (En progreso, manual) → Cerrado, con reapertura
+  automática si el cliente responde un ticket cerrado.
+
+### Base de datos
+
+- `tickets`: `user_id` **nullable** (null = ticket de invitado), `guest_name`/`guest_email`
+  (solo si `user_id` es null), `access_token` (string único, `Str::random(48)`, generado solo
+  para invitados — es como acceden a su ticket sin cuenta), `line_id`/`order_id` (nullable, FK
+  a **sus propias** líneas/pedidos si tiene sesión — los invitados no tienen de dónde elegir,
+  así que esos campos no aparecen en su formulario), `category`, `priority`, `status`
+  (mismo patrón que `order.status`: valor en inglés en BD, `match()` a español solo para
+  mostrar — ver `Ticket::categoryLabel()`/`priorityLabel()`/`statusLabel()`),
+  `assigned_admin_id` (FK `users`, nullable), `first_response_at` (se llena solo con la
+  primera respuesta de un admin — "Tiempo de respuesta" se calcula y muestra como
+  `created_at` → `first_response_at`, no se guarda como duración fija), `resolution` (texto,
+  "Solución aplicada"), `closed_at`.
+- `ticket_messages`: el hilo — `ticket_id`, `user_id` **nullable** (null = mensaje del
+  invitado dueño del ticket), `message`. Autor para mostrar:
+  `$message->user?->name ?? $ticket->guest_name`. Es respuesta de admin si
+  `$message->user?->isAdmin()`.
+- `ticket_attachments`: `ticket_message_id`, `path`, `original_name` — mismo patrón que
+  `Order::proof_path` (`$file->store('ticket-attachments', 'public')`), extensiones
+  `jpg,gif,jpeg,png,txt,pdf`, máx. 5MB. Un solo `<input type="file" name="attachments[]"
+  multiple>` (no el patrón "Añadir más" de WHMCS — más simple, mismo resultado). Requiere el
+  symlink `public/storage` (ya existía en el VPS desde el 04-08, verificado por SSH antes de
+  desplegar).
+- Migración de datos: 3 filas nuevas en `email_templates` (`ticket_created`, `ticket_reply`,
+  `ticket_closed`), mismo patrón `$wrap()`/heredoc que `order_invoice`.
+
+### Acceso de invitados (sin cuenta)
+
+Un ticket de invitado se identifica por `access_token`. El acceso a
+`GET /soporte/{ticket}` se autoriza si: el usuario autenticado es el dueño
+(`$ticket->user_id === auth()->id()`), **o** el ticket es de invitado y
+`?token=` en la URL coincide con `access_token` (comparación con `hash_equals()`,
+ver `TicketController::authorizeAccess()`) — si no, `403`. El link con el token va
+embebido en el correo de confirmación (`Ticket::publicUrl()`), así el invitado entra desde
+ahí sin necesidad de cuenta. Los invitados no tienen listado (`tickets.index` requiere
+`auth`) — solo acceden por ese link directo.
+
+### Notificaciones (Telegram + correo)
+
+Reutiliza `TelegramNotifier::send()` y `EmailTemplate::mail()` ya existentes, sin
+infraestructura nueva:
+- **Ticket nuevo**: Telegram al admin + correo de confirmación al cliente/invitado
+  (`TicketCreated`, plantilla `ticket_created`). Para invitados, como no hay `User`, se usa
+  notificación "on-demand" de Laravel: `Notification::route('mail', $ticket->guest_email)
+  ->notify(...)` en vez de `$user->notify(...)`.
+- **Respuesta del admin**: correo al cliente/invitado (`TicketReplied`, plantilla
+  `ticket_reply`) — marca `first_response_at` (solo la primera vez) y `status = answered`.
+- **Respuesta del cliente/invitado**: Telegram al admin, sin correo (no hace falta
+  confirmarle a quien acaba de escribir). Si el ticket estaba `closed`, lo reabre a `open`.
+- **Ticket cerrado**: correo con la `resolution` (`TicketClosed`, plantilla `ticket_closed`),
+  solo si el estado *cambia* a `closed` (no se reenvía si ya estaba cerrado y se guarda de
+  nuevo sin cambiar el estado).
+
+### Rutas y controladores
+
+Público/cliente en [`TicketController`](app/Http/Controllers/TicketController.php)
+(sin namespace `Admin`): `tickets.create`/`tickets.store` (`/soporte/nuevo`, `/soporte`,
+`throttle:10,1`), `tickets.show`/`tickets.reply` (`/soporte/{ticket}`, autorización mixta
+auth-o-token descrita arriba, `throttle:20,1` en la respuesta), `tickets.index`
+(`/soporte`, dentro del grupo `auth` ya existente — "Mis Tickets"). Admin en
+[`Admin\TicketController`](app/Http/Controllers/Admin/TicketController.php) dentro del
+grupo `/admin` ya existente: `index` (filtros por estado/categoría/prioridad/admin
+asignado, mismo patrón GET que `admin/orders/index.blade.php`), `show`, `reply`, `update`
+(categoría/prioridad/estado/admin asignado/solución — exige `resolution` si `status =
+closed` vía `required_if`).
+
+### Vistas y navegación
+
+`resources/views/tickets/{create,index,show}.blade.php` (cliente/invitado) y
+`resources/views/admin/tickets/{index,show}.blade.php`, más
+[`<x-ticket-status-badge>`](resources/views/components/ticket-status-badge.blade.php)
+(mismo patrón que `<x-order-status-badge>`). Todas las tablas usan `overflow-x-auto`
+directamente (no `overflow-hidden`, el bug corregido hoy mismo en esta sesión). Enlace
+"Soporte" agregado a la navegación para clientes con sesión, invitados (apunta a
+`tickets.create`), y "Tickets" al dropdown de Admin — los 3 casos en desktop y mobile en
+[`layouts/navigation.blade.php`](resources/views/layouts/navigation.blade.php).
+
+### Pruebas
+
+Probado end-to-end en local con `curl` (cookie jar persistente) simulando los 3 roles:
+invitado (creación con token generado, acceso denegado sin token/con token incorrecto,
+acceso concedido con token correcto, respuesta), cliente con sesión (ticket con línea y
+pedido relacionados de verdad, aparece en "Mis Tickets"), admin (responde → confirma
+`first_response_at`/`status=answered`, reasigna y cierra con solución → confirma correo
+`ticket_closed` sin placeholders sueltos, cliente responde el ticket cerrado → confirma
+reapertura automática, filtros del listado admin por estado/categoría/admin asignado).
+Adjunto probado con un archivo real (`.txt`), confirmado el registro en
+`ticket_attachments` y el archivo físico en `storage/app/public/ticket-attachments/`.
+**Bug menor encontrado y corregido durante la prueba**: `Ticket::messages()` ordenaba solo
+por `created_at`, que puede empatar entre mensajes creados en el mismo segundo (pasó en las
+pruebas con peticiones muy seguidas) — se agregó un segundo `orderBy('id')` como desempate
+determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados después
+(cascada verificada: borrar un `Ticket` borra sus `ticket_messages` y
+`ticket_attachments` solos, gracias a `cascadeOnDelete()` en las migraciones).
+
 ## Plantillas de correo
 
-Los 6 correos transaccionales del sistema (verificación de cuenta, **factura pendiente de
+Los 9 correos transaccionales del sistema (verificación de cuenta, **factura pendiente de
 pago**, pedido aprobado/línea activada, pedido rechazado, recordatorio de vencimiento,
-restablecer contraseña) **ya no tienen el diseño por defecto de Laravel** — cada uno se
+restablecer contraseña, ticket creado, respuesta de ticket, ticket cerrado) **ya no tienen
+el diseño por defecto de Laravel** — cada uno se
 edita desde Admin > Plantillas de correo (asunto, diseño HTML con vista previa en vivo, y
 versión en texto plano con un botón para regenerarla desde el HTML).
 

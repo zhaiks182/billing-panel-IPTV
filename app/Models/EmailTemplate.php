@@ -66,6 +66,29 @@ class EmailTemplate extends Model
                 'billing_address_text' => 'Dirección de facturación para el texto plano (con saltos de línea)',
                 'orders_url' => 'Enlace a "mis pedidos"',
             ],
+            'ticket_created' => [
+                'user_name' => 'Nombre del cliente (o invitado)',
+                'ticket_id' => 'Número de ticket',
+                'subject' => 'Asunto del ticket',
+                'category_label' => 'Categoría (en español, ej. "Instalación")',
+                'priority_label' => 'Prioridad (en español, ej. "Media")',
+                'message' => 'Mensaje inicial del ticket',
+                'ticket_url' => 'Enlace para ver el ticket (con token si es invitado)',
+            ],
+            'ticket_reply' => [
+                'user_name' => 'Nombre del cliente (o invitado)',
+                'ticket_id' => 'Número de ticket',
+                'subject' => 'Asunto del ticket',
+                'reply_message' => 'Texto de la respuesta del administrador',
+                'ticket_url' => 'Enlace para ver el ticket (con token si es invitado)',
+            ],
+            'ticket_closed' => [
+                'user_name' => 'Nombre del cliente (o invitado)',
+                'ticket_id' => 'Número de ticket',
+                'subject' => 'Asunto del ticket',
+                'resolution' => 'Solución aplicada',
+                'ticket_url' => 'Enlace para ver el ticket (con token si es invitado)',
+            ],
         ];
     }
 
@@ -125,6 +148,29 @@ class EmailTemplate extends Model
                 'billing_address' => 'Av. Amazonas 123<br>Quito, Pichincha, 170150, Ecuador',
                 'billing_address_text' => "Av. Amazonas 123\nQuito, Pichincha, 170150, Ecuador",
                 'orders_url' => route('orders.index'),
+            ],
+            'ticket_created' => [
+                'user_name' => 'Juan Pérez',
+                'ticket_id' => '58',
+                'subject' => 'No puedo ver algunos canales',
+                'category_label' => 'Canales o contenido',
+                'priority_label' => 'Media',
+                'message' => 'Desde ayer no puedo ver los canales de deportes, el resto funciona bien.',
+                'ticket_url' => url('/soporte/58'),
+            ],
+            'ticket_reply' => [
+                'user_name' => 'Juan Pérez',
+                'ticket_id' => '58',
+                'subject' => 'No puedo ver algunos canales',
+                'reply_message' => 'Hola, ya revisamos tu línea y actualizamos el servidor. ¿Puedes probar de nuevo?',
+                'ticket_url' => url('/soporte/58'),
+            ],
+            'ticket_closed' => [
+                'user_name' => 'Juan Pérez',
+                'ticket_id' => '58',
+                'subject' => 'No puedo ver algunos canales',
+                'resolution' => 'Se reasignó el servidor de streaming del cliente. Confirmado con el cliente que los canales ya cargan correctamente.',
+                'ticket_url' => url('/soporte/58'),
             ],
             default => [],
         };

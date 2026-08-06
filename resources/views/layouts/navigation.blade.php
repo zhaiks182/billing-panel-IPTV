@@ -16,12 +16,21 @@
                         {{ __('Paquetes') }}
                     </x-nav-link>
 
+                    @guest
+                        <x-nav-link :href="route('tickets.create')" :active="request()->routeIs('tickets.create')">
+                            {{ __('Soporte') }}
+                        </x-nav-link>
+                    @endguest
+
                     @auth
                         <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                             {{ __('Mis Enlaces M3U') }}
                         </x-nav-link>
                         <x-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.*')">
                             {{ __('Mis Pedidos') }}
+                        </x-nav-link>
+                        <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
+                            {{ __('Soporte') }}
                         </x-nav-link>
 
                         @if (Auth::user()->isAdmin())
@@ -38,6 +47,7 @@
                                      class="absolute top-14 mt-2 w-56 rounded-md shadow-lg bg-panel-alt border border-steel z-50 py-1">
                                     <x-dropdown-link :href="route('admin.dashboard')">{{ __('Dashboard') }}</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.orders.index')">{{ __('Pedidos') }}</x-dropdown-link>
+                                    <x-dropdown-link :href="route('admin.tickets.index')">{{ __('Tickets') }}</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.users.index')">{{ __('Usuarios') }}</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.paquetes.index')">{{ __('Paquetes') }}</x-dropdown-link>
                                     <x-dropdown-link :href="route('admin.categorias.index')">{{ __('Categorías') }}</x-dropdown-link>
@@ -142,6 +152,12 @@
                 @endif
             </x-responsive-nav-link>
 
+            @guest
+                <x-responsive-nav-link :href="route('tickets.create')" :active="request()->routeIs('tickets.create')">
+                    {{ __('Soporte') }}
+                </x-responsive-nav-link>
+            @endguest
+
             @auth
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                     {{ __('Mis Enlaces M3U') }}
@@ -149,11 +165,15 @@
                 <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.*')">
                     {{ __('Mis Pedidos') }}
                 </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
+                    {{ __('Soporte') }}
+                </x-responsive-nav-link>
                 @if (Auth::user()->isAdmin())
                     <div class="pt-2 mt-2 border-t border-steel">
                         <p class="px-4 text-xs font-semibold text-dim-2 uppercase">{{ __('Admin') }}</p>
                         <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">{{ __('Dashboard') }}</x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')">{{ __('Pedidos') }}</x-responsive-nav-link>
+                        <x-responsive-nav-link :href="route('admin.tickets.index')" :active="request()->routeIs('admin.tickets.*')">{{ __('Tickets') }}</x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">{{ __('Usuarios') }}</x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('admin.paquetes.index')" :active="request()->routeIs('admin.paquetes.*')">{{ __('Paquetes') }}</x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('admin.categorias.index')" :active="request()->routeIs('admin.categorias.*')">{{ __('Categorías') }}</x-responsive-nav-link>

@@ -15,14 +15,21 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PackageController;
+use App\Http\Controllers\Admin\TicketController as AdminTicketController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TelegramWebhookController;
+use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])->name('telegram.webhook');
 
 Route::get('/', [PackageController::class, 'index'])->name('home');
 Route::get('/categoria/{category:slug}', [PackageController::class, 'category'])->name('packages.category');
+
+Route::get('/soporte/nuevo', [TicketController::class, 'create'])->name('tickets.create');
+Route::post('/soporte', [TicketController::class, 'store'])->name('tickets.store')->middleware('throttle:10,1');
+Route::get('/soporte/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+Route::post('/soporte/{ticket}/responder', [TicketController::class, 'reply'])->name('tickets.reply')->middleware('throttle:20,1');
 
 Route::get('/carro', [CartController::class, 'index'])->name('cart.index');
 Route::post('/carro/vaciar', [CartController::class, 'destroy'])->name('cart.destroy');
@@ -42,6 +49,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/pedidos', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/pedidos/{order}/estado', [OrderController::class, 'status'])->name('orders.status');
+
+    Route::get('/soporte', [TicketController::class, 'index'])->name('tickets.index');
 
     Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
@@ -76,6 +85,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'edit'])->name('email-templates.edit');
         Route::put('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'update'])->name('email-templates.update');
         Route::post('/plantillas-correo/{emailTemplate}/probar', [EmailTemplateController::class, 'test'])->name('email-templates.test');
+
+        Route::get('/tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])->name('tickets.show');
+        Route::post('/tickets/{ticket}/responder', [AdminTicketController::class, 'reply'])->name('tickets.reply');
+        Route::put('/tickets/{ticket}', [AdminTicketController::class, 'update'])->name('tickets.update');
     });
 });
 
