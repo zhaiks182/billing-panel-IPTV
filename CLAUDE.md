@@ -7,10 +7,99 @@ un admin aprueba el pedido y el sistema provisiona automáticamente la línea en
 
 - Laravel 13 (PHP 8.3), Breeze (auth con verificación de email obligatoria)
 - Blade + Tailwind CSS 3 + Alpine.js, Vite
-- Base de datos: SQLite en desarrollo (`database/database.sqlite`), MySQL en instalaciones
-  nuevas vía `install.sh` (ver [INSTALL.md](INSTALL.md))
+- Base de datos: **MySQL en local** (Laragon, `billing_panel` en `127.0.0.1:3306`, usuario
+  `root` sin clave — el proyecto arrancó con SQLite pero el `.env` local cambió a MySQL en
+  algún punto de una sesión anterior, ver bitácora del 05-08; el driver `sqlite` sigue
+  soportado por Laravel si hiciera falta volver). MySQL también en instalaciones nuevas vía
+  `install.sh` (ver [INSTALL.md](INSTALL.md)) y en el VPS de desarrollo.
 - Sin cola real en producción por ahora: no hay ningún `ShouldQueue`, las notificaciones se
   envían sync. `QUEUE_CONNECTION=database` está seteado por si se necesita a futuro.
+
+## Mapa de archivos clave
+
+Referencia rápida de qué hace cada archivo — para el detalle de negocio/decisiones de cada
+uno, ver la sección correspondiente más abajo o la bitácora. Todo lo que no tiene una nota
+especial es scaffolding estándar de Laravel Breeze, sin personalizar.
+
+**Controladores públicos** (`app/Http/Controllers`)
+- `PackageController` — home y listado de paquetes por categoría.
+- `CartController` — carrito basado en sesión (un solo paquete a la vez, no multi-ítem).
+- `OrderController` — checkout (`create`/`store`), registro de invitado (`registerGuest`,
+  duplicado con `RegisteredUserController`, ver "Registro de usuarios"), flujo trial
+  (`storeTrial`) y polling de estado (`status`, usado por `trialGateForm` en `app.js`).
+- `DashboardController` (raíz, no confundir con `Admin\DashboardController`) — "Mis Enlaces
+  M3U" + pedidos recientes del cliente logueado.
+- `ProfileController` — editar perfil / eliminar cuenta, 100% Breeze de fábrica, sin tocar.
+- `TelegramWebhookController` — único controlador público sin auth/CSRF, ver sección
+  "Bot de Telegram" más abajo.
+
+**Auth** (`app/Http/Controllers/Auth`) — Breeze de fábrica excepto donde se indica:
+- `RegisteredUserController` — **personalizado**, ver "Registro de usuarios".
+- `PasswordResetLinkController`, `NewPasswordController` — **personalizados** (mensajes en
+  español vía `STATUS_MESSAGES`, Turnstile, medidor de contraseña), ver bitácora 05-08.
+- `VerifyEmailController` — **personalizado**, dispara `TrialActivator::activatePendingFor()`
+  tras verificar (ver "Flujo de negocio principal", paso 4).
+- `AuthenticatedSessionController`, `ConfirmablePasswordController`,
+  `EmailVerificationNotificationController`, `EmailVerificationPromptController`,
+  `PasswordController` — sin personalizar.
+
+**Admin** (`app/Http/Controllers/Admin`)
+- `DashboardController` — estadísticas con filtro de fecha, ver "Panel de administración".
+- `OrderController` — aprobar/rechazar/reintentar pedidos, ver "Flujo de negocio principal".
+- `PackageController`, `PackageCategoryController`, `PaymentMethodController` — CRUD estándar
+  (`Route::resource`, español en las rutas).
+- `UserController` — listar/verificar/eliminar usuarios, modal de dirección (ver "Panel de
+  administración").
+- `XuiSettingController`, `MailSettingController`, `TurnstileSettingController`,
+  `TelegramSettingController` — edición de cada singleton de configuración (`XuiSetting`,
+  `MailSetting`, `TurnstileSetting`, `TelegramSetting`), cada uno con su propio botón de
+  "probar" que no requiere guardar antes.
+- `EmailTemplateController` — editor de las 6 plantillas de correo, ver "Plantillas de correo".
+
+**Modelos** (`app/Models`)
+- `User` — `role` (customer/admin), dirección completa, `isAdmin()`, `hasVerifiedEmail()`.
+- `PackageCategory`, `Package`, `PaymentMethod`, `Order`, `Line` — ver "Modelo de datos".
+- `EmailTemplate` — ver "Plantillas de correo".
+- `XuiSetting`, `MailSetting`, `TurnstileSetting`, `TelegramSetting` — singletons de config
+  (patrón `::current()`, un solo registro en la tabla, se crea vacío si no existe).
+
+**Servicios** (`app/Services`)
+- `InvoicePdfService` — genera el PDF de factura con dompdf, ver "PDF de facturas".
+- `Xui\XuiOneClient` — cliente HTTP crudo de la API de XUI ONE (`GET {panel}/{access_code}
+  /?api_key=...&action=...`; acciones: `packages`, `create_line`, `get_line`, `delete_line`).
+  Lanza `XuiApiException` si la respuesta no es `STATUS_SUCCESS`.
+- `Xui\XuiLineService` — capa de negocio sobre `XuiOneClient`: crea la línea al aprobar un
+  pedido, arma la URL M3U, calcula `expires_at`. Cada pedido genera su propia `Line`
+  independiente (un cliente puede acumular varias líneas activas).
+- `Xui\TrialActivator` — activa la línea trial tras verificar el correo, ver "Flujo de
+  negocio principal".
+- `Telegram\TelegramNotifier` — envía mensajes (`send`/`sendTo`) y gestiona el webhook
+  (`setWebhook`/`deleteWebhook`), ver "Bot de Telegram".
+- `Telegram\SalesReportBuilder` — arma el texto del resumen de ventas del día, compartido
+  entre `/ventashoy` y el resumen automático de las 10pm.
+
+**Notificaciones** (`app/Notifications`) — todas pasan por `EmailTemplate::mail()`, ver
+"Plantillas de correo": `OrderInvoice`, `OrderApproved`, `OrderRejected`, `LineExpiringSoon`.
+(`VerifyEmail` y `ResetPassword` no son clases propias — se personalizan vía
+`Notification::toMailUsing()` en `AppServiceProvider`, no archivos en `app/Notifications`.)
+
+**Observers** (`app/Observers`) — ambos solo notifican a Telegram, no tocan la lógica de
+negocio: `OrderObserver@created` (pedido nuevo), `LineObserver@created` (línea activada).
+
+**Middleware** (`app/Http/Middleware`)
+- `EnsureUserIsAdmin` — alias `admin`, usado en el grupo de rutas `/admin`.
+- `EnsureEmailIsVerified` — alias `verified` (reemplaza el de Laravel): hace lo mismo pero
+  además guarda `url.intended` para regresar al usuario a donde quería ir (ej. comprar un
+  paquete) después de verificar, en vez de mandarlo siempre a `/dashboard`.
+
+**Reglas de validación** (`app/Rules`): `ValidTurnstile` — no-op si Turnstile no está activo.
+
+**Comandos Artisan** (`app/Console/Commands`, programados en `routes/console.php`):
+`CreateAdminUser` (manual, ver "Comandos útiles"), `SendLineExpirationReminders`
+(`lines:send-expiration-reminders`, diario 9am), `SendTelegramDailySalesSummary`
+(`telegram:daily-summary`, diario 10pm) — el cron del VPS ya corre `schedule:run` cada
+minuto, cualquier tarea nueva en `routes/console.php` empieza a correr sola sin tocar el
+servidor (ver "Bot de Telegram").
 
 ## Instalación en un servidor nuevo
 
@@ -279,7 +368,8 @@ del formulario de registro.
   editable desde el admin, en vez de solo `.env` (patrón repetido: modelo singleton +
   controller `edit/update` que aplica los valores a `Config::set(...)` en runtime cuando aplica).
 - `email_templates`: **una fila fija por cada correo transaccional** (`verify_email`,
-  `order_approved`, `order_rejected`, `line_expiring_soon` — clave en `key`, único). Cada fila
+  `order_invoice`, `order_approved`, `order_rejected`, `line_expiring_soon`, `password_reset`
+  — 6 en total, clave en `key`, único). Cada fila
   tiene `subject`, `html_body`, `text_body`. Editable desde Admin > Plantillas de correo. Ver
   sección "Plantillas de correo" más abajo — estas filas son requeridas para que el sistema
   pueda enviar cualquier correo, por eso se insertan directo en la migración
@@ -309,7 +399,7 @@ del formulario de registro.
   datos igual estén abiertos o no), pero con paginación de 20 no es un problema.
 - Plantillas de correo (`/admin/plantillas-correo`): ver sección dedicada abajo.
 
-## Bot de Telegram: comando `/ventashoy` (2026-08-06)
+## Bot de Telegram: comando `/ventashoy` y resumen automático (2026-08-06)
 
 Hasta ahora Telegram solo servía para **recibir** avisos (`TelegramNotifier::send()`, cuando
 se crea un pedido — ver "Flujo de negocio principal"). A pedido del usuario ("quiero usar el
@@ -521,13 +611,11 @@ a pedido explícito del usuario: "para generar los PDF debes hacerlo en el servi
   verificar** porque solo había un paquete demo (duración 0) disponible al integrar.
   Falta probar con un paquete real cuando exista uno con `xui_package_id` de pago.
   `Order.is_renewal` existe en el modelo pero no vi lógica que lo use todavía — revisar.
-- Sin git → sin despliegue reproducible. Confirmar con el usuario el flujo real para
-  pasar cambios de local a `desarrollo.4livepro.com` (¿rsync manual? ¿ambas carpetas se
-  editan por separado y quedan casi sincronizadas por casualidad?).
-- `config/countries.php` existe (custom) — revisar contenido si se toca el formulario de
-  dirección/perfil.
-- XAMPP local mencionado por el usuario pero no hay vhost/configuración de XAMPP en este
-  repo todavía; el `launch.json` de Claude apunta a Laragon, no XAMPP.
+  (Explícitamente fuera de alcance para el usuario por ahora, ver instrucción del 05-08.)
+- XAMPP local mencionado por el usuario en la sesión del 05-08 pero nunca se llegó a usar ni
+  configurar en este repo (`launch.json` apunta a Laragon) — probablemente ya no aplica, dado
+  que el flujo de trabajo actual es local (Laragon) → VPS vía `deploy.sh`, sin depender de un
+  servidor local para previsualizar.
 - **`hasUsedTrial()` cuenta pedidos demo `pending` como "ya usado"** (revisado 2026-08-05):
   si un cliente pide el trial pero nunca hace clic en el enlace de verificación del correo,
   ese pedido se queda `pending` para siempre y el cliente **no puede volver a pedir el demo**
@@ -545,10 +633,13 @@ php artisan serve                              # local
 php artisan migrate                            # aplicar migraciones
 php artisan db:seed                            # catálogo demo (categoría/paquetes/métodos de pago, sin usuarios)
 php artisan app:create-admin correo clave      # crear/actualizar el usuario admin
-php artisan lines:send-expiration-reminders    # recordatorios de vencimiento (cron)
+php artisan lines:send-expiration-reminders    # recordatorios de vencimiento (cron, diario 9am)
+php artisan telegram:daily-summary             # resumen de ventas por Telegram (cron, diario 10pm)
+php artisan schedule:list                      # ver qué comandos están programados y cuándo corren
 npm run dev                                    # vite dev
 npm run build                                  # vite build
 ssh whmcs-vps                                  # conectar al VPS de desarrollo/producción
+./deploy.sh                                    # desplegar el commit actual a desarrollo.4livepro.com
 git push                                       # subir a github.com/zhaiks182/billing-panel-IPTV
 ```
 
