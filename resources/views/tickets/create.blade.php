@@ -38,7 +38,6 @@
                                 <x-input-error :messages="$errors->get('guest_email')" class="mt-2" />
                             </div>
                         </div>
-                        <x-turnstile-widget :site-key="$turnstileSiteKey" />
                     </div>
                 @endguest
 
@@ -113,6 +112,10 @@
                         <p class="mt-1 text-xs text-dim-2">{{ __('Extensiones permitidas: jpg, gif, png, txt, pdf. Máximo 5MB por archivo.') }}</p>
                         <x-input-error :messages="$errors->get('attachments.0')" class="mt-2" />
                     </div>
+
+                    @guest
+                        <x-turnstile-widget :site-key="$turnstileSiteKey" />
+                    @endguest
 
                     <x-primary-button class="w-full justify-center py-3">
                         {{ __('Enviar ticket') }}
