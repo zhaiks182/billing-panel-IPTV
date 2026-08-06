@@ -123,7 +123,9 @@ class TicketController extends Controller
             "Asunto: {$ticket->subject}\n\n".
             "Ver ticket: ".route('admin.tickets.show', $ticket),
             function ($message) use ($adminEmail, $ticket) {
-                $message->to($adminEmail)->subject("🎫 Nuevo ticket #{$ticket->id} - {$ticket->subject}");
+                $message->to($adminEmail)
+                    ->replyTo($ticket->customerEmail(), $ticket->customerName())
+                    ->subject("🎫 Nuevo ticket #{$ticket->id} - {$ticket->subject}");
             }
         );
     }
