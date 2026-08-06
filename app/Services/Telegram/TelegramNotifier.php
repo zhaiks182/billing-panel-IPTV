@@ -47,4 +47,46 @@ class TelegramNotifier
             return false;
         }
     }
+
+    /**
+     * Registra la URL del webhook en Telegram para que reenvíe ahí los mensajes que le
+     * escriban al bot (comandos como /ventashoy). `secretToken` viaja en cada llamada del
+     * webhook como header `X-Telegram-Bot-Api-Secret-Token`, para verificar que la petición
+     * viene realmente de Telegram y no de cualquiera que adivine la URL.
+     */
+    public function setWebhook(string $botToken, string $url, string $secretToken): bool
+    {
+        try {
+            $response = Http::timeout(10)->asForm()->post(
+                "https://api.telegram.org/bot{$botToken}/setWebhook",
+                [
+                    'url' => $url,
+                    'secret_token' => $secretToken,
+                ]
+            );
+
+            if (! $response->ok() || ! ($response->json('ok') ?? false)) {
+                Log::warning('Telegram setWebhook falló', ['response' => $response->body()]);
+            }
+
+            return $response->ok() && ($response->json('ok') ?? false);
+        } catch (Throwable $e) {
+            Log::warning('Telegram setWebhook lanzó una excepción', ['message' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    public function deleteWebhook(string $botToken): bool
+    {
+        try {
+            $response = Http::timeout(10)->asForm()->post("https://api.telegram.org/bot{$botToken}/deleteWebhook");
+
+            return $response->ok() && ($response->json('ok') ?? false);
+        } catch (Throwable $e) {
+            Log::warning('Telegram deleteWebhook lanzó una excepción', ['message' => $e->getMessage()]);
+
+            return false;
+        }
+    }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\TelegramSetting;
 use App\Services\Telegram\TelegramNotifier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class TelegramSettingController extends Controller
 {
@@ -51,6 +52,7 @@ class TelegramSettingController extends Controller
         ]);
 
         $settings = TelegramSetting::current();
+        $previousBotToken = $settings->bot_token;
 
         $settings->enabled = $request->boolean('enabled');
         $settings->chat_id = $validated['chat_id'] ?? null;
@@ -63,16 +65,36 @@ class TelegramSettingController extends Controller
             return back()->withErrors(['bot_token' => 'Debes indicar el Bot Token para activar Telegram.'])->withInput();
         }
 
+        $webhookWarning = null;
+
+        if ($settings->isActive()) {
+            if (! $settings->webhook_secret) {
+                $settings->webhook_secret = Str::random(48);
+            }
+
+            $webhookUrl = route('telegram.webhook');
+
+            if (str_starts_with($webhookUrl, 'https://')) {
+                if (! $telegram->setWebhook($settings->bot_token, $webhookUrl, $settings->webhook_secret)) {
+                    $webhookWarning = ' El bot quedó configurado, pero no se pudo activar el comando /ventashoy (revisa el Bot Token).';
+                }
+            } else {
+                $webhookWarning = ' El comando /ventashoy solo funciona en un sitio con HTTPS público (no en local).';
+            }
+        } elseif ($previousBotToken) {
+            $telegram->deleteWebhook($previousBotToken);
+        }
+
         $settings->save();
 
         if ($request->boolean('send_test')) {
             $sent = $telegram->send('✅ Prueba de notificaciones de 4LivePro Latino. Si ves esto, la configuración es correcta.');
 
-            return back()->with('status', $sent
+            return back()->with('status', ($sent
                 ? 'Configuración guardada. Mensaje de prueba enviado correctamente.'
-                : 'Configuración guardada, pero el mensaje de prueba no pudo enviarse. Revisa el Bot Token y el Chat ID.');
+                : 'Configuración guardada, pero el mensaje de prueba no pudo enviarse. Revisa el Bot Token y el Chat ID.').$webhookWarning);
         }
 
-        return back()->with('status', 'Configuración guardada.');
+        return back()->with('status', 'Configuración guardada.'.$webhookWarning);
     }
 }

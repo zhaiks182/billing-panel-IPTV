@@ -309,6 +309,55 @@ del formulario de registro.
   datos igual estén abiertos o no), pero con paginación de 20 no es un problema.
 - Plantillas de correo (`/admin/plantillas-correo`): ver sección dedicada abajo.
 
+## Bot de Telegram: comando `/ventashoy` (2026-08-06)
+
+Hasta ahora Telegram solo servía para **recibir** avisos (`TelegramNotifier::send()`, cuando
+se crea un pedido — ver "Flujo de negocio principal"). A pedido del usuario ("quiero usar el
+bot de Telegram para enviarle un comando y me indique cuántas ventas se han realizado hoy"),
+el bot ahora también **responde** cuando le escriben, vía webhook de Telegram.
+
+- [`App\Http\Controllers\TelegramWebhookController@handle`](app/Http/Controllers/TelegramWebhookController.php)
+  — ruta pública `POST /telegram/webhook` (`routes/web.php`), **sin** autenticación de Laravel
+  ni CSRF (Telegram no manda cookie de sesión ni token — se agregó la excepción en
+  `bootstrap/app.php` con `$middleware->validateCsrfTokens(except: ['telegram/webhook'])`).
+  La seguridad es doble:
+  1. Header `X-Telegram-Bot-Api-Secret-Token` (comparado con `hash_equals()` contra
+     `TelegramSetting::webhook_secret`, un string aleatorio de 48 caracteres generado la
+     primera vez que se activa Telegram) — Telegram lo manda automáticamente en cada llamada
+     al webhook porque se registró así en `setWebhook`.
+  2. El `chat.id` del mensaje entrante debe coincidir con el `chat_id` configurado en el panel
+     — así, si alguien más le escribe al bot (cualquiera puede encontrarlo por su @usuario en
+     Telegram), no recibe ninguna respuesta ni puede pedir las ventas del día.
+- Comando soportado: **`/ventashoy`** (o `/ventas`) — responde con pedidos pagados aprobados
+  hoy, ingresos del día, y demos activadas hoy (`Order::where('status','approved')
+  ->whereDate('approved_at', today())`, separado en pagados vs. trial por `package->is_trial`).
+  `/start`, `/help` y `/ayuda` responden con un mensaje corto listando el comando disponible.
+  Cualquier otro texto se ignora en silencio (siempre devuelve `200` a Telegram, que si no
+  recibe `200` reintenta la entrega).
+- El webhook se registra/borra **automáticamente** al guardar Admin > Telegram
+  (`Admin\TelegramSettingController@update`): si queda activo, llama a
+  `TelegramNotifier::setWebhook($botToken, route('telegram.webhook'), $secret)`; si se
+  desactiva, llama a `deleteWebhook()` con el token que tenía antes del cambio (capturado
+  **antes** de sobreescribir `$settings->bot_token`, porque `getOriginal()` en un atributo con
+  cast `encrypted` devuelve el valor todavía cifrado, no serviría para llamar a la API de
+  Telegram). Telegram **exige HTTPS público** para webhooks — en local (`http://127.0.0.1`)
+  el registro se salta solo y se avisa en el mensaje de "Configuración guardada" que el
+  comando no va a funcionar ahí; en `desarrollo.4livepro.com` sí funciona.
+- Migración `2026_08_06_105216_add_webhook_secret_to_telegram_settings_table.php` agrega la
+  columna `webhook_secret` (no cifrada — es un secreto compartido de bajo riesgo comparado con
+  el `bot_token`, que si se filtrara permitiría enviar mensajes con el bot; el `webhook_secret`
+  filtrado como mucho permite simular una llamada de webhook, ya acotada al `chat_id`
+  configurado).
+- Probado en local: reflexión directa sobre `salesTodayMessage()` (mensaje calculado
+  correctamente con un pedido pagado + un demo aprobados hoy) y peticiones `curl` reales contra
+  `php artisan serve` simulando el payload de Telegram — secreto incorrecto → `403`, secreto
+  correcto pero `chat_id` distinto → `200` sin intentar enviar nada, secreto y `chat_id`
+  correctos con `/ventashoy` → `200` e intento real de `sendMessage` (se ve en
+  `storage/logs/laravel.log`, falla con `404` porque el bot token de prueba no es real — el
+  fallo esperado confirma que sí se intentó el envío). Sin token de bot real no se pudo probar
+  la entrega real a Telegram ni el registro real de `setWebhook` (requiere HTTPS público) —
+  verificar en `desarrollo.4livepro.com` con un bot real después de desplegar.
+
 ## Plantillas de correo
 
 Los 6 correos transaccionales del sistema (verificación de cuenta, **factura pendiente de

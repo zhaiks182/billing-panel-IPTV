@@ -31,6 +31,11 @@
                         <li>{{ __('Para obtener el') }} <span class="font-semibold text-paper">{{ __('Chat ID') }}</span>{{ __(': escríbele a') }} <span class="font-mono text-brand-400">@userinfobot</span> {{ __('en Telegram y te devuelve tu chat_id personal; si es un grupo, agrega a') }} <span class="font-mono text-brand-400">@getidsbot</span> {{ __('al grupo y te dará el id (empieza con "-"). Pega ese número abajo en «Chat ID».') }}</li>
                         <li>{{ __('Pulsa') }} <span class="font-semibold text-paper">«{{ __('Probar conexión') }}»</span>{{ __(': si todo está bien, tu bot te enviará un mensaje de prueba a ese chat. Solo si eso funciona, pulsa') }} <span class="font-semibold text-paper">«{{ __('Guardar') }}»</span>{{ __('.') }}</li>
                     </ol>
+                    <p class="pt-2">
+                        {{ __('Al guardar (con el sitio en HTTPS), tu bot también queda listo para responder comandos: escríbele') }}
+                        <span class="font-mono text-brand-400">/ventashoy</span>
+                        {{ __('desde ese mismo chat y te contesta cuántas ventas y demos se aprobaron hoy.') }}
+                    </p>
                 </div>
 
                 <form method="POST" action="{{ route('admin.telegram.update') }}"
