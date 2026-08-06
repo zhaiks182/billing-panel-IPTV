@@ -69,12 +69,13 @@
 
                     <div class="bg-panel border border-steel rounded-lg p-6">
                         <h3 class="text-base font-semibold text-paper mb-4">{{ __('Responder') }}</h3>
-                        <form method="POST" action="{{ route('admin.tickets.reply', $ticket) }}" enctype="multipart/form-data" class="space-y-5">
+                        <form method="POST" action="{{ route('admin.tickets.reply', $ticket) }}" enctype="multipart/form-data" class="space-y-6">
                             @csrf
                             <textarea name="message" rows="4" required
                                       class="block w-full rounded-md border-steel bg-ink text-paper shadow-sm focus:border-brand-500 focus:ring-brand-500">{{ old('message') }}</textarea>
                             <input name="attachments[]" type="file" multiple accept=".jpg,.jpeg,.gif,.png,.txt,.pdf"
                                    class="block w-full text-sm text-dim">
+                            <x-turnstile-widget :site-key="$turnstileSiteKey" />
                             <x-primary-button>{{ __('Enviar respuesta') }}</x-primary-button>
                         </form>
                     </div>

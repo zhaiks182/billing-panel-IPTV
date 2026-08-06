@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
+use App\Models\TurnstileSetting;
 use App\Models\User;
 use App\Notifications\TicketClosed;
 use App\Notifications\TicketReplied;
+use App\Rules\ValidTurnstile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
@@ -34,7 +36,11 @@ class TicketController extends Controller
         $ticket->load(['messages.user', 'messages.attachments', 'user', 'line', 'order', 'assignedAdmin']);
         $admins = User::where('role', 'admin')->orderBy('name')->get();
 
-        return view('admin.tickets.show', compact('ticket', 'admins'));
+        $turnstileSiteKey = TurnstileSetting::current()->isActive()
+            ? TurnstileSetting::current()->site_key
+            : null;
+
+        return view('admin.tickets.show', compact('ticket', 'admins', 'turnstileSiteKey'));
     }
 
     public function reply(Request $request, Ticket $ticket)
@@ -42,6 +48,7 @@ class TicketController extends Controller
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:5000'],
             'attachments.*' => ['nullable', 'file', 'mimes:jpg,gif,jpeg,png,txt,pdf', 'max:5120'],
+            'cf-turnstile-response' => [new ValidTurnstile],
         ]);
 
         $message = $ticket->messages()->create([
