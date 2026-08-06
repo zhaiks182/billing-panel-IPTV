@@ -234,7 +234,11 @@ del formulario de registro.
    carrito (`CartController`, basado en sesión) y compra (`OrderController@create/store`)
    subiendo comprobante de pago (`proof_path`) y eligiendo `PaymentMethod`.
 2. El pedido nace en `status = pending`. `OrderObserver@created` manda notificación a
-   Telegram (`TelegramNotifier`, usa `TelegramSetting` guardado en BD, no en `.env`).
+   Telegram (`TelegramNotifier`, usa `TelegramSetting` guardado en BD, no en `.env`) — el
+   mensaje incluye el estado en español (`Pendiente`/`Aprobado`/`Rechazado`/`Error`, no el
+   valor crudo en inglés de la columna) y termina con un enlace directo a
+   `admin.orders.index` filtrado por pendientes, para aprobar el pedido sin buscarlo
+   (2026-08-06, a pedido del usuario).
    Además (solo pedidos de pago, no trial), `OrderController@store` dispara `OrderInvoice`
    — un correo de "factura pendiente de pago" con los datos del pedido (monto, método de
    pago, dirección de facturación) a modo de confirmación de recepción del comprobante;
@@ -284,6 +288,13 @@ del formulario de registro.
 ## Panel de administración (`/admin`, middleware `admin` → `EnsureUserIsAdmin`)
 
 - Dashboard, Pedidos (aprobar/rechazar/reintentar con filtros por estado y fecha)
+  - El dashboard (`Admin\DashboardController`) tiene su propio filtro `date_from`/`date_to`
+    (2026-08-06, a pedido del usuario) — sin fechas en el query string, por defecto usa el
+    mes actual (`now()->startOfMonth()`/`endOfMonth()`). Solo afecta las 3 tarjetas que tienen
+    sentido acotar a un período (ingresos, clientes nuevos, pedidos aprobados) — "pedidos
+    pendientes/con error" y "líneas activas" siguen siendo conteos del estado actual, no del
+    período, y "líneas por vencer" sigue fija a los próximos 3 días. Mismo patrón de formulario
+    GET que ya usaba `admin/orders/index.blade.php`, reutilizado tal cual.
 - CRUD de Paquetes, Categorías, Métodos de pago (resource controllers, español en las rutas:
   `/admin/paquetes`, `/admin/categorias`, `/admin/metodos-pago`)
 - Configuración: XUI ONE, Correo (SMTP con test de envío), Turnstile (captcha Cloudflare),

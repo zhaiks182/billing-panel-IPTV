@@ -7,6 +7,30 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
+            <form method="GET" action="{{ route('admin.dashboard') }}" class="flex flex-wrap items-end gap-3">
+                <div>
+                    <x-input-label for="date_from" value="{{ __('Desde') }}" />
+                    <input id="date_from" name="date_from" type="date" value="{{ request('date_from', $dateFrom->format('Y-m-d')) }}"
+                           class="mt-1 bg-panel border-steel text-paper rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
+                </div>
+                <div>
+                    <x-input-label for="date_to" value="{{ __('Hasta') }}" />
+                    <input id="date_to" name="date_to" type="date" value="{{ request('date_to', $dateTo->format('Y-m-d')) }}"
+                           class="mt-1 bg-panel border-steel text-paper rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
+                </div>
+                <button type="submit" class="px-4 py-2 rounded-md bg-brand-500 text-ink text-sm font-semibold hover:brightness-110">
+                    {{ __('Filtrar') }}
+                </button>
+                @if (request('date_from') || request('date_to'))
+                    <a href="{{ route('admin.dashboard') }}" class="px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
+                        {{ __('Quitar fechas (mes actual)') }}
+                    </a>
+                @endif
+                <p class="text-xs text-dim-2 basis-full">
+                    {{ __('Los ingresos, clientes nuevos y pedidos aprobados de abajo corresponden al período :from – :to.', ['from' => $dateFrom->format('d/m/Y'), 'to' => $dateTo->format('d/m/Y')]) }}
+                </p>
+            </form>
+
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <a href="{{ route('admin.orders.index', ['status' => 'pending']) }}" class="bg-panel border border-steel rounded-lg p-6 hover:shadow-md transition">
                     <p class="text-sm text-dim-2">{{ __('Pedidos pendientes') }}</p>
@@ -17,23 +41,23 @@
                     <p class="text-3xl font-bold text-red-600">{{ $errorCount }}</p>
                 </a>
                 <div class="bg-panel border border-steel rounded-lg p-6">
-                    <p class="text-sm text-dim-2">{{ __('Ingresos este mes') }}</p>
-                    <p class="text-3xl font-bold text-paper">${{ number_format($monthlyRevenue, 2) }}</p>
+                    <p class="text-sm text-dim-2">{{ __('Ingresos en el período') }}</p>
+                    <p class="text-3xl font-bold text-paper">${{ number_format($periodRevenue, 2) }}</p>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <a href="{{ route('admin.users.index') }}" class="bg-panel border border-steel rounded-lg p-6 hover:shadow-md transition">
-                    <p class="text-sm text-dim-2">{{ __('Clientes nuevos este mes') }}</p>
-                    <p class="text-3xl font-bold text-paper">{{ $newClientsThisMonth }}</p>
+                    <p class="text-sm text-dim-2">{{ __('Clientes nuevos en el período') }}</p>
+                    <p class="text-3xl font-bold text-paper">{{ $newClientsInPeriod }}</p>
                 </a>
                 <div class="bg-panel border border-steel rounded-lg p-6">
                     <p class="text-sm text-dim-2">{{ __('Líneas activas') }}</p>
                     <p class="text-3xl font-bold text-brand-400">{{ $activeLinesCount }}</p>
                 </div>
                 <a href="{{ route('admin.orders.index', ['status' => 'approved']) }}" class="bg-panel border border-steel rounded-lg p-6 hover:shadow-md transition">
-                    <p class="text-sm text-dim-2">{{ __('Pedidos aprobados este mes') }}</p>
-                    <p class="text-3xl font-bold text-paper">{{ $approvedOrdersThisMonth }}</p>
+                    <p class="text-sm text-dim-2">{{ __('Pedidos aprobados en el período') }}</p>
+                    <p class="text-3xl font-bold text-paper">{{ $approvedOrdersInPeriod }}</p>
                 </a>
             </div>
 

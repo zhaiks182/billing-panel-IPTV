@@ -6,30 +6,37 @@ use App\Http\Controllers\Controller;
 use App\Models\Line;
 use App\Models\Order;
 use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $dateFrom = $request->date_from
+            ? Carbon::parse($request->date_from)->startOfDay()
+            : now()->startOfMonth();
+
+        $dateTo = $request->date_to
+            ? Carbon::parse($request->date_to)->endOfDay()
+            : now()->endOfMonth();
+
         $pendingCount = Order::where('status', 'pending')->count();
         $errorCount = Order::where('status', 'error')->count();
 
-        $monthlyRevenue = Order::where('status', 'approved')
-            ->whereMonth('approved_at', now()->month)
-            ->whereYear('approved_at', now()->year)
+        $periodRevenue = Order::where('status', 'approved')
+            ->whereBetween('approved_at', [$dateFrom, $dateTo])
             ->sum('amount');
 
-        $newClientsThisMonth = User::whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
+        $newClientsInPeriod = User::whereBetween('created_at', [$dateFrom, $dateTo])
             ->count();
 
         $activeLinesCount = Line::where('status', 'active')
             ->where('expires_at', '>', now())
             ->count();
 
-        $approvedOrdersThisMonth = Order::where('status', 'approved')
-            ->whereMonth('approved_at', now()->month)
-            ->whereYear('approved_at', now()->year)
+        $approvedOrdersInPeriod = Order::where('status', 'approved')
+            ->whereBetween('approved_at', [$dateFrom, $dateTo])
             ->count();
 
         $expiringSoon = Line::where('status', 'active')
@@ -39,8 +46,9 @@ class DashboardController extends Controller
             ->get();
 
         return view('admin.dashboard', compact(
-            'pendingCount', 'errorCount', 'monthlyRevenue', 'expiringSoon',
-            'newClientsThisMonth', 'activeLinesCount', 'approvedOrdersThisMonth',
+            'pendingCount', 'errorCount', 'periodRevenue', 'expiringSoon',
+            'newClientsInPeriod', 'activeLinesCount', 'approvedOrdersInPeriod',
+            'dateFrom', 'dateTo',
         ));
     }
 }
