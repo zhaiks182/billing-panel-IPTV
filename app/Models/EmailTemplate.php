@@ -89,6 +89,23 @@ class EmailTemplate extends Model
                 'resolution' => 'Solución aplicada',
                 'ticket_url' => 'Enlace para ver el ticket (con token si es invitado)',
             ],
+            'ticket_admin_new' => [
+                'ticket_id' => 'Número de ticket',
+                'subject' => 'Asunto del ticket',
+                'customer_name' => 'Nombre del cliente (o invitado)',
+                'customer_email' => 'Correo del cliente (o invitado)',
+                'category_label' => 'Categoría (en español, ej. "Instalación")',
+                'priority_label' => 'Prioridad (en español, ej. "Media")',
+                'message' => 'Mensaje inicial del ticket',
+                'ticket_url' => 'Enlace al ticket en el panel de admin',
+            ],
+            'ticket_admin_reply' => [
+                'ticket_id' => 'Número de ticket',
+                'subject' => 'Asunto del ticket',
+                'customer_name' => 'Nombre del cliente (o invitado)',
+                'message' => 'Texto de la respuesta del cliente/invitado',
+                'ticket_url' => 'Enlace al ticket en el panel de admin',
+            ],
         ];
     }
 
@@ -171,6 +188,23 @@ class EmailTemplate extends Model
                 'subject' => 'No puedo ver algunos canales',
                 'resolution' => 'Se reasignó el servidor de streaming del cliente. Confirmado con el cliente que los canales ya cargan correctamente.',
                 'ticket_url' => url('/soporte/58'),
+            ],
+            'ticket_admin_new' => [
+                'ticket_id' => '58',
+                'subject' => 'No puedo ver algunos canales',
+                'customer_name' => 'Juan Pérez',
+                'customer_email' => 'juan.perez@example.com',
+                'category_label' => 'Canales o contenido',
+                'priority_label' => 'Media',
+                'message' => 'Desde ayer no puedo ver los canales de deportes, el resto funciona bien.',
+                'ticket_url' => url('/admin/tickets/58'),
+            ],
+            'ticket_admin_reply' => [
+                'ticket_id' => '58',
+                'subject' => 'No puedo ver algunos canales',
+                'customer_name' => 'Juan Pérez',
+                'message' => 'Gracias, ya probé de nuevo y sigue igual.',
+                'ticket_url' => url('/admin/tickets/58'),
             ],
             default => [],
         };

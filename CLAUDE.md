@@ -385,7 +385,8 @@ del formulario de registro.
   controller `edit/update` que aplica los valores a `Config::set(...)` en runtime cuando aplica).
 - `email_templates`: **una fila fija por cada correo transaccional** (`verify_email`,
   `order_invoice`, `order_approved`, `order_rejected`, `line_expiring_soon`, `password_reset`,
-  `ticket_created`, `ticket_reply`, `ticket_closed` — 9 en total, clave en `key`, único). Cada
+  `ticket_created`, `ticket_reply`, `ticket_closed`, más 2 avisos internos para el admin
+  `ticket_admin_new`/`ticket_admin_reply` — 11 en total, clave en `key`, único). Cada
   fila tiene `subject`, `html_body`, `text_body`. Editable desde Admin > Plantillas de correo.
   Ver sección "Plantillas de correo" más abajo — estas filas son requeridas para que el
   sistema pueda enviar cualquier correo, por eso se insertan directo en migraciones de datos,
@@ -715,6 +716,37 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
     tabla (no se ejecuta al despachar), y `php artisan queue:work --once` lo procesó
     correctamente (confirmado el correo en `storage/logs/laravel.log`). En el VPS,
     `systemctl status billing-panel-queue` confirma el proceso corriendo tras instalarlo.
+- **Turnstile y espaciado agregados también al formulario de responder del admin**
+  (`admin/tickets/show.blade.php`) — mismos dos problemas que ya se habían corregido en el
+  lado del cliente, el usuario los reportó también ahí. A diferencia del razonamiento
+  original (admin ya autenticado, no debería necesitar Turnstile), el usuario pidió que
+  fuera consistente en los 3 formularios de responder/crear un ticket — así que ahora los
+  3 lo piden siempre, sin excepción para admins.
+- **Los avisos internos por correo pasaron de texto plano (`Mail::raw()`) al mismo diseño de
+  marca que el correo del cliente** (a pedido del usuario, viendo la captura del correo
+  bonito que le llega al cliente vs. el texto plano que le llegaba a soporte@4livepro.com).
+  Se agregaron 2 plantillas nuevas a `email_templates` (`ticket_admin_new`,
+  `ticket_admin_reply`, migración `2026_08_06_143942_...`, mismo `$wrap()`/heredoc y mismo
+  diseño visual que `ticket_created`/`ticket_reply` pero con el texto dirigido al admin en
+  vez de al cliente: "Nuevo ticket de {{customer_name}}..." en vez de "Hola {{user_name}},
+  recibimos tu ticket...") — ahora son **editables desde Admin > Plantillas de correo** como
+  cualquier otro correo del sistema, cosa que `Mail::raw()` no permitía.
+  - Dos notificaciones nuevas, [`App\Notifications\AdminNewTicketAlert`](app/Notifications/AdminNewTicketAlert.php)
+    y [`App\Notifications\AdminTicketReplyAlert`](app/Notifications/AdminTicketReplyAlert.php)
+    — **no** implementan `ShouldQueue` a propósito (ya se envían desde dentro de un Job que
+    ya está en cola, `SendNewTicketAdminAlert`/`SendTicketReplyAdminAlert`; ponerlas en cola
+    también sería un salto de cola extra innecesario). Usan
+    `Notification::route('mail', $adminEmail)->notify(...)` (destinatario on-demand, mismo
+    patrón que ya se usa para invitados) en vez de `$user->notify()`, porque
+    `soporte@4livepro.com` no es una cuenta `User` real. El `Reply-To` al cliente se arma
+    encadenando `->replyTo(...)` directo sobre el `MailMessage` que devuelve
+    `EmailTemplate::mail()`, en vez de dentro de un closure de `Mail::raw()` como antes.
+  - Los Jobs ya no usan `Mail::raw()` en absoluto — quedaron mucho más cortos, solo arman el
+    `TelegramNotifier::send()` y despachan la notificación on-demand.
+  - Probado en local igual que el resto: `dispatch()` de cada Job seguido de
+    `queue:work --once`, confirmando en `storage/logs/laravel.log` el HTML completo (header
+    con logo, badges de categoría/prioridad, caja del mensaje, botón "Ver ticket"), el texto
+    plano de respaldo, y el header `Reply-To` correcto — datos de prueba eliminados después.
 
 ## Plantillas de correo
 

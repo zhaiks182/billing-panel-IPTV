@@ -4,13 +4,14 @@ namespace App\Jobs;
 
 use App\Models\MailSetting;
 use App\Models\Ticket;
+use App\Notifications\AdminNewTicketAlert;
 use App\Services\Telegram\TelegramNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Avisos internos (Telegram + correo a soporte) cuando se crea un ticket — encolado desde
@@ -47,18 +48,6 @@ class SendNewTicketAdminAlert implements ShouldQueue
             return;
         }
 
-        Mail::raw(
-            "Nuevo ticket #{$ticket->id}\n\n".
-            "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
-            "Categoría: {$ticket->categoryLabel()}\n".
-            "Prioridad: {$ticket->priorityLabel()}\n".
-            "Asunto: {$ticket->subject}\n\n".
-            'Ver ticket: '.route('admin.tickets.show', $ticket),
-            function ($mail) use ($adminEmail, $ticket) {
-                $mail->to($adminEmail)
-                    ->replyTo($ticket->customerEmail(), $ticket->customerName())
-                    ->subject("🎫 Nuevo ticket #{$ticket->id} - {$ticket->subject}");
-            }
-        );
+        Notification::route('mail', $adminEmail)->notify(new AdminNewTicketAlert($ticket, $this->firstMessage));
     }
 }

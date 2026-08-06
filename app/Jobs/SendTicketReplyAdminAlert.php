@@ -4,13 +4,14 @@ namespace App\Jobs;
 
 use App\Models\MailSetting;
 use App\Models\Ticket;
+use App\Notifications\AdminTicketReplyAlert;
 use App\Services\Telegram\TelegramNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Avisos internos (Telegram + correo a soporte) cuando el cliente/invitado responde un
@@ -44,17 +45,6 @@ class SendTicketReplyAdminAlert implements ShouldQueue
             return;
         }
 
-        Mail::raw(
-            "Nueva respuesta de cliente en ticket #{$ticket->id}\n\n".
-            "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
-            "Asunto: {$ticket->subject}\n\n".
-            "Mensaje:\n{$this->message}\n\n".
-            'Ver ticket: '.route('admin.tickets.show', $ticket),
-            function ($mail) use ($adminEmail, $ticket) {
-                $mail->to($adminEmail)
-                    ->replyTo($ticket->customerEmail(), $ticket->customerName())
-                    ->subject("💬 Nueva respuesta en ticket #{$ticket->id} - {$ticket->subject}");
-            }
-        );
+        Notification::route('mail', $adminEmail)->notify(new AdminTicketReplyAlert($ticket, $this->message));
     }
 }
