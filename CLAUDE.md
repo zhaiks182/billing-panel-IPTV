@@ -621,9 +621,22 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   del botón). Se aumentó el espaciado de `space-y-4` a `space-y-6` en las columnas
   principales y a `space-y-5` en los formularios, en `tickets/show.blade.php` y
   `admin/tickets/show.blade.php`.
-- **Enlace del menú renombrado de "Soporte" a "Contacto"** (a pedido del usuario) — en los 4
-  lugares donde aparecía en `layouts/navigation.blade.php` (desktop/mobile, con y sin
-  sesión). Solo cambió el texto visible del enlace; las rutas siguen llamándose `tickets.*`.
+- **Enlace del menú renombrado de "Soporte" → "Contacto" → "Abrir Ticket"** (dos pedidos
+  seguidos del usuario) — en los 4 lugares donde aparece en `layouts/navigation.blade.php`
+  (desktop/mobile, con y sin sesión). Solo cambió el texto visible del enlace; las rutas
+  siguen llamándose `tickets.*`.
+- **Turnstile reposicionado y ahora obligatorio también con sesión iniciada.** Primero se
+  movió el widget de dentro de la tarjeta "Tus datos" a justo antes del botón "Enviar
+  ticket" (a pedido del usuario, viendo una captura). Después el usuario pidió que también
+  apareciera para usuarios ya logueados — a diferencia de checkout/registro (donde Turnstile
+  es exclusivo de invitados), en el formulario de tickets ahora se muestra y se valida
+  **siempre**, sin el condicional `@guest`/`else` que antes lo limitaba a invitados. Probado
+  en local con las llaves de prueba públicas de Cloudflare, confirmando por `curl` que el
+  widget aparece en el HTML tanto para un usuario autenticado como para uno sin sesión.
+- **Enlace directo al ticket agregado a los avisos de Telegram** (a pedido del usuario) —
+  tanto el de "nuevo ticket" como el de "nueva respuesta de cliente" ahora terminan con
+  `Ver ticket: {{ route('admin.tickets.show', $ticket) }}`, mismo patrón que el enlace que
+  ya llevaba el aviso de "nuevo pedido" (ver "Flujo de negocio principal").
 
 ## Plantillas de correo
 
