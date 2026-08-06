@@ -84,31 +84,17 @@
                     </div>
 
                     @auth
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <x-input-label for="line_id" :value="__('Línea relacionada (opcional)')" />
-                                <select id="line_id" name="line_id"
-                                        class="mt-1 block w-full rounded-md border-steel bg-ink text-paper shadow-sm focus:border-brand-500 focus:ring-brand-500">
-                                    <option value="">{{ __('Ninguna') }}</option>
-                                    @foreach ($lines as $line)
-                                        <option value="{{ $line->id }}" {{ (string) old('line_id') === (string) $line->id ? 'selected' : '' }}>
-                                            {{ $line->xui_username }} — {{ __('vence') }} {{ $line->expires_at->format('d/m/Y') }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <x-input-label for="order_id" :value="__('Pedido relacionado (opcional)')" />
-                                <select id="order_id" name="order_id"
-                                        class="mt-1 block w-full rounded-md border-steel bg-ink text-paper shadow-sm focus:border-brand-500 focus:ring-brand-500">
-                                    <option value="">{{ __('Ninguno') }}</option>
-                                    @foreach ($orders as $order)
-                                        <option value="{{ $order->id }}" {{ (string) old('order_id') === (string) $order->id ? 'selected' : '' }}>
-                                            #{{ $order->id }} — {{ $order->package->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
+                        <div>
+                            <x-input-label for="order_id" :value="__('Pedido relacionado')" />
+                            <select id="order_id" name="order_id"
+                                    class="mt-1 block w-full rounded-md border-steel bg-ink text-paper shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                <option value="">{{ __('Ninguno') }}</option>
+                                @foreach ($orders as $order)
+                                    <option value="{{ $order->id }}" {{ (string) old('order_id') === (string) $order->id ? 'selected' : '' }}>
+                                        #{{ $order->id }} — {{ $order->package->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
                     @endauth
 
@@ -120,7 +106,7 @@
                     </div>
 
                     <div>
-                        <x-input-label for="attachments" :value="__('Adjuntos (opcional)')" />
+                        <x-input-label for="attachments" :value="__('Adjuntos')" />
                         <input id="attachments" name="attachments[]" type="file" multiple
                                accept=".jpg,.jpeg,.gif,.png,.txt,.pdf"
                                class="mt-1 block w-full text-sm text-dim">

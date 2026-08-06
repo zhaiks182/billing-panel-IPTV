@@ -36,7 +36,7 @@
             @endif
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <div class="lg:col-span-2 space-y-4 order-2 lg:order-1">
+                <div class="lg:col-span-2 space-y-6 order-2 lg:order-1">
                     <div class="bg-panel border border-steel rounded-lg p-6">
                         <h3 class="text-lg font-semibold text-paper">{{ $ticket->subject }}</h3>
                     </div>
@@ -69,7 +69,7 @@
 
                     <div class="bg-panel border border-steel rounded-lg p-6">
                         <h3 class="text-base font-semibold text-paper mb-4">{{ __('Responder') }}</h3>
-                        <form method="POST" action="{{ route('admin.tickets.reply', $ticket) }}" enctype="multipart/form-data" class="space-y-4">
+                        <form method="POST" action="{{ route('admin.tickets.reply', $ticket) }}" enctype="multipart/form-data" class="space-y-5">
                             @csrf
                             <textarea name="message" rows="4" required
                                       class="block w-full rounded-md border-steel bg-ink text-paper shadow-sm focus:border-brand-500 focus:ring-brand-500">{{ old('message') }}</textarea>
@@ -80,7 +80,7 @@
                     </div>
                 </div>
 
-                <div class="space-y-4 order-1 lg:order-2 lg:sticky lg:top-6">
+                <div class="space-y-6 order-1 lg:order-2 lg:sticky lg:top-6">
                     <div class="bg-panel border border-steel rounded-lg p-6 space-y-3 text-sm">
                         <h3 class="text-base font-semibold text-paper mb-2">{{ __('Detalles') }}</h3>
                         <div class="flex justify-between">
@@ -117,7 +117,7 @@
 
                     <div class="bg-panel border border-steel rounded-lg p-6">
                         <h3 class="text-base font-semibold text-paper mb-4">{{ __('Gestionar ticket') }}</h3>
-                        <form method="POST" action="{{ route('admin.tickets.update', $ticket) }}" class="space-y-4">
+                        <form method="POST" action="{{ route('admin.tickets.update', $ticket) }}" class="space-y-5">
                             @csrf
                             @method('PUT')
 

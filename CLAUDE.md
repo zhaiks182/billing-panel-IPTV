@@ -591,6 +591,40 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
 (cascada verificada: borrar un `Ticket` borra sus `ticket_messages` y
 `ticket_attachments` solos, gracias a `cascadeOnDelete()` en las migraciones).
 
+### Ajustes tras la primera prueba real (2026-08-06)
+
+- **No es un bug: Turnstile no aparece si el ticket lo crea un usuario con sesión iniciada**
+  — el usuario probó con una cuenta ya logueada (`jorgeevil182@gmail.com`) y no vio el
+  widget de Cloudflare; es el mismo comportamiento que registro/checkout (Turnstile solo se
+  pide a invitados sin cuenta, nunca a usuarios autenticados). Se le explicó, sin cambios de
+  código.
+- **Correo a la bandeja de soporte cuando se abre un ticket**, con el mismo contenido que el
+  aviso de Telegram (a pedido del usuario: "exactamente igual como en Telegram"). Se agregó
+  `TicketController::notifyAdminEmail()`, que manda un `Mail::raw()` (no pasa por
+  `EmailTemplate::mail()` — es un aviso interno de operación, no un correo de marca para el
+  cliente) al `username` ya configurado en Admin > Configuración de correo (la cuenta SMTP
+  real, ej. `soporte@4livepro.com`) — **no se agregó un campo nuevo configurable**, se
+  reutilizó el que ya existía porque coincide exactamente con la dirección que pidió el
+  usuario; no hace nada si no hay correo configurado. Probado en local seteando
+  `MailSetting::username` a mano y confirmando en `storage/logs/laravel.log` que llega con
+  el mismo asunto/cuerpo que el mensaje de Telegram, incluyendo el link directo al ticket en
+  el admin — configuración de prueba revertida después.
+- **Se quitó el campo "Línea relacionada" del formulario de creación** (a pedido del
+  usuario, viendo una captura del formulario) — solo queda "Pedido relacionado". También se
+  quitó la palabra "(opcional)" de las etiquetas "Pedido relacionado" y "Adjuntos". La
+  columna `line_id` y la relación `Ticket::line()` **no se tocaron** (se dejaron en el
+  esquema/modelo por si hace falta más adelante, simplemente ya no se llenan desde el
+  formulario de creación) — `TicketController::create()`/`store()` ya no calculan ni
+  validan `line_id`.
+- **Espaciado del detalle del ticket** — el usuario mandó una captura señalando que se veía
+  "muy pegado" (el formulario de responder, especialmente el input de adjuntos justo encima
+  del botón). Se aumentó el espaciado de `space-y-4` a `space-y-6` en las columnas
+  principales y a `space-y-5` en los formularios, en `tickets/show.blade.php` y
+  `admin/tickets/show.blade.php`.
+- **Enlace del menú renombrado de "Soporte" a "Contacto"** (a pedido del usuario) — en los 4
+  lugares donde aparecía en `layouts/navigation.blade.php` (desktop/mobile, con y sin
+  sesión). Solo cambió el texto visible del enlace; las rutas siguen llamándose `tickets.*`.
+
 ## Plantillas de correo
 
 Los 9 correos transaccionales del sistema (verificación de cuenta, **factura pendiente de

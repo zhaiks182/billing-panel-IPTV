@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\MailSetting;
 use App\Models\Ticket;
 use App\Models\TurnstileSetting;
 use App\Notifications\TicketCreated;
 use App\Rules\ValidTurnstile;
 use App\Services\Telegram\TelegramNotifier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -25,14 +27,13 @@ class TicketController extends Controller
     {
         $user = $request->user();
 
-        $lines = $user ? $user->lines()->latest()->get() : collect();
         $orders = $user ? $user->orders()->latest()->get() : collect();
 
         $turnstileSiteKey = TurnstileSetting::current()->isActive()
             ? TurnstileSetting::current()->site_key
             : null;
 
-        return view('tickets.create', compact('lines', 'orders', 'turnstileSiteKey'));
+        return view('tickets.create', compact('orders', 'turnstileSiteKey'));
     }
 
     public function store(Request $request, TelegramNotifier $telegram)
@@ -48,7 +49,6 @@ class TicketController extends Controller
         ];
 
         if ($user) {
-            $rules['line_id'] = ['nullable', 'integer'];
             $rules['order_id'] = ['nullable', 'integer'];
         } else {
             $rules['guest_name'] = ['required', 'string', 'max:255'];
@@ -58,13 +58,9 @@ class TicketController extends Controller
 
         $validated = $request->validate($rules);
 
-        $lineId = null;
         $orderId = null;
 
         if ($user) {
-            $lineId = ! empty($validated['line_id']) && $user->lines()->where('id', $validated['line_id'])->exists()
-                ? $validated['line_id']
-                : null;
             $orderId = ! empty($validated['order_id']) && $user->orders()->where('id', $validated['order_id'])->exists()
                 ? $validated['order_id']
                 : null;
@@ -75,7 +71,6 @@ class TicketController extends Controller
             'guest_name' => $user ? null : $validated['guest_name'],
             'guest_email' => $user ? null : $validated['guest_email'],
             'access_token' => $user ? null : Str::random(48),
-            'line_id' => $lineId,
             'order_id' => $orderId,
             'category' => $validated['category'],
             'priority' => $validated['priority'],
@@ -98,7 +93,36 @@ class TicketController extends Controller
             "Asunto: {$ticket->subject}"
         );
 
+        $this->notifyAdminEmail($ticket);
+
         return redirect($ticket->publicUrl())->with('status', "Tu ticket #{$ticket->id} fue creado correctamente.");
+    }
+
+    /**
+     * Correo interno a la bandeja de soporte cuando se abre un ticket, con el mismo
+     * contenido que el aviso de Telegram — a pedido del usuario, 2026-08-06. Se manda al
+     * `username` configurado en Admin > Configuración de correo (la cuenta SMTP real, ej.
+     * soporte@4livepro.com), no a un destinatario nuevo configurable — no hace nada si no
+     * hay correo configurado.
+     */
+    private function notifyAdminEmail(Ticket $ticket): void
+    {
+        $adminEmail = MailSetting::current()->username;
+
+        if (! $adminEmail) {
+            return;
+        }
+
+        Mail::raw(
+            "Nuevo ticket #{$ticket->id}\n".
+            "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
+            "Categoría: {$ticket->categoryLabel()} — Prioridad: {$ticket->priorityLabel()}\n".
+            "Asunto: {$ticket->subject}\n\n".
+            "Ver ticket: ".route('admin.tickets.show', $ticket),
+            function ($message) use ($adminEmail, $ticket) {
+                $message->to($adminEmail)->subject("🎫 Nuevo ticket #{$ticket->id} - {$ticket->subject}");
+            }
+        );
     }
 
     public function show(Request $request, Ticket $ticket)

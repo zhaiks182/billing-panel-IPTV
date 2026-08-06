@@ -18,7 +18,7 @@
 
                     @guest
                         <x-nav-link :href="route('tickets.create')" :active="request()->routeIs('tickets.create')">
-                            {{ __('Soporte') }}
+                            {{ __('Contacto') }}
                         </x-nav-link>
                     @endguest
 
@@ -30,7 +30,7 @@
                             {{ __('Mis Pedidos') }}
                         </x-nav-link>
                         <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
-                            {{ __('Soporte') }}
+                            {{ __('Contacto') }}
                         </x-nav-link>
 
                         @if (Auth::user()->isAdmin())
@@ -154,7 +154,7 @@
 
             @guest
                 <x-responsive-nav-link :href="route('tickets.create')" :active="request()->routeIs('tickets.create')">
-                    {{ __('Soporte') }}
+                    {{ __('Contacto') }}
                 </x-responsive-nav-link>
             @endguest
 
@@ -166,7 +166,7 @@
                     {{ __('Mis Pedidos') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
-                    {{ __('Soporte') }}
+                    {{ __('Contacto') }}
                 </x-responsive-nav-link>
                 @if (Auth::user()->isAdmin())
                     <div class="pt-2 mt-2 border-t border-steel">

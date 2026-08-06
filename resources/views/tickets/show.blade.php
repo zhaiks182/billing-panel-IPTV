@@ -31,7 +31,7 @@
             @endif
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                <div class="lg:col-span-2 space-y-4 order-2 lg:order-1">
+                <div class="lg:col-span-2 space-y-6 order-2 lg:order-1">
                     <div class="bg-panel border border-steel rounded-lg p-6">
                         <h3 class="text-lg font-semibold text-paper">{{ $ticket->subject }}</h3>
                     </div>
@@ -76,7 +76,7 @@
                         <h3 class="text-base font-semibold text-paper mb-4">
                             {{ $ticket->status === 'closed' ? __('Responder para reabrir el ticket') : __('Responder') }}
                         </h3>
-                        <form method="POST" action="{{ $replyUrl }}" enctype="multipart/form-data" class="space-y-4">
+                        <form method="POST" action="{{ $replyUrl }}" enctype="multipart/form-data" class="space-y-5">
                             @csrf
                             <div>
                                 <textarea name="message" rows="4" required
