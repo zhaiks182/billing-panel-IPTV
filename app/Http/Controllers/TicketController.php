@@ -129,6 +129,35 @@ class TicketController extends Controller
         );
     }
 
+    /**
+     * Correo interno a la bandeja de soporte cuando el cliente/invitado responde un ticket
+     * ya existente — mismo patrón que `notifyAdminEmail()` (ticket nuevo), pero para
+     * respuestas posteriores. Bug encontrado por el usuario: antes solo se avisaba por
+     * Telegram y sin el texto del mensaje, ahora ambos avisos (Telegram y correo) incluyen
+     * el mensaje completo.
+     */
+    private function notifyAdminEmailReply(Ticket $ticket, string $message): void
+    {
+        $adminEmail = MailSetting::current()->username;
+
+        if (! $adminEmail) {
+            return;
+        }
+
+        Mail::raw(
+            "Nueva respuesta de cliente en ticket #{$ticket->id}\n\n".
+            "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
+            "Asunto: {$ticket->subject}\n\n".
+            "Mensaje:\n{$message}\n\n".
+            "Ver ticket: ".route('admin.tickets.show', $ticket),
+            function ($mail) use ($adminEmail, $ticket) {
+                $mail->to($adminEmail)
+                    ->replyTo($ticket->customerEmail(), $ticket->customerName())
+                    ->subject("💬 Nueva respuesta en ticket #{$ticket->id} - {$ticket->subject}");
+            }
+        );
+    }
+
     public function show(Request $request, Ticket $ticket)
     {
         $this->authorizeAccess($request, $ticket);
@@ -156,11 +185,14 @@ class TicketController extends Controller
         $ticket->update(['status' => 'open', 'closed_at' => null]);
 
         $telegram->send(
-            "💬 <b>Nueva respuesta de cliente en ticket #{$ticket->id}</b>\n".
+            "💬 <b>Nueva respuesta de cliente en ticket #{$ticket->id}</b>\n\n".
             "Cliente: {$ticket->customerName()}\n".
             "Asunto: {$ticket->subject}\n\n".
+            "Mensaje:\n{$validated['message']}\n\n".
             'Ver ticket: '.route('admin.tickets.show', $ticket)
         );
+
+        $this->notifyAdminEmailReply($ticket, $validated['message']);
 
         return back()->with('status', 'Tu respuesta fue enviada.');
     }

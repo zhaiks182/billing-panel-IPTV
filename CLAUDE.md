@@ -659,6 +659,16 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   probar el formulario de respuesta).
 - Más espaciado (`space-y-6`) en el formulario de responder de `tickets/show.blade.php` —
   el usuario insistió en que seguía viéndose apretado tras el primer ajuste a `space-y-5`.
+- ⚠️ **Bug real encontrado por el usuario: las respuestas del cliente sobre un ticket
+  existente no llevaban el texto del mensaje en Telegram, y no mandaban correo alguno.**
+  `TicketController::reply()` armaba el aviso de Telegram con solo "Cliente"/"Asunto", sin
+  el mensaje en sí, y **nunca llamaba a ningún equivalente de `notifyAdminEmail()`** — ese
+  método solo se llamaba desde `store()` (ticket nuevo). Fix: el mensaje de Telegram ahora
+  incluye `{{message}}` completo, y se agregó `notifyAdminEmailReply()` (mismo patrón que
+  `notifyAdminEmail()`: `Mail::raw()` a `MailSetting::username`, con `Reply-To` al cliente),
+  llamado también desde `reply()`. Probado por reflexión directa sobre el método privado
+  (mismo patrón usado para probar `notifyAdminEmail()` antes) — el correo sale con el
+  mensaje completo y el `Reply-To` correcto.
 
 ## Plantillas de correo
 
