@@ -512,7 +512,10 @@ confirmadas con el usuario:
 
 ### Base de datos
 
-- `tickets`: `user_id` **nullable** (null = ticket de invitado), `guest_name`/`guest_email`
+- `tickets`: `ticket_number` (string(4), único, aleatorio con ceros a la izquierda —
+  **es lo único que se muestra como "Ticket #XXXX"**, ver "Ajustes tras la primera prueba
+  real"; el `id` autoincremental sigue siendo la clave real para URLs/FKs), `user_id`
+  **nullable** (null = ticket de invitado), `guest_name`/`guest_email`
   (solo si `user_id` es null), `access_token` (string único, `Str::random(48)`, generado solo
   para invitados — es como acceden a su ticket sin cuenta), `line_id`/`order_id` (nullable, FK
   a **sus propias** líneas/pedidos si tiene sesión — los invitados no tienen de dónde elegir,
@@ -795,6 +798,59 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   esa hora funcionaron con normalidad, así que parece un bloqueo temporal de Google, no un
   problema de configuración persistente. Si vuelve a repetirse seguido, revisar la
   contraseña de aplicación de Gmail usada en Admin > Configuración de correo.
+- **Número de ticket público (`ticket_number`) separado del `id` interno** (2026-08-06, a
+  pedido del usuario) — antes "Ticket #N" mostraba el `id` autoincremental de la tabla
+  (secuencial, predecible: #1, #2, #3...). Ahora cada ticket tiene además `ticket_number`,
+  un string de **4 dígitos aleatorios con ceros a la izquierda** (`0000`-`9999`,
+  ej. `0612`), generado en `Ticket::booted()`/`static::creating()` con reintento hasta
+  encontrar uno no usado (`generateNumber()`). Es lo único que se muestra al
+  cliente/admin como "Ticket #XXXX" — en correos, Telegram, listados y el detalle del
+  ticket. **El `id` interno sigue siendo la clave real** para las URLs
+  (`/soporte/{id}`, `/admin/tickets/{id}`) y las relaciones (`ticket_messages.ticket_id`,
+  etc.) — no se tocó el route model binding ni ninguna FK, solo lo que se **muestra**.
+  - Columna `ticket_number` (migración
+    `2026_08_06_170000_add_ticket_number_to_tickets_table.php`) es `nullable` a nivel de
+    esquema (para no depender de `doctrine/dbal`, que este proyecto no tiene instalado y
+    hace falta para `->change()` en una columna existente) pero **siempre se rellena** vía
+    el hook `creating()` del modelo antes de guardar — mismo patrón ya usado para
+    `access_token` (nullable en esquema, obligatorio en la práctica). La migración también
+    rellena con números aleatorios únicos los tickets que ya existían antes del cambio.
+  - La variable de plantilla de correo sigue llamándose `{{ticket_id}}` (no se renombró
+    a propósito, para no tener que sobreescribir con una migración de datos las 5
+    plantillas de `email_templates` que ya usan `{{ticket_id}}` en su HTML guardado, y
+    que el admin pudo haber editado a mano) — solo cambió **qué valor** se le pasa
+    (`$ticket->ticket_number` en vez de `(string) $ticket->id`), en las 5 clases de
+    `Notification` de tickets y en el texto de los 4 Jobs de Telegram.
+  - Con solo 10,000 combinaciones posibles, a partir de varios miles de tickets el
+    `while` de `generateNumber()` empezaría a tardar más por colisiones repetidas — no es
+    un problema real al volumen actual de este negocio, no se le agregó manejo especial
+    (ej. ampliar a más dígitos) porque no se pidió.
+  - Probado en local: dos tickets creados seguidos generaron números distintos de 4
+    dígitos (`0612`, `8796`, no relacionados a sus `id` reales `14`/`15`); confirmado que
+    `EmailTemplate::mail('ticket_created', ...)` sustituye `{{ticket_id}}` con el número
+    nuevo (`Ticket #2486` en el correo generado, verificado en
+    `storage/logs/laravel.log`) — datos de prueba eliminados después.
+- **Ícono de notificación de tickets pendientes junto al carrito, solo para admins**
+  (2026-08-06, a pedido del usuario, viendo el listado de tickets con varios sin
+  responder). En [`layouts/navigation.blade.php`](resources/views/layouts/navigation.blade.php):
+  un ícono de campana antes del carrito (desktop) y un enlace "Tickets pendientes" en el
+  menú responsive (mobile), ambos visibles **solo si `Auth::user()->isAdmin()`**, con una
+  insignia roja mostrando `Ticket::where('status', 'open')->count()` (se oculta si es 0;
+  muestra "9+" si pasa de 9). `status = open` es el estado de "necesita respuesta del
+  admin" — se pone así al crear un ticket y **también** cuando el cliente responde uno
+  que ya estaba `answered`/`closed` (reapertura automática, ver
+  `TicketController::reply()`), así que el conteo cubre tickets nuevos y respuestas de
+  cliente pendientes de atender, no solo tickets nunca tocados. El enlace apunta a
+  `admin.tickets.index?status=open` (el filtro ya existente del listado), para ir directo
+  a la cola de pendientes con un clic. La consulta se calcula inline en la vista (un
+  `@php` al inicio del archivo, solo si el usuario es admin) — sin caché ni vista
+  compuesta nueva, consistente con el resto de la app (sin capa de service/composer
+  para esto en ningún otro lado) y de bajo costo (una sola consulta `COUNT` indexada por
+  `status`, en una página que ya hace varias consultas por request. Probado en local
+  renderizando `layouts.navigation` por `tinker` con `Auth::login()`: con un ticket
+  `open` de prueba, la insignia roja aparece con "1"; sin tickets abiertos, el ícono se ve
+  pero sin insignia; con un usuario `customer` logueado, el ícono no aparece en absoluto
+  — datos de prueba eliminados después.
 
 ## Plantillas de correo
 

@@ -26,7 +26,7 @@ class TicketReplied extends Notification implements ShouldQueue
     {
         return EmailTemplate::mail('ticket_reply', [
             'user_name' => $this->ticket->customerName(),
-            'ticket_id' => (string) $this->ticket->id,
+            'ticket_id' => $this->ticket->ticket_number,
             'subject' => $this->ticket->subject,
             'reply_message' => $this->replyMessage,
             'ticket_url' => $this->ticket->publicUrl(),

@@ -26,7 +26,7 @@ class TicketClosed extends Notification implements ShouldQueue
     {
         return EmailTemplate::mail('ticket_closed', [
             'user_name' => $this->ticket->customerName(),
-            'ticket_id' => (string) $this->ticket->id,
+            'ticket_id' => $this->ticket->ticket_number,
             'subject' => $this->ticket->subject,
             'resolution' => $this->ticket->resolution ?? '—',
             'ticket_url' => $this->ticket->publicUrl(),

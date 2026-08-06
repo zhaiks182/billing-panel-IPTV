@@ -12,6 +12,22 @@ use Illuminate\Database\Eloquent\Model;
 ])]
 class Ticket extends Model
 {
+    protected static function booted(): void
+    {
+        static::creating(function (Ticket $ticket) {
+            $ticket->ticket_number ??= static::generateNumber();
+        });
+    }
+
+    private static function generateNumber(): string
+    {
+        do {
+            $number = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        } while (static::where('ticket_number', $number)->exists());
+
+        return $number;
+    }
+
     protected function casts(): array
     {
         return [

@@ -86,7 +86,7 @@ class TicketController extends Controller
 
         SendNewTicketAdminAlert::dispatch($ticket, $validated['message']);
 
-        return redirect($ticket->publicUrl())->with('status', "Tu ticket #{$ticket->id} fue creado correctamente.");
+        return redirect($ticket->publicUrl())->with('status', "Tu ticket #{$ticket->ticket_number} fue creado correctamente.");
     }
 
     public function show(Request $request, Ticket $ticket)

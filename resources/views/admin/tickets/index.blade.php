@@ -90,7 +90,7 @@
                     <tbody class="divide-y divide-steel">
                         @forelse ($tickets as $ticket)
                             <tr class="hover:bg-panel-alt cursor-pointer" onclick="window.location='{{ route('admin.tickets.show', $ticket) }}'">
-                                <td class="px-4 py-4 text-sm text-dim">{{ $ticket->id }}</td>
+                                <td class="px-4 py-4 text-sm text-dim">{{ $ticket->ticket_number }}</td>
                                 <td class="px-4 py-4 text-sm text-dim">
                                     {{ $ticket->customerName() }}<br>
                                     <span class="text-xs text-dim-2">{{ $ticket->customerEmail() }}</span>

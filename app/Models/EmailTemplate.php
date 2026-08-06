@@ -168,7 +168,7 @@ class EmailTemplate extends Model
             ],
             'ticket_created' => [
                 'user_name' => 'Juan Pérez',
-                'ticket_id' => '58',
+                'ticket_id' => '4207',
                 'subject' => 'No puedo ver algunos canales',
                 'category_label' => 'Canales o contenido',
                 'priority_label' => 'Media',
@@ -177,20 +177,20 @@ class EmailTemplate extends Model
             ],
             'ticket_reply' => [
                 'user_name' => 'Juan Pérez',
-                'ticket_id' => '58',
+                'ticket_id' => '4207',
                 'subject' => 'No puedo ver algunos canales',
                 'reply_message' => 'Hola, ya revisamos tu línea y actualizamos el servidor. ¿Puedes probar de nuevo?',
                 'ticket_url' => url('/soporte/58'),
             ],
             'ticket_closed' => [
                 'user_name' => 'Juan Pérez',
-                'ticket_id' => '58',
+                'ticket_id' => '4207',
                 'subject' => 'No puedo ver algunos canales',
                 'resolution' => 'Se reasignó el servidor de streaming del cliente. Confirmado con el cliente que los canales ya cargan correctamente.',
                 'ticket_url' => url('/soporte/58'),
             ],
             'ticket_admin_new' => [
-                'ticket_id' => '58',
+                'ticket_id' => '4207',
                 'subject' => 'No puedo ver algunos canales',
                 'customer_name' => 'Juan Pérez',
                 'customer_email' => 'juan.perez@example.com',
@@ -200,7 +200,7 @@ class EmailTemplate extends Model
                 'ticket_url' => url('/admin/tickets/58'),
             ],
             'ticket_admin_reply' => [
-                'ticket_id' => '58',
+                'ticket_id' => '4207',
                 'subject' => 'No puedo ver algunos canales',
                 'customer_name' => 'Juan Pérez',
                 'message' => 'Gracias, ya probé de nuevo y sigue igual.',

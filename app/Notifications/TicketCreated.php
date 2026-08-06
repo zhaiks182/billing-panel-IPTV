@@ -26,7 +26,7 @@ class TicketCreated extends Notification implements ShouldQueue
     {
         return EmailTemplate::mail('ticket_created', [
             'user_name' => $this->ticket->customerName(),
-            'ticket_id' => (string) $this->ticket->id,
+            'ticket_id' => $this->ticket->ticket_number,
             'subject' => $this->ticket->subject,
             'category_label' => $this->ticket->categoryLabel(),
             'priority_label' => $this->ticket->priorityLabel(),

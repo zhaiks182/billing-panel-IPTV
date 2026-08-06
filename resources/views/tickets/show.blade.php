@@ -6,7 +6,7 @@
     <x-slot name="header">
         <div class="flex items-center gap-3">
             <h2 class="font-semibold text-xl text-paper leading-tight">
-                {{ __('Ticket') }} #{{ $ticket->id }}
+                {{ __('Ticket') }} #{{ $ticket->ticket_number }}
             </h2>
             <x-ticket-status-badge :status="$ticket->status" />
         </div>

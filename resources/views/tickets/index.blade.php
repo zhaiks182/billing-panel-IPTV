@@ -32,7 +32,7 @@
                     <tbody class="divide-y divide-steel">
                         @forelse ($tickets as $ticket)
                             <tr class="hover:bg-panel-alt cursor-pointer" onclick="window.location='{{ route('tickets.show', $ticket) }}'">
-                                <td class="px-6 py-4 text-sm text-dim">{{ $ticket->id }}</td>
+                                <td class="px-6 py-4 text-sm text-dim">{{ $ticket->ticket_number }}</td>
                                 <td class="px-6 py-4 text-sm text-paper">{{ $ticket->subject }}</td>
                                 <td class="px-6 py-4 text-sm text-dim">{{ $ticket->categoryLabel() }}</td>
                                 <td class="px-6 py-4 text-sm">

@@ -31,7 +31,7 @@ class SendAdminReplyTelegramNotice implements ShouldQueue
         $ticket = $this->ticket;
 
         $telegram->send(
-            "✅ <b>Admin respondió el ticket #{$ticket->id}</b>\n\n".
+            "✅ <b>Admin respondió el ticket #{$ticket->ticket_number}</b>\n\n".
             "Cliente: {$ticket->customerName()}\n".
             "Asunto: {$ticket->subject}\n\n".
             "Mensaje:\n{$this->message}\n\n".

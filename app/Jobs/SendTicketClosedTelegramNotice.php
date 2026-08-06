@@ -29,7 +29,7 @@ class SendTicketClosedTelegramNotice implements ShouldQueue
         $ticket = $this->ticket;
 
         $telegram->send(
-            "🔒 <b>Ticket #{$ticket->id} cerrado</b>\n\n".
+            "🔒 <b>Ticket #{$ticket->ticket_number} cerrado</b>\n\n".
             "Cliente: {$ticket->customerName()}\n".
             "Asunto: {$ticket->subject}\n\n".
             "Solución:\n{$ticket->resolution}\n\n".

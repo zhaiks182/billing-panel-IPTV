@@ -30,7 +30,7 @@ class AdminNewTicketAlert extends Notification
         $ticket = $this->ticket;
 
         return EmailTemplate::mail('ticket_admin_new', [
-            'ticket_id' => (string) $ticket->id,
+            'ticket_id' => $ticket->ticket_number,
             'subject' => $ticket->subject,
             'customer_name' => $ticket->customerName(),
             'customer_email' => $ticket->customerEmail(),
