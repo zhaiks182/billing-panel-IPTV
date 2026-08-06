@@ -160,7 +160,7 @@
                             </div>
 
                             <div>
-                                <x-input-label for="resolution" value="{{ __('Solución aplicada (requerida para cerrar)') }}" />
+                                <x-input-label for="resolution" value="{{ __('Solución aplicada') }}" />
                                 <textarea id="resolution" name="resolution" rows="3"
                                           class="mt-1 block w-full rounded-md border-steel bg-ink text-paper shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">{{ old('resolution', $ticket->resolution) }}</textarea>
                             </div>

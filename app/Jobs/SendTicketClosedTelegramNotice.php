@@ -32,7 +32,7 @@ class SendTicketClosedTelegramNotice implements ShouldQueue
             "🔒 <b>Ticket #{$ticket->ticket_number} cerrado</b>\n\n".
             "Cliente: {$ticket->customerName()}\n".
             "Asunto: {$ticket->subject}\n\n".
-            "Solución:\n{$ticket->resolution}\n\n".
+            "Solución:\n".($ticket->resolution ?: 'Sin solución especificada.')."\n\n".
             'Ver ticket: '.route('admin.tickets.show', $ticket)
         );
     }

@@ -83,9 +83,7 @@ class TicketController extends Controller
             'priority' => ['required', Rule::in(['low', 'medium', 'high'])],
             'status' => ['required', Rule::in(['open', 'in_progress', 'answered', 'closed'])],
             'assigned_admin_id' => ['nullable', 'exists:users,id'],
-            'resolution' => ['nullable', 'string', 'max:5000', 'required_if:status,closed'],
-        ], [
-            'resolution.required_if' => 'Debes indicar la solución aplicada para cerrar el ticket.',
+            'resolution' => ['nullable', 'string', 'max:5000'],
         ]);
 
         $wasClosed = $ticket->status === 'closed';

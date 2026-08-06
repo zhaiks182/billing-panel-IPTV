@@ -851,6 +851,19 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   `open` de prueba, la insignia roja aparece con "1"; sin tickets abiertos, el ícono se ve
   pero sin insignia; con un usuario `customer` logueado, el ícono no aparece en absoluto
   — datos de prueba eliminados después.
+- **La "Solución aplicada" ya no es obligatoria para cerrar un ticket** (2026-08-06, a
+  pedido del usuario, que quería cerrar un ticket de prueba sin escribir nada ahí). Se
+  quitó la regla `required_if:status,closed` de
+  `Admin\TicketController::update()` (queda solo `nullable|string|max:5000`) y el texto
+  de la etiqueta en `admin/tickets/show.blade.php` volvió a "Solución aplicada" (sin el
+  "(requerida para cerrar)"). El resto del flujo ya toleraba una `resolution` vacía sin
+  cambios: el correo `TicketClosed` ya mostraba "—" (`$ticket->resolution ?? '—'`); solo
+  se le agregó el mismo fallback ("Sin solución especificada.") al texto de Telegram en
+  [`SendTicketClosedTelegramNotice`](app/Jobs/SendTicketClosedTelegramNotice.php), que
+  antes interpolaba `null` directo (se veía como una línea vacía). Probado en local:
+  `Validator` con `resolution: null` y `status: closed` pasa la validación, el ticket
+  queda `closed` con `resolution` en `NULL`, y el Job de Telegram corre sin errores con
+  el texto de reemplazo — datos de prueba eliminados después.
 
 ## Plantillas de correo
 
