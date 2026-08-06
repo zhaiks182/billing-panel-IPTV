@@ -90,7 +90,8 @@ class TicketController extends Controller
             "🎫 <b>Nuevo ticket #{$ticket->id}</b>\n".
             "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
             "Categoría: {$ticket->categoryLabel()} — Prioridad: {$ticket->priorityLabel()}\n".
-            "Asunto: {$ticket->subject}"
+            "Asunto: {$ticket->subject}\n\n".
+            'Ver ticket: '.route('admin.tickets.show', $ticket)
         );
 
         $this->notifyAdminEmail($ticket);
@@ -150,7 +151,8 @@ class TicketController extends Controller
         $telegram->send(
             "💬 <b>Nueva respuesta de cliente en ticket #{$ticket->id}</b>\n".
             "Cliente: {$ticket->customerName()}\n".
-            "Asunto: {$ticket->subject}"
+            "Asunto: {$ticket->subject}\n\n".
+            'Ver ticket: '.route('admin.tickets.show', $ticket)
         );
 
         return back()->with('status', 'Tu respuesta fue enviada.');
