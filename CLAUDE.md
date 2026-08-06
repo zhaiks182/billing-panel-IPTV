@@ -767,6 +767,34 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   intenta nada (mismo patrón defensivo que el resto de la app, confirmado sin warnings nuevos
   en `storage/logs/laravel.log`) — verificar el envío real en `desarrollo.4livepro.com` tras
   desplegar. Ticket de prueba eliminado después.
+- ⚠️ **Bug real: el aviso de Telegram de "ticket nuevo" no llevaba el mensaje que escribió el
+  cliente** — el usuario notó que el texto solo aparecía en Telegram cuando el cliente
+  respondía, no al abrir el ticket. Causa:
+  [`App\Jobs\SendNewTicketAdminAlert`](app/Jobs/SendNewTicketAdminAlert.php) recibe
+  `$firstMessage` en el constructor y lo usaba para el correo interno
+  (`AdminNewTicketAlert`), pero el texto armado para `TelegramNotifier::send()` nunca lo
+  incluía. Fix: se agregó `"Mensaje:\n{$this->firstMessage}\n\n"` al mensaje de Telegram,
+  mismo patrón que ya usaban `SendTicketReplyAdminAlert`/`SendAdminReplyTelegramNotice`.
+- **Diagnóstico en vivo tras el reporte "el admin respondió y no llegó nada a Telegram"**
+  (2026-08-06) — se revisó `storage/logs/queue-worker.log` y `storage/logs/laravel.log` en
+  el VPS: la ejecución real de `SendAdminReplyTelegramNotice` (disparada por la prueba del
+  usuario) había terminado en `DONE` sin ninguna excepción ni warning de
+  `TelegramNotifier` (que si el envío falla, sí deja un `Log::warning`). Se confirmó
+  `TelegramSetting::current()->isActive()` en `true` con `chat_id`/`bot_token` configurados,
+  y se despachó un ticket + job de diagnóstico real contra el bot de producción
+  (`"MENSAJE DE PRUEBA..."`) — el usuario confirmó que sí llegó. Conclusión: la
+  infraestructura de Telegram para avisos de admin funciona correctamente; el caso reportado
+  no repitió el fallo (el aviso real anterior también se había entregado según los logs,
+  probablemente pasó desapercibido entre otros mensajes del chat) — no se encontró ni se
+  hizo ningún cambio de código adicional para este reporte puntual. Ticket de diagnóstico
+  (#6 en el VPS) eliminado después.
+- **Nota de paso, no relacionada con tickets**: durante ese diagnóstico se encontró en
+  `storage/logs/laravel.log` un error aislado de una sola vez, hoy 2026-08-06 a las 09:40:27:
+  `Failed to authenticate on SMTP server with username "soporte@4livepro.com"` (`535
+  5.7.8 BadCredentials` de Gmail). No se repitió — los envíos de correo antes y después de
+  esa hora funcionaron con normalidad, así que parece un bloqueo temporal de Google, no un
+  problema de configuración persistente. Si vuelve a repetirse seguido, revisar la
+  contraseña de aplicación de Gmail usada en Admin > Configuración de correo.
 
 ## Plantillas de correo
 
