@@ -89,6 +89,13 @@
                         <x-input-error :messages="$errors->get('chat_id')" class="mt-2" />
                     </div>
 
+                    <label class="mt-4 flex items-center gap-2" x-show="enabled" x-cloak>
+                        <input type="checkbox" name="daily_summary_enabled" value="1"
+                               {{ old('daily_summary_enabled', $settings->daily_summary_enabled) ? 'checked' : '' }}
+                               class="rounded border-steel bg-panel text-brand-500 shadow-sm focus:ring-brand-500">
+                        <span class="text-sm text-paper">{{ __('Enviar resumen automático de ventas todos los días a las 10:00 p.m.') }}</span>
+                    </label>
+
                     <div class="mt-6" x-show="enabled" x-cloak>
                         <x-secondary-button type="button" @click="testConnection()" ::disabled="testing">
                             <span x-show="!testing">{{ __('Probar conexión') }}</span>

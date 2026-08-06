@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Order;
 use App\Models\TelegramSetting;
+use App\Services\Telegram\SalesReportBuilder;
 use App\Services\Telegram\TelegramNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,7 +19,7 @@ use Illuminate\Http\Response;
  */
 class TelegramWebhookController extends Controller
 {
-    public function handle(Request $request, TelegramNotifier $telegram): Response
+    public function handle(Request $request, TelegramNotifier $telegram, SalesReportBuilder $salesReport): Response
     {
         $settings = TelegramSetting::current();
 
@@ -41,7 +41,7 @@ class TelegramWebhookController extends Controller
         $command = strtolower(strtok($text, ' @'));
 
         match ($command) {
-            '/ventashoy', '/ventas' => $telegram->send($this->salesTodayMessage()),
+            '/ventashoy', '/ventas' => $telegram->send($salesReport->today()),
             '/start', '/help', '/ayuda' => $telegram->send(
                 "👋 Hola, soy el bot de 4LivePro Latino.\n\n".
                 'Comandos disponibles:'."\n".
@@ -51,25 +51,5 @@ class TelegramWebhookController extends Controller
         };
 
         return response('', 200);
-    }
-
-    private function salesTodayMessage(): string
-    {
-        $today = now()->startOfDay();
-
-        $approvedToday = Order::where('status', 'approved')
-            ->whereDate('approved_at', $today)
-            ->with('package')
-            ->get();
-
-        $paidOrders = $approvedToday->filter(fn (Order $order) => ! $order->package->is_trial);
-        $trialOrders = $approvedToday->filter(fn (Order $order) => $order->package->is_trial);
-        $revenue = $paidOrders->sum('amount');
-
-        return "📊 <b>Ventas de hoy</b> ({$today->format('d/m/Y')})\n\n".
-            "Pedidos pagados aprobados: {$paidOrders->count()}\n".
-            'Ingresos: $'.number_format((float) $revenue, 2)." USD\n".
-            "Demos activadas: {$trialOrders->count()}\n\n".
-            "Total pedidos aprobados: {$approvedToday->count()}";
     }
 }

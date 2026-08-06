@@ -49,6 +49,7 @@ class TelegramSettingController extends Controller
             'enabled' => ['nullable', 'boolean'],
             'bot_token' => ['nullable', 'string', 'max:255'],
             'chat_id' => ['nullable', 'required_if:enabled,1', 'string', 'max:255'],
+            'daily_summary_enabled' => ['nullable', 'boolean'],
         ]);
 
         $settings = TelegramSetting::current();
@@ -56,6 +57,7 @@ class TelegramSettingController extends Controller
 
         $settings->enabled = $request->boolean('enabled');
         $settings->chat_id = $validated['chat_id'] ?? null;
+        $settings->daily_summary_enabled = $request->boolean('daily_summary_enabled');
 
         if (! empty($validated['bot_token'])) {
             $settings->bot_token = $validated['bot_token'];

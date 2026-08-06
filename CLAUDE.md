@@ -357,6 +357,30 @@ el bot ahora también **responde** cuando le escriben, vía webhook de Telegram.
   fallo esperado confirma que sí se intentó el envío). Sin token de bot real no se pudo probar
   la entrega real a Telegram ni el registro real de `setWebhook` (requiere HTTPS público) —
   verificar en `desarrollo.4livepro.com` con un bot real después de desplegar.
+- **Resumen automático diario a las 10:00 p.m.** (2026-08-06, a pedido del usuario tras
+  confirmar que `/ventashoy` sí funcionaba en producción). Reutiliza el mismo texto que
+  `/ventashoy` — se extrajo esa lógica a [`App\Services\Telegram\SalesReportBuilder`](app/Services/Telegram/SalesReportBuilder.php)
+  (antes vivía como método privado en `TelegramWebhookController`) para no duplicarla entre el
+  comando del chat y el envío programado.
+  - Checkbox nuevo en Admin > Telegram: **"Enviar resumen automático de ventas todos los días a
+    las 10:00 p.m."** — columna `daily_summary_enabled` en `telegram_settings` (migración
+    `2026_08_06_110404_...`).
+  - [`App\Console\Commands\SendTelegramDailySalesSummary`](app/Console/Commands/SendTelegramDailySalesSummary.php)
+    (`php artisan telegram:daily-summary`) — no hace nada si Telegram no está activo o si el
+    checkbox está desmarcado (mismo patrón defensivo que el resto de comandos/notificaciones).
+    Programado en [`routes/console.php`](routes/console.php):
+    `Schedule::command('telegram:daily-summary')->dailyAt('22:00')`, mismo patrón que
+    `lines:send-expiration-reminders`.
+  - **No hizo falta tocar el crontab del VPS** — ya existe `* * * * * cd
+    /var/www/desarrollo.4livepro.com && php artisan schedule:run` corriendo cada minuto
+    (confirmado con `crontab -l` por SSH), así que cualquier tarea agregada a
+    `routes/console.php` con `Schedule::` empieza a correr sola en cuanto se despliega, sin
+    pasos adicionales en el servidor.
+  - Probado en local: `php artisan schedule:list` muestra `0 22 * * *
+    php artisan telegram:daily-summary`; con el checkbox desactivado el comando termina sin
+    intentar nada ("Resumen diario desactivado..."); activándolo a mano (con un bot_token falso)
+    sí llega hasta el intento de `sendMessage` (falla por token falso, mismo patrón de
+    verificación que el resto de la sesión) — configuración de prueba revertida después.
 
 ## Plantillas de correo
 

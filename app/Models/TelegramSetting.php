@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['enabled', 'bot_token', 'chat_id', 'webhook_secret'])]
+#[Fillable(['enabled', 'bot_token', 'chat_id', 'webhook_secret', 'daily_summary_enabled'])]
 class TelegramSetting extends Model
 {
     protected function casts(): array
@@ -13,6 +13,7 @@ class TelegramSetting extends Model
         return [
             'enabled' => 'boolean',
             'bot_token' => 'encrypted',
+            'daily_summary_enabled' => 'boolean',
         ];
     }
 

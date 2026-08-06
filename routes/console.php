@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('lines:send-expiration-reminders')->dailyAt('09:00');
+Schedule::command('telegram:daily-summary')->dailyAt('22:00');
