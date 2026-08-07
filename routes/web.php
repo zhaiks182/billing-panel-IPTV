@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmailTemplateController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
@@ -26,23 +27,28 @@ Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])->
 Route::get('/', [PackageController::class, 'index'])->name('home');
 Route::get('/categoria/{category:slug}', [PackageController::class, 'category'])->name('packages.category');
 
-Route::get('/tickets/nuevo', [TicketController::class, 'create'])->name('tickets.create');
-Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store')->middleware('throttle:10,1');
-Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
-Route::post('/tickets/{ticket}/responder', [TicketController::class, 'reply'])->name('tickets.reply')->middleware('throttle:20,1');
+// Rutas de cliente/invitado que no exigen sesión iniciada, pero si quien las visita resulta
+// ser un admin autenticado, se le manda de vuelta al panel en vez de dejarlo "comprar" o
+// abrir tickets como si fuera cliente (ver App\Http\Middleware\RedirectAuthenticatedAdmin).
+Route::middleware('no-admin')->group(function () {
+    Route::get('/tickets/nuevo', [TicketController::class, 'create'])->name('tickets.create');
+    Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store')->middleware('throttle:10,1');
+    Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+    Route::post('/tickets/{ticket}/responder', [TicketController::class, 'reply'])->name('tickets.reply')->middleware('throttle:20,1');
 
-Route::get('/carro', [CartController::class, 'index'])->name('cart.index');
-Route::post('/carro/vaciar', [CartController::class, 'destroy'])->name('cart.destroy');
-Route::post('/carro/{package:slug}', [CartController::class, 'store'])->name('cart.store');
+    Route::get('/carro', [CartController::class, 'index'])->name('cart.index');
+    Route::post('/carro/vaciar', [CartController::class, 'destroy'])->name('cart.destroy');
+    Route::post('/carro/{package:slug}', [CartController::class, 'store'])->name('cart.store');
 
-Route::get('/paquetes/{package:slug}/comprar', [OrderController::class, 'create'])->name('orders.create');
-Route::post('/paquetes/{package:slug}/comprar', [OrderController::class, 'store'])->name('orders.store')->middleware('throttle:10,1');
+    Route::get('/paquetes/{package:slug}/comprar', [OrderController::class, 'create'])->name('orders.create');
+    Route::post('/paquetes/{package:slug}/comprar', [OrderController::class, 'store'])->name('orders.store')->middleware('throttle:10,1');
+});
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware('auth')
+    ->middleware(['auth', 'no-admin'])
     ->name('dashboard');
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'no-admin'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -51,9 +57,17 @@ Route::middleware('auth')->group(function () {
     Route::get('/pedidos/{order}/estado', [OrderController::class, 'status'])->name('orders.status');
 
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+});
 
-    Route::prefix('adm_4livepro')->name('admin.')->middleware(['admin', 'admin.timeout'])->group(function () {
-        Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+// Panel admin — módulo aparte, no anidado en el grupo `auth` de clientes: la entrada
+// (login) debe ser accesible sin sesión, así que tiene su propio sub-grupo protegido adentro.
+Route::prefix('adm_4livepro')->name('admin.')->group(function () {
+    Route::get('/', [AdminAuthController::class, 'create'])->name('login');
+    Route::post('/', [AdminAuthController::class, 'store'])->name('login.store')->middleware('throttle:10,1');
+    Route::post('/logout', [AdminAuthController::class, 'destroy'])->name('logout');
+
+    Route::middleware(['auth', 'admin', 'admin.timeout'])->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         Route::get('/pedidos', [AdminOrderController::class, 'index'])->name('orders.index');
         Route::post('/pedidos/{order}/aprobar', [AdminOrderController::class, 'approve'])->name('orders.approve');

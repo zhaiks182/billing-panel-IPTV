@@ -25,7 +25,7 @@ class AdminIdleTimeout
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
-            return redirect()->route('login')->with('status', 'Tu sesión de administrador se cerró por inactividad.');
+            return redirect()->route('admin.login')->with('status', 'Tu sesión de administrador se cerró por inactividad.');
         }
 
         $request->session()->put('admin_last_activity', time());

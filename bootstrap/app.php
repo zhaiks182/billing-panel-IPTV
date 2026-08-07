@@ -16,7 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'admin.timeout' => \App\Http\Middleware\AdminIdleTimeout::class,
+            'no-admin' => \App\Http\Middleware\RedirectAuthenticatedAdmin::class,
         ]);
+
+        // Un invitado (o una sesión ya expirada) que pide una ruta protegida de
+        // /adm_4livepro/* debe caer en el login del panel, no en el /login de clientes.
+        $middleware->redirectGuestsTo(
+            fn (Request $request) => $request->is('adm_4livepro*') ? route('admin.login') : route('login')
+        );
 
         // Telegram llama a este webhook sin cookie de sesión ni token CSRF — la seguridad
         // la da el header X-Telegram-Bot-Api-Secret-Token, verificado en el controller.

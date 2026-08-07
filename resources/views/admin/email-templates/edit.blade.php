@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-admin-layout>
     <x-slot name="header">
         <div class="flex items-center gap-3">
             <h2 class="font-semibold text-xl text-paper leading-tight">{{ __('Editar plantilla') }}: {{ $template->name }}</h2>
@@ -159,4 +159,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-admin-layout>

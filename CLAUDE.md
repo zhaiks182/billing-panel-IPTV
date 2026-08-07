@@ -47,11 +47,15 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
   español vía `STATUS_MESSAGES`, Turnstile, medidor de contraseña), ver bitácora 05-08.
 - `VerifyEmailController` — **personalizado**, dispara `TrialActivator::activatePendingFor()`
   tras verificar (ver "Flujo de negocio principal", paso 4).
-- `AuthenticatedSessionController`, `ConfirmablePasswordController`,
-  `EmailVerificationNotificationController`, `EmailVerificationPromptController`,
-  `PasswordController` — sin personalizar.
+- `AuthenticatedSessionController` — **personalizado** desde 2026-08-06: `store()` rechaza
+  (desloguea + error) si el usuario autenticado resulta admin — ver "Panel de administración"
+  → "Separación completa admin/cliente".
+- `ConfirmablePasswordController`, `EmailVerificationNotificationController`,
+  `EmailVerificationPromptController`, `PasswordController` — sin personalizar.
 
 **Admin** (`app/Http/Controllers/Admin`)
+- `AuthController` — **login/logout propio del panel**, separado por completo del `/login`
+  de clientes, ver "Panel de administración" → "Separación completa admin/cliente".
 - `DashboardController` — estadísticas con filtro de fecha, ver "Panel de administración".
 - `OrderController` — aprobar/rechazar/reintentar pedidos, ver "Flujo de negocio principal".
 - `PackageController`, `PackageCategoryController`, `PaymentMethodController` — CRUD estándar
@@ -80,6 +84,20 @@ cliente/invitado crea o responde un ticket, encolados porque bloqueaban la respu
 varios segundos), `SendAdminReplyTelegramNotice`, `SendTicketClosedTelegramNotice` (solo
 Telegram, cuando el **admin** responde o cierra un ticket — antes esas dos acciones no
 avisaban nada a Telegram, solo mandaban el correo al cliente).
+
+**Layouts** (`resources/views/layouts`, componentes en `app/View/Components`) — desde
+2026-08-06 hay dos layouts totalmente separados, ver "Panel de administración" →
+"Separación completa admin/cliente":
+- `app.blade.php` (`<x-app-layout>`) + `navigation.blade.php` — sitio de clientes (tienda,
+  checkout, mis pedidos, tickets como cliente). Ya no tiene absolutamente nada de admin.
+- `guest.blade.php` (`<x-guest-layout>`) — card centrada de Breeze, usada por
+  `admin/auth/login.blade.php`... **no**, ver el siguiente punto, no confundir.
+- `admin.blade.php` (`<x-admin-layout>`) + `admin-navigation.blade.php` — panel admin
+  completo, con el sidebar segmentado por categoría. Todas las ~20 vistas bajo
+  `resources/views/admin/**` (excepto `admin/auth/login.blade.php`) usan este layout.
+- `admin-guest.blade.php` (`<x-admin-guest-layout>`) — card centrada exclusiva para
+  `admin/auth/login.blade.php`, mismo patrón visual que `guest.blade.php` pero sin ningún
+  enlace a la tienda ni al `<x-whatsapp-button>`.
 
 **Servicios** (`app/Services`)
 - `InvoicePdfService` — genera el PDF de factura con dompdf, ver "PDF de facturas".
@@ -112,6 +130,9 @@ negocio: `OrderObserver@created` (pedido nuevo), `LineObserver@created` (línea 
   paquete) después de verificar, en vez de mandarlo siempre a `/dashboard`.
 - `AdminIdleTimeout` — alias `admin.timeout`, mismo grupo de rutas. Cierra la sesión del
   admin tras 15 minutos sin actividad dentro del panel, ver "Panel de administración".
+- `RedirectAuthenticatedAdmin` — alias `no-admin`, desde 2026-08-06. Manda de vuelta al
+  panel a cualquier admin autenticado que caiga en una ruta de cliente; no-op para
+  invitados/clientes. Ver "Panel de administración" → "Separación completa admin/cliente".
 
 **Reglas de validación** (`app/Rules`): `ValidTurnstile` — no-op si Turnstile no está activo.
 
@@ -419,8 +440,10 @@ del formulario de registro.
   existente): guarda `admin_last_activity` (timestamp Unix) en la sesión, y si pasaron
   ≥15 minutos desde la última petición a una ruta admin, cierra la sesión
   (`Auth::guard('web')->logout()` + `session()->invalidate()` + `regenerateToken()`) y
-  redirige a `/login` con el mensaje "Tu sesión de administrador se cerró por
-  inactividad.". Cada petición admin normal actualiza el timestamp, así que la sesión se
+  redirige a `/adm_4livepro` (login del panel — ver punto siguiente, antes de la
+  separación completa redirigía al `/login` de clientes) con el mensaje "Tu sesión de
+  administrador se cerró por inactividad.". Cada petición admin normal actualiza el
+  timestamp, así que la sesión se
   mantiene mientras haya actividad — no es un límite fijo de 15 minutos desde el login.
   Probado con `curl` contra `php artisan serve` local: login real, acceso normal al panel
   (200), se adelantó `admin_last_activity` 16 minutos hacia atrás directo en la tabla
@@ -430,6 +453,129 @@ del formulario de registro.
   pedir login) — también se confirmó que dos peticiones normales con pocos segundos de
   diferencia NO cierran la sesión (la actividad reciente resetea el conteo). Sesiones de
   prueba limpiadas después.
+
+### Separación completa admin/cliente (2026-08-06)
+
+A pedido del usuario: "el usuario administrador no debe poder iniciar sesion como un
+usuario normal... el usuario admin debe tener solo su modulo de administrador, el cual
+unicamente se activara si inicia sesion a traves del enlace .../adm_4livepro". Antes, un
+admin usaba el mismo `/login` que cualquier cliente y, tras iniciar sesión, veía la MISMA
+navegación compartida (tienda + carrito + "Mis Pedidos" + un dropdown "Admin" agregado al
+final). Se planificó con `EnterPlanMode`/`AskUserQuestion` antes de tocar código (backup
+primero: tag de git `pre-admin-separation-2026-08-06`, subido a GitHub). Decisiones
+confirmadas con el usuario: login separado en `/adm_4livepro` (no el `/login` compartido),
+y el rediseño de frontend limitado al panel admin — la tienda/checkout no se tocaron.
+
+**Login del panel, separado del de clientes**
+- [`Admin\AuthController`](app/Http/Controllers/Admin/AuthController.php) — nuevo, reemplaza
+  el uso de `AuthenticatedSessionController` para admins. `create()` (`GET /adm_4livepro`,
+  **sin** middleware `auth`/`admin`) actúa de portero: invitado → muestra el login del
+  panel; autenticado y `isAdmin()` → redirige a `admin.dashboard`; autenticado pero no admin
+  (un cliente) → `403`. `store()` reutiliza
+  [`App\Http\Requests\Auth\LoginRequest`](app/Http/Requests/Auth/LoginRequest.php) tal cual
+  (rate-limit + Turnstile + `Auth::attempt`, no sabe nada de roles) y **rechaza** con
+  logout+error si el usuario autenticado no es admin ("Estas credenciales no tienen acceso
+  al panel de administración."). `destroy()` (`POST /adm_4livepro/logout`) cierra sesión y
+  redirige a `admin.login`, no a `/`.
+- **Simétrico en el lado cliente**: `AuthenticatedSessionController::store()` (el `/login`
+  normal) ahora rechaza igual si, tras autenticar, resulta que `Auth::user()->isAdmin()` —
+  desloguea y muestra "Los administradores deben iniciar sesión desde el panel de
+  administración.". Así un admin nunca puede terminar en el dashboard de cliente ni
+  siquiera equivocándose de formulario.
+- El grupo de rutas `adm_4livepro` **salió** del `Route::middleware('auth')` de clientes
+  donde vivía anidado — ahora es un grupo de nivel superior en
+  [routes/web.php](routes/web.php), con sus propias rutas públicas (`login`, `login.store`,
+  `logout`) y un sub-grupo protegido (`auth`, `admin`, `admin.timeout`) para el resto. El
+  dashboard se movió de la raíz del prefijo (`/adm_4livepro`) a `/adm_4livepro/dashboard`,
+  porque la raíz ahora es el punto de entrada/login.
+- **Fuga cerrada con `redirectGuestsTo`**: el middleware `guest` de Laravel (usado en
+  `routes/auth.php` para `/login`, `/register`, etc.) redirige a cualquier usuario YA
+  autenticado a `route('dashboard')` sin saber nada de roles — sin nada más, un admin que
+  visitara `/login` por error rebotaría al dashboard de cliente. Y el middleware `auth`
+  redirige a un invitado sin sesión que pide una ruta protegida al `route('login')` de
+  clientes por defecto — así que un invitado pidiendo `/adm_4livepro/dashboard` a mano caería
+  en el login equivocado. Ambos casos se resuelven en
+  [bootstrap/app.php](bootstrap/app.php) con
+  `$middleware->redirectGuestsTo(fn ($request) => $request->is('adm_4livepro*') ?
+  route('admin.login') : route('login'))` — decide el destino según el path pedido, sin
+  tocar el comportamiento de `auth`/`guest` en el resto de la app.
+
+**Middleware `no-admin`**: incluso con la puerta de entrada cerrada, sigue haciendo falta
+un cierre de seguridad — si por lo que sea un admin queda autenticado y pide una página de
+cliente, no debe dejarlo pasar.
+[`App\Http\Middleware\RedirectAuthenticatedAdmin`](app/Http/Middleware/RedirectAuthenticatedAdmin.php)
+(alias `no-admin`) redirige a `admin.dashboard` si `$request->user()?->isAdmin()`, y no hace
+nada si no (invitados y clientes pasan sin tocar). Se agregó al array de middleware de:
+`/dashboard`, el grupo `auth` de clientes en `routes/web.php` (`/profile`, `/pedidos*`,
+`/tickets` índice), el grupo `auth` de `routes/auth.php` (`/verify-email*`,
+`/email/verification-notification`, `/confirm-password`, `PUT /password` — los admins ya se
+crean con `email_verified_at` seteado, así que en la práctica nunca deberían tocar estas
+rutas, pero se cubre por si acaso), y un `Route::middleware('no-admin')->group(...)` nuevo
+envolviendo las rutas de invitado (`/carro*`, `/paquetes/{package}/comprar`,
+`/tickets/nuevo`, `POST /tickets`, `/tickets/{ticket}` GET, `/tickets/{ticket}/responder`)
+que **no** exigen `auth` (soportan checkout/tickets de invitado) pero igual deben rebotar a
+un admin si resulta estar logueado. **No** se tocó: `/` y `/categoria/{slug}` (páginas
+públicas inofensivas de ver) y `POST /logout` (debe seguir cerrando sesión a cualquiera sin
+trabas). `OrderController::hasUsedTrial()` y `PackageController::index()` ya tenían ramas
+`if ($user->isAdmin())` defensivas de antes de este cambio — quedan como código muerto
+inofensivo, no se tocaron.
+
+**Rediseño del panel: navegación segmentada por categoría** (referencia visual: paneles
+admin tipo WHMCS, sidebar categorizado — el usuario compartió una URL de
+`clientes.4livepro.com` como ejemplo, que resultó ser un WHMCS real de **otro proyecto**, no
+este panel; se tomó como referencia de estilo, no se copió nada literal). Antes el admin
+veía el dropdown plano "Admin" con ~11 enlaces sin agrupar. Ahora:
+- Layout nuevo, exclusivo del panel: ver "Layouts" más arriba en este documento
+  (`<x-admin-layout>` + `admin-navigation.blade.php`).
+- Sidebar fijo en desktop, colapsable en mobile (Alpine, `x-data="{ sidebarOpen: false }"`
+  en el `<div>` raíz de `layouts/admin.blade.php`, `:class="sidebarOpen ? 'translate-x-0' :
+  '-translate-x-full'"` en el `<aside>`), segmentado en 5 grupos: **Dashboard** (link
+  directo) / **Ventas** (Pedidos, Paquetes, Categorías, Métodos de pago) / **Soporte**
+  (Tickets, con la insignia roja de pendientes que antes vivía en la nav de cliente,
+  trasladada aquí) / **Usuarios** / **Configuración** (XUI ONE, Correo, Turnstile, Telegram,
+  Plantillas de correo).
+  ⚠️ **Bug encontrado y corregido durante la prueba**: la clase estática `-translate-x-full`
+  en el `<aside>` competía con el binding dinámico `:class` de Alpine (ambas presentes a la
+  vez cuando `sidebarOpen` cambiaba), dejando el resultado visual dependiente del orden de
+  las reglas en el CSS compilado en vez de reflejar el estado real. Fix: se quitó la clase
+  estática, dejando que `:class` controle el transform por completo en los dos estados.
+  Verificado con `getComputedStyle`/CSSOM directo en el navegador (no con captura de
+  pantalla — el panel de Chrome no compositaba frames en esta sesión): en desktop (≥1024px)
+  el `<aside>` queda en `left: 0` sin transform, sin solaparse con el contenido principal
+  (`main` arranca justo en `left: 256px`); en mobile, tras un click real + espera async, el
+  `<aside>` pasa de `translateX(-256px)` a `translateX(0)` correctamente.
+- Las ~20 vistas de página completa bajo `resources/views/admin/**` cambiaron su tag raíz de
+  `<x-app-layout>` a `<x-admin-layout>` (cambio mecánico vía `sed`, conservando
+  `<x-slot name="header">` y todo el contenido tal cual). Los 3 parciales `_form.blade.php`
+  (paquetes/categorías/métodos-pago) no declaran layout propio, no se tocaron.
+- `layouts/navigation.blade.php` (nav de clientes) se **limpió por completo** de admin: se
+  quitó el dropdown "Admin" (desktop) y el link "Tickets pendientes" (mobile) — con la
+  separación de login, un admin autenticado nunca puede renderizar esta vista, así que ese
+  código quedaba muerto; se retiró en vez de dejarlo sin uso.
+- **Nota pendiente de confirmar con el usuario, no una suposición silenciosa**: `/profile`
+  (editar nombre/correo/contraseña) quedó bloqueado para el admin igual que el resto de
+  páginas de cliente (`no-admin` en el grupo `auth`), ya que técnicamente es "modo cliente".
+  Si el admin necesita cambiar su propia contraseña, hoy la única vía es
+  `php artisan app:create-admin {email} {password}` por SSH (comando ya existente,
+  idempotente) — no se agregó un "cambiar mi contraseña" dentro del panel admin en este
+  cambio.
+- **Deploy**: los layouts/vistas nuevos usan clases de Tailwind (sidebar, transforms,
+  breakpoints `lg:`) que no estaban en el `public/build` ya compilado — el deploy de este
+  cambio necesitó `./deploy.sh` **sin** `--no-build` (con `npm run build` normal), a
+  diferencia de los últimos deploys de solo-PHP de esta sesión.
+- Probado en local end-to-end con `curl` + `php artisan serve` (MySQL de Laragon levantado)
+  y el navegador: invitado en `/adm_4livepro` ve el login del panel (200, sin nada de
+  tienda); login de admin ahí cae en `/adm_4livepro/dashboard` con el sidebar nuevo; esas
+  mismas credenciales en `/login` de cliente → `422` rechazadas; admin ya logueado pidiendo
+  a mano `/dashboard`, `/carro`, `/pedidos`, `/paquetes/{slug}/comprar`, `/tickets`,
+  `/tickets/nuevo`, `/profile` → los 7 rebotan a `/adm_4livepro/dashboard`; un cliente de
+  prueba nuevo sigue entrando por `/login` sin cambios y no ve nada de admin, y si pide
+  `/adm_4livepro` a mano → `403`; timeout de 15 min simulado (adelantando
+  `admin_last_activity` en la sesión) redirige correctamente a `/adm_4livepro` con el
+  mensaje de inactividad, y una petición posterior ya no tiene sesión; logout del panel
+  (`POST /adm_4livepro/logout`) cierra sesión y redirige a `/adm_4livepro`. Usuarios/sesiones
+  de prueba eliminados después.
+
 - Dashboard, Pedidos (aprobar/rechazar/reintentar con filtros por estado y fecha)
   - El dashboard (`Admin\DashboardController`) tiene su propio filtro `date_from`/`date_to`
     (2026-08-06, a pedido del usuario) — sin fechas en el query string, por defecto usa el

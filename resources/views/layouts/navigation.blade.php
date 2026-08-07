@@ -1,8 +1,3 @@
-@php
-    $pendingTicketsCount = auth()->check() && auth()->user()->isAdmin()
-        ? \App\Models\Ticket::where('status', 'open')->count()
-        : 0;
-@endphp
 <nav x-data="{ open: false }" class="bg-panel border-b border-steel">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -37,34 +32,6 @@
                         <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
                             {{ __('Abrir Ticket') }}
                         </x-nav-link>
-
-                        @if (Auth::user()->isAdmin())
-                            <div class="flex items-center" x-data="{ open: false }" @click.outside="open = false">
-                                <button @click="open = ! open" type="button"
-                                        class="inline-flex items-center gap-1 px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none
-                                            {{ request()->routeIs('admin.*') ? 'border-brand-500 text-paper' : 'border-transparent text-dim hover:text-paper hover:border-steel' }}">
-                                    {{ __('Admin') }}
-                                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                    </svg>
-                                </button>
-                                <div x-show="open" x-transition x-cloak
-                                     class="absolute top-14 mt-2 w-56 rounded-md shadow-lg bg-panel-alt border border-steel z-50 py-1">
-                                    <x-dropdown-link :href="route('admin.dashboard')">{{ __('Dashboard') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.orders.index')">{{ __('Pedidos') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.tickets.index')">{{ __('Tickets') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.users.index')">{{ __('Usuarios') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.paquetes.index')">{{ __('Paquetes') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.categorias.index')">{{ __('Categorías') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.metodos-pago.index')">{{ __('Métodos de pago') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.xui.edit')">{{ __('Configuración XUI') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.mail.edit')">{{ __('Configuración de correo') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.turnstile.edit')">{{ __('Cloudflare Turnstile') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.telegram.edit')">{{ __('Notificaciones Telegram') }}</x-dropdown-link>
-                                    <x-dropdown-link :href="route('admin.email-templates.index')">{{ __('Plantillas de correo') }}</x-dropdown-link>
-                                </div>
-                            </div>
-                        @endif
                     @endauth
                 </div>
             </div>
@@ -72,17 +39,6 @@
             @auth
                 <!-- Settings Dropdown -->
                 <div class="hidden sm:flex sm:items-center sm:ms-6 gap-4">
-                    @if (Auth::user()->isAdmin())
-                        <a href="{{ route('admin.tickets.index', ['status' => 'open']) }}" class="relative inline-flex items-center p-2 text-dim hover:text-paper" aria-label="{{ __('Tickets pendientes') }}">
-                            <svg class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M10 2a6 6 0 00-6 6c0 1.887-.454 3.665-1.257 5.234a.75.75 0 00.515 1.076 32.91 32.91 0 003.256.508 3.5 3.5 0 006.972 0 32.903 32.903 0 003.256-.508.75.75 0 00.515-1.076A11.448 11.448 0 0116 8a6 6 0 00-6-6zM8.05 14.943a33.54 33.54 0 003.9 0 2 2 0 01-3.9 0z" clip-rule="evenodd" />
-                            </svg>
-                            @if ($pendingTicketsCount > 0)
-                                <span class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">{{ $pendingTicketsCount > 9 ? '9+' : $pendingTicketsCount }}</span>
-                            @endif
-                        </a>
-                    @endif
-
                     <a href="{{ route('cart.index') }}" class="relative inline-flex items-center p-2 text-dim hover:text-paper" aria-label="{{ __('Carrito') }}">
                         <svg class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M2.25 2.75a.75.75 0 000 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a2.25 2.25 0 002.175 1.68h6.494a2.25 2.25 0 002.19-1.75l1.202-5.25a.75.75 0 00-.73-.92H6.24l-.62-2.328A1.87 1.87 0 003.636 2.75H2.25z" />
@@ -168,17 +124,6 @@
                 @endif
             </x-responsive-nav-link>
 
-            @auth
-                @if (Auth::user()->isAdmin())
-                    <x-responsive-nav-link :href="route('admin.tickets.index', ['status' => 'open'])" :active="request()->routeIs('admin.tickets.*')">
-                        {{ __('Tickets pendientes') }}
-                        @if ($pendingTicketsCount > 0)
-                            <span class="ml-1 inline-flex px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">{{ $pendingTicketsCount }}</span>
-                        @endif
-                    </x-responsive-nav-link>
-                @endif
-            @endauth
-
             @guest
                 <x-responsive-nav-link :href="route('tickets.create')" :active="request()->routeIs('tickets.create')">
                     {{ __('Abrir Ticket') }}
@@ -195,23 +140,6 @@
                 <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
                     {{ __('Abrir Ticket') }}
                 </x-responsive-nav-link>
-                @if (Auth::user()->isAdmin())
-                    <div class="pt-2 mt-2 border-t border-steel">
-                        <p class="px-4 text-xs font-semibold text-dim-2 uppercase">{{ __('Admin') }}</p>
-                        <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">{{ __('Dashboard') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.orders.index')" :active="request()->routeIs('admin.orders.*')">{{ __('Pedidos') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.tickets.index')" :active="request()->routeIs('admin.tickets.*')">{{ __('Tickets') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.users.*')">{{ __('Usuarios') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.paquetes.index')" :active="request()->routeIs('admin.paquetes.*')">{{ __('Paquetes') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.categorias.index')" :active="request()->routeIs('admin.categorias.*')">{{ __('Categorías') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.metodos-pago.index')" :active="request()->routeIs('admin.metodos-pago.*')">{{ __('Métodos de pago') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.xui.edit')" :active="request()->routeIs('admin.xui.*')">{{ __('Configuración XUI') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.mail.edit')" :active="request()->routeIs('admin.mail.*')">{{ __('Configuración de correo') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.turnstile.edit')" :active="request()->routeIs('admin.turnstile.*')">{{ __('Cloudflare Turnstile') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.telegram.edit')" :active="request()->routeIs('admin.telegram.*')">{{ __('Notificaciones Telegram') }}</x-responsive-nav-link>
-                        <x-responsive-nav-link :href="route('admin.email-templates.index')" :active="request()->routeIs('admin.email-templates.*')">{{ __('Plantillas de correo') }}</x-responsive-nav-link>
-                    </div>
-                @endif
             @endauth
         </div>
 

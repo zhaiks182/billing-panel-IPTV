@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Auth;
+namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
@@ -11,57 +11,57 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
-class AuthenticatedSessionController extends Controller
+/**
+ * Login del panel admin, separado por completo del /login de clientes (Auth\AuthenticatedSessionController)
+ * — un admin nunca debe autenticarse por el formulario de clientes ni terminar en el
+ * dashboard de cliente. Reutiliza App\Http\Requests\Auth\LoginRequest tal cual (rate-limit +
+ * Turnstile + Auth::attempt, no sabe nada de roles); el chequeo de rol vive aquí.
+ */
+class AuthController extends Controller
 {
-    /**
-     * Display the login view.
-     */
-    public function create(Request $request): View
+    public function create(Request $request): View|RedirectResponse
     {
-        if ($request->filled('redirect')) {
-            $request->session()->put('url.intended', $request->get('redirect'));
+        if ($request->user()?->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
+        if ($request->user()) {
+            abort(403);
         }
 
         $turnstile = TurnstileSetting::current();
 
-        return view('auth.login', [
+        return view('admin.auth.login', [
             'turnstileSiteKey' => $turnstile->isActive() ? $turnstile->site_key : null,
         ]);
     }
 
-    /**
-     * Handle an incoming authentication request.
-     */
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
-        if (Auth::user()->isAdmin()) {
+        if (! Auth::user()->isAdmin()) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
 
             throw ValidationException::withMessages([
-                'email' => 'Los administradores deben iniciar sesión desde el panel de administración.',
+                'email' => 'Estas credenciales no tienen acceso al panel de administración.',
             ]);
         }
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->route('admin.dashboard');
     }
 
-    /**
-     * Destroy an authenticated session.
-     */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('admin.login')->with('status', 'Sesión cerrada correctamente.');
     }
 }

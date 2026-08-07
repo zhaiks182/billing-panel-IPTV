@@ -7,7 +7,7 @@
     $priorities = ['low' => 'Baja', 'medium' => 'Media', 'high' => 'Alta'];
     $statuses = ['open' => 'Abierto', 'answered' => 'Respondido', 'in_progress' => 'En progreso', 'closed' => 'Cerrado'];
 @endphp
-<x-app-layout>
+<x-admin-layout>
     <x-slot name="header">
         <div class="flex items-center gap-3">
             <h2 class="font-semibold text-xl text-paper leading-tight">
@@ -172,4 +172,4 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+</x-admin-layout>
