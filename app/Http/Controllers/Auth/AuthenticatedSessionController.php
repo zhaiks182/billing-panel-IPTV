@@ -46,6 +46,16 @@ class AuthenticatedSessionController extends Controller
             ]);
         }
 
+        if (Auth::user()->isBlocked()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            throw ValidationException::withMessages([
+                'email' => 'Tu cuenta ha sido bloqueada. Contacta a soporte.',
+            ]);
+        }
+
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));

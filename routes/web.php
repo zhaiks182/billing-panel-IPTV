@@ -45,10 +45,10 @@ Route::middleware('no-admin')->group(function () {
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
-    ->middleware(['auth', 'no-admin'])
+    ->middleware(['auth', 'no-admin', 'not-blocked'])
     ->name('dashboard');
 
-Route::middleware(['auth', 'no-admin'])->group(function () {
+Route::middleware(['auth', 'no-admin', 'not-blocked'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -85,7 +85,10 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::put('/configuracion-correo', [MailSettingController::class, 'update'])->name('mail.update');
 
         Route::get('/usuarios', [AdminUserController::class, 'index'])->name('users.index');
+        Route::get('/usuarios/nuevo', [AdminUserController::class, 'create'])->name('users.create');
+        Route::post('/usuarios', [AdminUserController::class, 'store'])->name('users.store');
         Route::post('/usuarios/{user}/verificar', [AdminUserController::class, 'verify'])->name('users.verify');
+        Route::post('/usuarios/{user}/bloquear', [AdminUserController::class, 'toggleBlock'])->name('users.toggle-block');
         Route::delete('/usuarios/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
 
         Route::get('/configuracion-turnstile', [TurnstileSettingController::class, 'edit'])->name('turnstile.edit');

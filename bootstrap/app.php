@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'admin.timeout' => \App\Http\Middleware\AdminIdleTimeout::class,
             'no-admin' => \App\Http\Middleware\RedirectAuthenticatedAdmin::class,
+            'not-blocked' => \App\Http\Middleware\EnsureUserIsNotBlocked::class,
         ]);
 
         // Un invitado (o una sesión ya expirada) que pide una ruta protegida de

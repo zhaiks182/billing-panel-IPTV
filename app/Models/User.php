@@ -13,6 +13,7 @@ use Illuminate\Notifications\Notifiable;
 #[Fillable([
     'name', 'first_name', 'last_name', 'email', 'password', 'phone', 'phone_country_code',
     'company', 'address_line_1', 'address_line_2', 'city', 'state', 'postal_code', 'country',
+    'role', 'is_blocked',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
@@ -30,12 +31,18 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_blocked' => 'boolean',
         ];
     }
 
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
+    }
+
+    public function isBlocked(): bool
+    {
+        return ! $this->isAdmin() && $this->is_blocked;
     }
 
     public function orders()

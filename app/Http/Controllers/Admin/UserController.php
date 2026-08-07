@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\Xui\TrialActivator;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -14,6 +16,7 @@ class UserController extends Controller
         $search = trim((string) $request->query('q'));
 
         $users = User::withCount(['orders', 'lines'])
+            ->with(['orders' => fn ($query) => $query->with('package:id,name')->latest(), 'lines' => fn ($query) => $query->latest()])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -26,6 +29,45 @@ class UserController extends Controller
             ->withQueryString();
 
         return view('admin.users.index', compact('users', 'search'));
+    }
+
+    public function create()
+    {
+        return view('admin.users.create');
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
+            'role' => ['required', Rule::in(['customer', 'admin'])],
+            'phone' => ['nullable', 'string', 'max:30'],
+        ]);
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+            'role' => $validated['role'],
+            'phone' => $validated['phone'] ?? null,
+        ]);
+
+        $user->markEmailAsVerified();
+
+        return redirect()->route('admin.users.index')->with('status', "Usuario {$user->email} creado correctamente.");
+    }
+
+    public function toggleBlock(User $user)
+    {
+        abort_if($user->isAdmin(), 403, 'No se puede bloquear a un administrador.');
+
+        $user->update(['is_blocked' => ! $user->is_blocked]);
+
+        $status = $user->is_blocked ? 'bloqueado' : 'desbloqueado';
+
+        return back()->with('status', "Usuario {$user->email} {$status} correctamente.");
     }
 
     public function verify(User $user, TrialActivator $trialActivator)
