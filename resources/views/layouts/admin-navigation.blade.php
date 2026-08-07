@@ -43,6 +43,7 @@
             </p>
             <div class="space-y-1">
                 <a href="{{ route('admin.orders.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.orders.*')) }}">{{ __('Pedidos') }}</a>
+                <a href="{{ route('admin.lines.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.lines.*')) }}">{{ __('Líneas') }}</a>
             </div>
         </div>
 

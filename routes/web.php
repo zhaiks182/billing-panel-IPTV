@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmailTemplateController;
+use App\Http\Controllers\Admin\LineController as AdminLineController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PackageCategoryController as AdminPackageCategoryController;
 use App\Http\Controllers\Admin\PackageController as AdminPackageController;
@@ -73,6 +74,15 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::post('/pedidos/{order}/aprobar', [AdminOrderController::class, 'approve'])->name('orders.approve');
         Route::post('/pedidos/{order}/rechazar', [AdminOrderController::class, 'reject'])->name('orders.reject');
         Route::post('/pedidos/{order}/reintentar', [AdminOrderController::class, 'retry'])->name('orders.retry');
+
+        Route::get('/lineas', [AdminLineController::class, 'index'])->name('lines.index');
+        Route::get('/lineas/{line}', [AdminLineController::class, 'show'])->name('lines.show');
+        Route::post('/lineas/{line}/renovar', [AdminLineController::class, 'renew'])->name('lines.renew');
+        Route::post('/lineas/{line}/sumar-dias', [AdminLineController::class, 'addDays'])->name('lines.add-days');
+        Route::post('/lineas/{line}/suspender', [AdminLineController::class, 'toggleSuspend'])->name('lines.toggle-suspend');
+        Route::post('/lineas/{line}/password', [AdminLineController::class, 'changePassword'])->name('lines.change-password');
+        Route::post('/lineas/{line}/reenviar', [AdminLineController::class, 'resend'])->name('lines.resend');
+        Route::post('/lineas/{line}/sincronizar', [AdminLineController::class, 'sync'])->name('lines.sync');
 
         Route::resource('paquetes', AdminPackageController::class)->except('show')->parameters(['paquetes' => 'package']);
         Route::resource('categorias', AdminPackageCategoryController::class)->except('show')->parameters(['categorias' => 'category']);

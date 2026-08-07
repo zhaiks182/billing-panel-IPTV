@@ -44,6 +44,19 @@ class XuiOneClient
         return $this->call('delete_line', ['id' => $xuiLineId]);
     }
 
+    /**
+     * `edit_line` está confirmado como acción real de la API (ver docblock de la clase),
+     * pero el significado exacto de sus parámetros para extender `exp_date` no se pudo
+     * verificar contra un paquete real (ver "Puntos abiertos" en CLAUDE.md) — se usa la
+     * convención más común de XUI ONE (`exp_date` en timestamp Unix, `enabled` 0/1,
+     * `password`). Verificar contra el panel real antes de confiar en esto a ciegas con
+     * un cliente de pago.
+     */
+    public function editLine(string $xuiLineId, array $params): array
+    {
+        return $this->call('edit_line', array_merge(['id' => $xuiLineId], $params));
+    }
+
     private function call(string $action, array $params = []): array
     {
         if (! $this->settings->panel_url || ! $this->settings->access_code || ! $this->settings->api_token) {

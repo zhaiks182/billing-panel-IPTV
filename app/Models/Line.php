@@ -28,4 +28,37 @@ class Line extends Model
     {
         return $this->belongsTo(Order::class);
     }
+
+    /**
+     * Estado mostrado en Admin > Líneas — no es la columna `status` cruda: "vencida"/"por
+     * vencer" se calculan comparando `expires_at` con ahora (mismo criterio ya usado en
+     * dashboard.blade.php y SendLineExpirationReminders), "suspendida" sí es el valor real
+     * de `status` (única forma de llegar ahí es la acción manual de un admin).
+     */
+    public function displayStatus(): string
+    {
+        if ($this->status === 'suspended') {
+            return 'suspended';
+        }
+
+        if (! $this->expires_at || $this->expires_at->isPast()) {
+            return 'expired';
+        }
+
+        if (now()->diffInDays($this->expires_at) <= 3) {
+            return 'expiring_soon';
+        }
+
+        return 'active';
+    }
+
+    public static function displayStatusLabels(): array
+    {
+        return [
+            'active' => 'Activa',
+            'expiring_soon' => 'Por vencer',
+            'expired' => 'Vencida',
+            'suspended' => 'Suspendida',
+        ];
+    }
 }
