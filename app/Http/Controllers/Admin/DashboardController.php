@@ -35,6 +35,14 @@ class DashboardController extends Controller
             ->where('expires_at', '>', now())
             ->count();
 
+        // No es "conexiones en vivo" real de XUI ONE — la API de reseller que usa este panel
+        // no expone eso (get_lines/live_connections devuelven vacío con esta clave, verificado
+        // 2026-08-07; ver conversación). Es la capacidad vendida (suma de max_connections de
+        // líneas activas), el dato más cercano y real que sí podemos calcular nosotros mismos.
+        $totalConnectionsCapacity = Line::where('status', 'active')
+            ->where('expires_at', '>', now())
+            ->sum('max_connections');
+
         $expiringSoon = Line::where('status', 'active')
             ->whereBetween('expires_at', [now(), now()->addDays(Line::EXPIRING_SOON_DAYS)])
             ->with(['user', 'order.package'])
@@ -47,7 +55,7 @@ class DashboardController extends Controller
 
         return view('admin.dashboard', compact(
             'pendingCount', 'errorCount', 'periodRevenue', 'expiringSoon', 'expiringSoonCount',
-            'newClientsInPeriod', 'activeLinesCount', 'recentOrders',
+            'newClientsInPeriod', 'activeLinesCount', 'totalConnectionsCapacity', 'recentOrders',
             'dateFrom', 'dateTo',
         ));
     }
