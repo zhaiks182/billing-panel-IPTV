@@ -231,7 +231,7 @@
                 <div x-show="selectedOrders" x-cloak
                      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
                      @click.self="ordersUserId = null" @keydown.escape.window="ordersUserId = null">
-                    <div class="bg-panel border border-steel rounded-lg p-6 max-w-lg w-full">
+                    <div class="bg-panel border border-steel rounded-lg p-6 max-w-md w-full">
                         <div class="flex items-start justify-between mb-4">
                             <div>
                                 <h3 class="text-lg font-semibold text-paper">{{ __('Pedidos de') }} <span x-text="selectedOrders?.name"></span></h3>
@@ -262,7 +262,7 @@
                 <div x-show="selectedLines" x-cloak
                      class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
                      @click.self="linesUserId = null" @keydown.escape.window="linesUserId = null">
-                    <div class="bg-panel border border-steel rounded-lg p-6 max-w-lg w-full">
+                    <div class="bg-panel border border-steel rounded-lg p-6 max-w-md w-full">
                         <div class="flex items-start justify-between mb-4">
                             <div>
                                 <h3 class="text-lg font-semibold text-paper">{{ __('Líneas de') }} <span x-text="selectedLines?.name"></span></h3>
