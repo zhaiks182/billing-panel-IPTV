@@ -18,8 +18,13 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(Request $request): View
     {
-        if ($request->filled('redirect')) {
-            $request->session()->put('url.intended', $request->get('redirect'));
+        $redirect = (string) $request->query('redirect', '');
+
+        // Solo se acepta una ruta local (empieza con "/" y no "//", que un navegador trata
+        // como protocol-relative a otro host) — evita que un enlace tipo /login?redirect=
+        // https://evil.com termine mandando al usuario a un sitio externo tras iniciar sesión.
+        if ($redirect !== '' && str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//')) {
+            $request->session()->put('url.intended', $redirect);
         }
 
         $turnstile = TurnstileSetting::current();
@@ -58,7 +63,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return $this->intendedRedirect(route('dashboard', absolute: false));
     }
 
     /**
