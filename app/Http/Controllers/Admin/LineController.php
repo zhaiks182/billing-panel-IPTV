@@ -43,6 +43,11 @@ class LineController extends Controller
             ->when($statusFilter === 'suspended', function ($query) {
                 $query->where('status', 'suspended');
             })
+            ->when($statusFilter === 'demo', function ($query) {
+                $query->whereHas('order.package', function ($p) {
+                    $p->where('is_trial', true);
+                });
+            })
             ->latest('expires_at')
             ->paginate(20)
             ->withQueryString();

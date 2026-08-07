@@ -13,14 +13,18 @@
                 </div>
             @endif
 
-            <div class="mb-4 flex gap-2 text-sm">
-                @foreach (['' => 'Todas', 'active' => 'Activas', 'expiring_soon' => 'Por vencer', 'expired' => 'Vencidas', 'suspended' => 'Suspendidas'] as $value => $label)
+            <div class="mb-4 flex flex-wrap gap-2 text-sm">
+                @foreach (['' => 'Todas', 'active' => 'Activas', 'expiring_soon' => 'Por vencer', 'expired' => 'Vencidas', 'suspended' => 'Suspendidas', 'demo' => 'Demos'] as $value => $label)
                     <a href="{{ route('admin.lines.index', array_filter(['status' => $value ?: null, 'q' => $search ?: null])) }}"
                        class="px-3 py-1.5 rounded-md border {{ $statusFilter === $value ? 'bg-brand-600 text-white border-brand-600' : 'bg-panel text-dim border-steel' }}">
                         {{ __($label) }}
                     </a>
                 @endforeach
             </div>
+
+            <p class="mb-4 text-sm text-dim-2">
+                {{ __(':total línea(s) en total.', ['total' => $lines->total()]) }}
+            </p>
 
             <form method="GET" action="{{ route('admin.lines.index') }}" class="mb-4 flex gap-2">
                 @if ($statusFilter !== '')
