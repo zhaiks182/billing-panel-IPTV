@@ -17,6 +17,7 @@ class LineController extends Controller
     public function index(Request $request)
     {
         $search = trim((string) $request->query('q'));
+        $statusFilter = $request->query('status', '');
 
         $lines = Line::with(['user', 'order.package'])
             ->when($search !== '', function ($query) use ($search) {
@@ -28,11 +29,25 @@ class LineController extends Controller
                         });
                 });
             })
+            ->when($statusFilter === 'active', function ($query) {
+                $query->where('status', 'active')
+                    ->where('expires_at', '>', now()->addDays(Line::EXPIRING_SOON_DAYS));
+            })
+            ->when($statusFilter === 'expiring_soon', function ($query) {
+                $query->where('status', 'active')
+                    ->whereBetween('expires_at', [now(), now()->addDays(Line::EXPIRING_SOON_DAYS)]);
+            })
+            ->when($statusFilter === 'expired', function ($query) {
+                $query->where('status', '!=', 'suspended')->where('expires_at', '<=', now());
+            })
+            ->when($statusFilter === 'suspended', function ($query) {
+                $query->where('status', 'suspended');
+            })
             ->latest('expires_at')
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.lines.index', compact('lines', 'search'));
+        return view('admin.lines.index', compact('lines', 'search', 'statusFilter'));
     }
 
     public function show(Line $line)

@@ -35,19 +35,19 @@ class DashboardController extends Controller
             ->where('expires_at', '>', now())
             ->count();
 
-        $approvedOrdersInPeriod = Order::where('status', 'approved')
-            ->whereBetween('approved_at', [$dateFrom, $dateTo])
-            ->count();
-
         $expiringSoon = Line::where('status', 'active')
-            ->whereBetween('expires_at', [now(), now()->addDays(3)])
-            ->with('user')
+            ->whereBetween('expires_at', [now(), now()->addDays(Line::EXPIRING_SOON_DAYS)])
+            ->with(['user', 'order.package'])
             ->orderBy('expires_at')
             ->get();
 
+        $expiringSoonCount = $expiringSoon->count();
+
+        $recentOrders = Order::with(['user', 'package'])->latest()->take(5)->get();
+
         return view('admin.dashboard', compact(
-            'pendingCount', 'errorCount', 'periodRevenue', 'expiringSoon',
-            'newClientsInPeriod', 'activeLinesCount', 'approvedOrdersInPeriod',
+            'pendingCount', 'errorCount', 'periodRevenue', 'expiringSoon', 'expiringSoonCount',
+            'newClientsInPeriod', 'activeLinesCount', 'recentOrders',
             'dateFrom', 'dateTo',
         ));
     }

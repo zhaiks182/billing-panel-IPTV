@@ -13,13 +13,25 @@
                 </div>
             @endif
 
+            <div class="mb-4 flex gap-2 text-sm">
+                @foreach (['' => 'Todas', 'active' => 'Activas', 'expiring_soon' => 'Por vencer', 'expired' => 'Vencidas', 'suspended' => 'Suspendidas'] as $value => $label)
+                    <a href="{{ route('admin.lines.index', array_filter(['status' => $value ?: null, 'q' => $search ?: null])) }}"
+                       class="px-3 py-1.5 rounded-md border {{ $statusFilter === $value ? 'bg-brand-600 text-white border-brand-600' : 'bg-panel text-dim border-steel' }}">
+                        {{ __($label) }}
+                    </a>
+                @endforeach
+            </div>
+
             <form method="GET" action="{{ route('admin.lines.index') }}" class="mb-4 flex gap-2">
+                @if ($statusFilter !== '')
+                    <input type="hidden" name="status" value="{{ $statusFilter }}">
+                @endif
                 <x-text-input type="text" name="q" value="{{ $search }}" placeholder="{{ __('Buscar por cliente, correo o usuario XUI...') }}" class="w-full max-w-sm" />
                 <button type="submit" class="px-4 py-2 rounded-md bg-brand-500 text-ink text-sm font-semibold hover:brightness-110">
                     {{ __('Buscar') }}
                 </button>
                 @if ($search !== '')
-                    <a href="{{ route('admin.lines.index') }}" class="px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
+                    <a href="{{ route('admin.lines.index', array_filter(['status' => $statusFilter ?: null])) }}" class="px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
                         {{ __('Limpiar') }}
                     </a>
                 @endif

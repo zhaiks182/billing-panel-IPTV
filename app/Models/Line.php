@@ -11,6 +11,12 @@ use Illuminate\Database\Eloquent\Model;
 ])]
 class Line extends Model
 {
+    /**
+     * Ventana de "por vencer" usada tanto por el badge de estado como por el dashboard
+     * y el filtro de Admin > Líneas — un solo lugar para no desincronizar los tres.
+     */
+    public const EXPIRING_SOON_DAYS = 7;
+
     protected function casts(): array
     {
         return [
@@ -45,7 +51,7 @@ class Line extends Model
             return 'expired';
         }
 
-        if (now()->diffInDays($this->expires_at) <= 3) {
+        if (now()->diffInDays($this->expires_at) <= self::EXPIRING_SOON_DAYS) {
             return 'expiring_soon';
         }
 
