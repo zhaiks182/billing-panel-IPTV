@@ -78,7 +78,12 @@
                             @forelse ($expiringSoon as $line)
                                 @php $daysLeft = (int) floor(now()->diffInDays($line->expires_at)); @endphp
                                 <tr>
-                                    <td class="px-6 py-4 text-sm text-dim">{{ $line->user->name }} ({{ $line->user->email }})</td>
+                                    <td class="px-6 py-4 text-sm text-dim">
+                                        {{ $line->user->name }} ({{ $line->user->email }})
+                                        @if ($line->order?->package?->is_trial)
+                                            <span class="ml-1 inline-flex px-1.5 py-0.5 text-xs rounded bg-amber/10 text-amber">{{ __('Demo') }}</span>
+                                        @endif
+                                    </td>
                                     <td class="px-6 py-4 text-sm font-mono text-dim">{{ $line->xui_username }}</td>
                                     <td class="px-6 py-4 text-sm text-dim-2">{{ $line->expires_at->format('d/m/Y H:i') }}</td>
                                     <td class="px-6 py-4 text-sm text-amber">{{ $daysLeft < 1 ? __('Hoy') : __(':days días', ['days' => $daysLeft]) }}</td>
