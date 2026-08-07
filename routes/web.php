@@ -26,10 +26,10 @@ Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])->
 Route::get('/', [PackageController::class, 'index'])->name('home');
 Route::get('/categoria/{category:slug}', [PackageController::class, 'category'])->name('packages.category');
 
-Route::get('/soporte/nuevo', [TicketController::class, 'create'])->name('tickets.create');
-Route::post('/soporte', [TicketController::class, 'store'])->name('tickets.store')->middleware('throttle:10,1');
-Route::get('/soporte/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
-Route::post('/soporte/{ticket}/responder', [TicketController::class, 'reply'])->name('tickets.reply')->middleware('throttle:20,1');
+Route::get('/tickets/nuevo', [TicketController::class, 'create'])->name('tickets.create');
+Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store')->middleware('throttle:10,1');
+Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');
+Route::post('/tickets/{ticket}/responder', [TicketController::class, 'reply'])->name('tickets.reply')->middleware('throttle:20,1');
 
 Route::get('/carro', [CartController::class, 'index'])->name('cart.index');
 Route::post('/carro/vaciar', [CartController::class, 'destroy'])->name('cart.destroy');
@@ -50,7 +50,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/pedidos', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/pedidos/{order}/estado', [OrderController::class, 'status'])->name('orders.status');
 
-    Route::get('/soporte', [TicketController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
 
     Route::prefix('adm_4livepro')->name('admin.')->middleware(['admin', 'admin.timeout'])->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');

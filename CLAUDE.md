@@ -574,7 +574,7 @@ confirmadas con el usuario:
 ### Acceso de invitados (sin cuenta)
 
 Un ticket de invitado se identifica por `access_token`. El acceso a
-`GET /soporte/{ticket}` se autoriza si: el usuario autenticado es el dueño
+`GET /tickets/{ticket}` se autoriza si: el usuario autenticado es el dueño
 (`$ticket->user_id === auth()->id()`), **o** el ticket es de invitado y
 `?token=` en la URL coincide con `access_token` (comparación con `hash_equals()`,
 ver `TicketController::authorizeAccess()`) — si no, `403`. El link con el token va
@@ -601,10 +601,10 @@ infraestructura nueva:
 ### Rutas y controladores
 
 Público/cliente en [`TicketController`](app/Http/Controllers/TicketController.php)
-(sin namespace `Admin`): `tickets.create`/`tickets.store` (`/soporte/nuevo`, `/soporte`,
-`throttle:10,1`), `tickets.show`/`tickets.reply` (`/soporte/{ticket}`, autorización mixta
+(sin namespace `Admin`): `tickets.create`/`tickets.store` (`/tickets/nuevo`, `/tickets`,
+`throttle:10,1`), `tickets.show`/`tickets.reply` (`/tickets/{ticket}`, autorización mixta
 auth-o-token descrita arriba, `throttle:20,1` en la respuesta), `tickets.index`
-(`/soporte`, dentro del grupo `auth` ya existente — "Mis Tickets"). Admin en
+(`/tickets`, dentro del grupo `auth` ya existente — "Mis Tickets"). Admin en
 [`Admin\TicketController`](app/Http/Controllers/Admin/TicketController.php) dentro del
 grupo `/adm_4livepro` ya existente: `index` (filtros por estado/categoría/prioridad/admin
 asignado, mismo patrón GET que `admin/orders/index.blade.php`), `show`, `reply`, `update`
@@ -918,6 +918,21 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   token incorrecto devolvió 403 (la autorización por `access_token` sigue intacta); un
   `GET /soporte/19` (el `id` viejo) devolvió 404, confirmando que ya no es una ruta
   válida — datos de prueba eliminados después.
+- **Segmento de URL cambiado de `/soporte` a `/tickets`** (2026-08-06, a pedido del
+  usuario — no quería que la URL dijera "soporte"). Mismo patrón que el cambio de
+  `/admin` a `/adm_4livepro`: solo se tocó el segmento de la URL en
+  [routes/web.php](routes/web.php) (`/soporte/nuevo`→`/tickets/nuevo`,
+  `/soporte`→`/tickets`, `/soporte/{ticket}`→`/tickets/{ticket}`,
+  `/soporte/{ticket}/responder`→`/tickets/{ticket}/responder`), los **nombres** de ruta
+  siguen siendo `tickets.*`, así que no hizo falta tocar controllers ni vistas — todos ya
+  generaban enlaces con `route('tickets.show', ...)`/`$ticket->publicUrl()`, nunca con la
+  URL escrita a mano. Solo se actualizaron las URLs de ejemplo en
+  `EmailTemplate::sampleVariables()` (usadas por "Probar esta plantilla" en el editor).
+  Verificado con `php artisan route:list --path=tickets` (las 5 rutas del cliente
+  aparecen ahí) y `--path=soporte` (ya no devuelve nada); probado end-to-end en local:
+  `$ticket->publicUrl()` generó `/tickets/7195`, un `GET` real con el token correcto
+  devolvió 200 con el ticket correcto, y `/soporte/7195` devolvió 404 — datos de prueba
+  eliminados después.
 
 ## Plantillas de correo
 
