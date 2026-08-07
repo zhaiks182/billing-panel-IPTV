@@ -106,10 +106,12 @@ avisaban nada a Telegram, solo mandaban el correo al cliente).
 negocio: `OrderObserver@created` (pedido nuevo), `LineObserver@created` (línea activada).
 
 **Middleware** (`app/Http/Middleware`)
-- `EnsureUserIsAdmin` — alias `admin`, usado en el grupo de rutas `/admin`.
+- `EnsureUserIsAdmin` — alias `admin`, usado en el grupo de rutas `/adm_4livepro`.
 - `EnsureEmailIsVerified` — alias `verified` (reemplaza el de Laravel): hace lo mismo pero
   además guarda `url.intended` para regresar al usuario a donde quería ir (ej. comprar un
   paquete) después de verificar, en vez de mandarlo siempre a `/dashboard`.
+- `AdminIdleTimeout` — alias `admin.timeout`, mismo grupo de rutas. Cierra la sesión del
+  admin tras 15 minutos sin actividad dentro del panel, ver "Panel de administración".
 
 **Reglas de validación** (`app/Rules`): `ValidTurnstile` — no-op si Turnstile no está activo.
 
@@ -396,8 +398,38 @@ del formulario de registro.
   no en el seeder opcional.
 - `tickets`, `ticket_messages`, `ticket_attachments` — ver "Módulo de Tickets de Soporte".
 
-## Panel de administración (`/admin`, middleware `admin` → `EnsureUserIsAdmin`)
+## Panel de administración (`/adm_4livepro`, middleware `admin` → `EnsureUserIsAdmin`)
 
+- **URL del panel movida de `/admin` a `/adm_4livepro`** (2026-08-06, endurecimiento de
+  seguridad a pedido del usuario — dificulta que un escaneo automatizado adivine la ruta
+  del panel admin). Solo se cambió el segmento de la URL
+  (`Route::prefix('adm_4livepro')` en [routes/web.php](routes/web.php)) — los **nombres**
+  de ruta siguen siendo `admin.*` (`route('admin.dashboard')`, etc.), así que no hizo
+  falta tocar ningún controller/vista que ya usara `route('admin.xxx')` (todo el código
+  existente los usa así, ninguno tiene la URL hardcodeada). Verificado con
+  `php artisan route:list --path=admin` (ya no devuelve nada) y
+  `--path=adm_4livepro` (muestra las ~35 rutas del panel).
+- **Cierre de sesión automático tras 15 minutos de inactividad — solo para admins**
+  (2026-08-06, mismo pedido de seguridad). El resto de la app (clientes) sigue con el
+  `SESSION_LIFETIME` normal (120 min, `.env`) — se decidió así explícitamente porque un
+  cliente comprando no debería perder la sesión por distraerse, a diferencia de dejar el
+  panel admin abierto y desatendido. Implementado con
+  [`App\Http\Middleware\AdminIdleTimeout`](app/Http/Middleware/AdminIdleTimeout.php)
+  (alias `admin.timeout`, agregado al grupo de rutas admin junto al middleware `admin`
+  existente): guarda `admin_last_activity` (timestamp Unix) en la sesión, y si pasaron
+  ≥15 minutos desde la última petición a una ruta admin, cierra la sesión
+  (`Auth::guard('web')->logout()` + `session()->invalidate()` + `regenerateToken()`) y
+  redirige a `/login` con el mensaje "Tu sesión de administrador se cerró por
+  inactividad.". Cada petición admin normal actualiza el timestamp, así que la sesión se
+  mantiene mientras haya actividad — no es un límite fijo de 15 minutos desde el login.
+  Probado con `curl` contra `php artisan serve` local: login real, acceso normal al panel
+  (200), se adelantó `admin_last_activity` 16 minutos hacia atrás directo en la tabla
+  `sessions` (el payload es JSON, no PHP `serialize()`, en esta versión de Laravel) para
+  simular inactividad sin esperar de verdad, siguiente petición → redirige a `/login` con
+  el mensaje de sesión expirada, y una petición posterior ya no tiene sesión (vuelve a
+  pedir login) — también se confirmó que dos peticiones normales con pocos segundos de
+  diferencia NO cierran la sesión (la actividad reciente resetea el conteo). Sesiones de
+  prueba limpiadas después.
 - Dashboard, Pedidos (aprobar/rechazar/reintentar con filtros por estado y fecha)
   - El dashboard (`Admin\DashboardController`) tiene su propio filtro `date_from`/`date_to`
     (2026-08-06, a pedido del usuario) — sin fechas en el query string, por defecto usa el
@@ -407,7 +439,7 @@ del formulario de registro.
     período, y "líneas por vencer" sigue fija a los próximos 3 días. Mismo patrón de formulario
     GET que ya usaba `admin/orders/index.blade.php`, reutilizado tal cual.
 - CRUD de Paquetes, Categorías, Métodos de pago (resource controllers, español en las rutas:
-  `/admin/paquetes`, `/admin/categorias`, `/admin/metodos-pago`)
+  `/adm_4livepro/paquetes`, `/adm_4livepro/categorias`, `/adm_4livepro/metodos-pago`)
 - Configuración: XUI ONE, Correo (SMTP con test de envío), Turnstile (captcha Cloudflare),
   Telegram (bot notificaciones)
 - Usuarios: listar, verificar email manualmente, eliminar. La tabla no tenía cómo mostrar
@@ -418,7 +450,7 @@ del formulario de registro.
   tabla, y el modal es un `x-show` que busca por id — mismo patrón que el modal de espera del
   demo (`orders/create.blade.php`). No escala a miles de usuarios por página (manda todos los
   datos igual estén abiertos o no), pero con paginación de 20 no es un problema.
-- Plantillas de correo (`/admin/plantillas-correo`): ver sección dedicada abajo.
+- Plantillas de correo (`/adm_4livepro/plantillas-correo`): ver sección dedicada abajo.
 
 ## Bot de Telegram: comando `/ventashoy` y resumen automático (2026-08-06)
 
@@ -574,7 +606,7 @@ Público/cliente en [`TicketController`](app/Http/Controllers/TicketController.p
 auth-o-token descrita arriba, `throttle:20,1` en la respuesta), `tickets.index`
 (`/soporte`, dentro del grupo `auth` ya existente — "Mis Tickets"). Admin en
 [`Admin\TicketController`](app/Http/Controllers/Admin/TicketController.php) dentro del
-grupo `/admin` ya existente: `index` (filtros por estado/categoría/prioridad/admin
+grupo `/adm_4livepro` ya existente: `index` (filtros por estado/categoría/prioridad/admin
 asignado, mismo patrón GET que `admin/orders/index.blade.php`), `show`, `reply`, `update`
 (categoría/prioridad/estado/admin asignado/solución — exige `resolution` si `status =
 closed` vía `required_if`).
@@ -806,7 +838,7 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   encontrar uno no usado (`generateNumber()`). Es lo único que se muestra al
   cliente/admin como "Ticket #XXXX" — en correos, Telegram, listados y el detalle del
   ticket. **El `id` interno sigue siendo la clave real** para las URLs
-  (`/soporte/{id}`, `/admin/tickets/{id}`) y las relaciones (`ticket_messages.ticket_id`,
+  (`/soporte/{id}`, `/adm_4livepro/tickets/{id}`) y las relaciones (`ticket_messages.ticket_id`,
   etc.) — no se tocó el route model binding ni ninguna FK, solo lo que se **muestra**.
   - Columna `ticket_number` (migración
     `2026_08_06_170000_add_ticket_number_to_tickets_table.php`) es `nullable` a nivel de
@@ -920,7 +952,7 @@ versión en texto plano con un botón para regenerarla desde el HTML).
   migración anterior: si se vuelve a correr después de que el admin edite las plantillas a
   mano, las sobreescribe.
 - **"Probar esta plantilla"**: cada editor tiene un envío de prueba real (`EmailTemplateController@test`,
-  ruta `POST /admin/plantillas-correo/{template}/probar`). Envía el asunto/HTML/texto que hay
+  ruta `POST /adm_4livepro/plantillas-correo/{template}/probar`). Envía el asunto/HTML/texto que hay
   **ahora mismo en el formulario** (aunque no se haya guardado, igual que "Probar conexión" de
   Telegram), sustituyendo variables con datos de ejemplo (`EmailTemplate::sampleVariables()`,
   hardcodeados por plantilla, ajustar si cambian las variables reales). El remitente **no es
@@ -1089,7 +1121,7 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   existía "Guardar y enviar mensaje de prueba", que requería guardar primero):
   - `TelegramNotifier::sendTo($botToken, $chatId, $message)` — nuevo método que envía sin
     depender de `TelegramSetting` guardado en BD.
-  - `TelegramSettingController@test` — nueva ruta `POST /admin/configuracion-telegram/probar`.
+  - `TelegramSettingController@test` — nueva ruta `POST /adm_4livepro/configuracion-telegram/probar`.
   - En la vista, el botón usa Alpine.js (`fetch`) para probar con los valores actuales del
     formulario sin necesidad de guardar antes.
   - **Bug encontrado y corregido**: usar `:disabled="testing"` sobre un componente Blade

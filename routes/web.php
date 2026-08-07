@@ -52,7 +52,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/soporte', [TicketController::class, 'index'])->name('tickets.index');
 
-    Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
+    Route::prefix('adm_4livepro')->name('admin.')->middleware(['admin', 'admin.timeout'])->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         Route::get('/pedidos', [AdminOrderController::class, 'index'])->name('orders.index');

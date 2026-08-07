@@ -197,14 +197,14 @@ class EmailTemplate extends Model
                 'category_label' => 'Canales o contenido',
                 'priority_label' => 'Media',
                 'message' => 'Desde ayer no puedo ver los canales de deportes, el resto funciona bien.',
-                'ticket_url' => url('/admin/tickets/58'),
+                'ticket_url' => url('/adm_4livepro/tickets/58'),
             ],
             'ticket_admin_reply' => [
                 'ticket_id' => '4207',
                 'subject' => 'No puedo ver algunos canales',
                 'customer_name' => 'Juan Pérez',
                 'message' => 'Gracias, ya probé de nuevo y sigue igual.',
-                'ticket_url' => url('/admin/tickets/58'),
+                'ticket_url' => url('/adm_4livepro/tickets/58'),
             ],
             default => [],
         };

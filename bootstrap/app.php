@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
+            'admin.timeout' => \App\Http\Middleware\AdminIdleTimeout::class,
         ]);
 
         // Telegram llama a este webhook sin cookie de sesión ni token CSRF — la seguridad
