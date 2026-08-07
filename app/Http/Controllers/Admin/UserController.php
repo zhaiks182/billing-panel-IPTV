@@ -21,6 +21,7 @@ class UserController extends Controller
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%");
                 });
             })
@@ -38,17 +39,24 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $isAdmin = $request->input('role') === 'admin';
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => [Rule::requiredIf(! $isAdmin), 'nullable', 'string', 'email', 'max:255', 'unique:users,email'],
+            'username' => [Rule::requiredIf($isAdmin), 'nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9_.-]+$/', 'unique:users,username'],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
             'role' => ['required', Rule::in(['customer', 'admin'])],
             'phone' => ['nullable', 'string', 'max:30'],
         ]);
 
+        // Un admin se identifica por "username" (ver App\Http\Requests\Admin\LoginRequest), no por
+        // correo — la columna `email` sigue siendo obligatoria/unica a nivel de esquema, así que se
+        // rellena con un valor interno no entregable que nunca se usa para enviar nada.
         $user = User::create([
             'name' => $validated['name'],
-            'email' => $validated['email'],
+            'email' => $isAdmin ? "{$validated['username']}@admin.local" : $validated['email'],
+            'username' => $isAdmin ? $validated['username'] : null,
             'password' => $validated['password'],
             'role' => $validated['role'],
             'phone' => $validated['phone'] ?? null,
@@ -56,7 +64,9 @@ class UserController extends Controller
 
         $user->markEmailAsVerified();
 
-        return redirect()->route('admin.users.index')->with('status', "Usuario {$user->email} creado correctamente.");
+        $label = $isAdmin ? $user->username : $user->email;
+
+        return redirect()->route('admin.users.index')->with('status', "Usuario {$label} creado correctamente.");
     }
 
     public function toggleBlock(User $user)
@@ -85,9 +95,9 @@ class UserController extends Controller
     {
         abort_if($user->id === $request->user()->id, 403, 'No puedes eliminar tu propia cuenta.');
 
-        $email = $user->email;
+        $label = $user->isAdmin() ? $user->username : $user->email;
         $user->delete();
 
-        return back()->with('status', "Usuario {$email} eliminado junto con todos sus pedidos y líneas.");
+        return back()->with('status', "Usuario {$label} eliminado junto con todos sus pedidos y líneas.");
     }
 }

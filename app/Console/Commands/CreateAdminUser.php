@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Validator;
 class CreateAdminUser extends Command
 {
     protected $signature = 'app:create-admin
-        {email : Correo del usuario administrador}
+        {username : Usuario de acceso al panel admin (sin @, no es un correo)}
         {password : Contraseña del usuario administrador}
         {--name=Administrador : Nombre para mostrar}';
 
@@ -18,13 +18,13 @@ class CreateAdminUser extends Command
 
     public function handle(): int
     {
-        $email = $this->argument('email');
+        $username = $this->argument('username');
         $password = $this->argument('password');
         $name = $this->option('name');
 
         $validator = Validator::make(
-            ['email' => $email, 'password' => $password],
-            ['email' => ['required', 'email'], 'password' => ['required', 'string', 'min:8']]
+            ['username' => $username, 'password' => $password],
+            ['username' => ['required', 'string', 'regex:/^[a-zA-Z0-9_.-]+$/'], 'password' => ['required', 'string', 'min:8']]
         );
 
         if ($validator->fails()) {
@@ -33,17 +33,26 @@ class CreateAdminUser extends Command
             return self::FAILURE;
         }
 
+        // El panel admin ya no se identifica por correo (ver App\Http\Requests\Admin\LoginRequest),
+        // pero la columna `email` sigue siendo NOT NULL/unica a nivel de esquema — se rellena con un
+        // valor interno no entregable (dominio .local) que nunca se usa para enviar nada.
         $user = User::updateOrCreate(
-            ['email' => $email],
+            ['username' => $username],
             [
                 'name' => $name,
+                'email' => "{$username}@admin.local",
                 'password' => Hash::make($password),
                 'role' => 'admin',
-                'email_verified_at' => now(),
             ]
         );
 
-        $this->info("Usuario admin listo: {$user->email} (id {$user->id}).");
+        // 'email_verified_at' no está en el mass-assignment permitido del modelo (a propósito,
+        // ver App\Models\User) — se marca aparte con el mismo método que usa el resto de la app.
+        if (! $user->hasVerifiedEmail()) {
+            $user->markEmailAsVerified();
+        }
+
+        $this->info("Usuario admin listo: {$user->username} (id {$user->id}).");
 
         return self::SUCCESS;
     }

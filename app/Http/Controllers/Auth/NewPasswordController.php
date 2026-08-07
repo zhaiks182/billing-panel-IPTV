@@ -53,6 +53,15 @@ class NewPasswordController extends Controller
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function (User $user) use ($request) {
+                // Defensa adicional: aunque PasswordResetLinkController ya no genera enlaces de
+                // reset para cuentas admin, esto cubre un token que ya hubiera sido emitido antes
+                // de ese fix. Se responde igual que un token inválido/expirado, sin distinguir.
+                if ($user->isAdmin()) {
+                    throw ValidationException::withMessages([
+                        'email' => self::STATUS_MESSAGES['passwords.token'],
+                    ]);
+                }
+
                 $user->forceFill([
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),

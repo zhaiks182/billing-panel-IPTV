@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Support\HtmlString;
 
 #[Fillable(['key', 'name', 'subject', 'html_body', 'text_body'])]
 class EmailTemplate extends Model
@@ -213,11 +214,33 @@ class EmailTemplate extends Model
     /**
      * Sustituye {{variable}} (con o sin espacios) por su valor. Las variables sin
      * valor provisto se dejan tal cual, para que un typo en el template sea visible.
+     * Sin escapar — se usa para el asunto y el texto plano, que no interpretan HTML.
      */
     public static function substitute(string $text, array $variables): string
     {
         return preg_replace_callback('/\{\{\s*(\w+)\s*\}\}/', function ($match) use ($variables) {
             return array_key_exists($match[1], $variables) ? (string) $variables[$match[1]] : $match[0];
+        }, $text);
+    }
+
+    /**
+     * Igual que substitute(), pero para el cuerpo HTML: escapa cada valor con e() antes de
+     * insertarlo, para que datos de terceros (mensaje de un ticket, nombre de invitado, dirección
+     * de facturación, etc. — varios de ellos escritos por usuarios anónimos sin cuenta) no puedan
+     * inyectar HTML en un correo que además se manda con {!! !!} (emails.template-html). Un valor
+     * envuelto en HtmlString se considera HTML ya armado a propósito (ej. "billing_address", que
+     * intencionalmente lleva <br>) y se inserta tal cual, sin escapar.
+     */
+    public static function substituteHtml(string $text, array $variables): string
+    {
+        return preg_replace_callback('/\{\{\s*(\w+)\s*\}\}/', function ($match) use ($variables) {
+            if (! array_key_exists($match[1], $variables)) {
+                return $match[0];
+            }
+
+            $value = $variables[$match[1]];
+
+            return $value instanceof HtmlString ? $value->toHtml() : e((string) $value);
         }, $text);
     }
 
@@ -244,7 +267,7 @@ class EmailTemplate extends Model
 
         return [
             'subject' => static::substitute($template->subject, $variables),
-            'html' => static::substitute($template->html_body, $variables),
+            'html' => static::substituteHtml($template->html_body, $variables),
             'text' => static::substitute($template->text_body ?: static::htmlToText($template->html_body), $variables),
         ];
     }

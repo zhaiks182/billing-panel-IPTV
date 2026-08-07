@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Admin\LoginRequest;
 use App\Models\TurnstileSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,7 +46,7 @@ class AuthController extends Controller
             $request->session()->regenerateToken();
 
             throw ValidationException::withMessages([
-                'email' => 'Estas credenciales no tienen acceso al panel de administración.',
+                'username' => 'Estas credenciales no tienen acceso al panel de administración.',
             ]);
         }
 

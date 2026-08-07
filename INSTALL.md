@@ -43,11 +43,13 @@ Para solo revisar sin instalar nada:
   base de datos y un usuario dedicado (no usa `root` para la app) restringido a `127.0.0.1`.
 - **Usuario y clave administradora del sistema**: es la cuenta con la que inicias sesión en
   `/adm_4livepro` dentro del panel (rol `admin` en la tabla `users`), **no** tiene relación con el
-  usuario de MySQL ni con el usuario del sistema operativo. El seeder de datos de ejemplo
+  usuario de MySQL ni con el usuario del sistema operativo. Se identifica por un **usuario simple
+  (sin `@`, no es un correo)** — el login del panel admin no usa correo electrónico a propósito,
+  para no depender de una bandeja real (ver `CLAUDE.md`). El seeder de datos de ejemplo
   (`database/seeders/DatabaseSeeder.php`) ya **no** crea ningún usuario — el admin se crea
-  siempre con el comando dedicado `php artisan app:create-admin {email} {password}
+  siempre con el comando dedicado `php artisan app:create-admin {username} {password}
   --name="..."`, que el script llama automáticamente con los datos que le des. Este comando
-  es idempotente: si el correo ya existe, actualiza su contraseña y lo vuelve admin.
+  es idempotente: si el usuario ya existe, actualiza su contraseña y lo vuelve admin.
 
 ## Uso
 
@@ -59,7 +61,7 @@ sudo ./install.sh
 ```
 
 Te va a preguntar, en este orden: directorio de instalación, dominio, nombre/usuario/clave de
-la base de datos, y nombre/correo/clave del administrador. Deja la clave en blanco para que se
+la base de datos, y nombre/usuario/clave del administrador. Deja la clave en blanco para que se
 genere una segura automáticamente. Al final, todo queda resumido en
 `<directorio-instalación>/install-credentials.txt` (permisos `600`) — cópialo a un lugar seguro
 y bórralo del servidor.
@@ -71,7 +73,7 @@ sudo ./install.sh -y \
   --install-dir=/var/www/facturacion.clientex.com \
   --domain=facturacion.clientex.com \
   --db-name=billing_clientex --db-user=billing_clientex --db-pass='...' \
-  --admin-name="Administrador" --admin-email=admin@clientex.com --admin-pass='...' \
+  --admin-name="Administrador" --admin-username=adm_clientex --admin-pass='...' \
   --mysql-root-pass='...'
 ```
 
@@ -101,7 +103,7 @@ ejemplo, además de la base de datos vacía).
 
 ## Después de instalar
 
-- Entra a `https://tu-dominio/adm_4livepro` con el correo/clave de administrador.
+- Entra a `https://tu-dominio/adm_4livepro` con el usuario/clave de administrador.
 - Configura desde el panel (`Admin > Configuración`): XUI ONE, correo SMTP, Telegram, Turnstile
   — estos valores viven en la base de datos, no en `.env` (ver modelo de datos en
   [CLAUDE.md](CLAUDE.md)).

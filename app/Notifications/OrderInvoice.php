@@ -8,6 +8,7 @@ use App\Services\InvoicePdfService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 
 /**
  * Se envía dos veces en el ciclo de vida de un pedido de pago: al crearse (estado
@@ -58,7 +59,7 @@ class OrderInvoice extends Notification
             'status_label' => $statusLabel,
             'intro_text' => $introText,
             'issued_date' => $this->order->created_at->format('d/m/Y'),
-            'billing_address' => $this->billingAddressLines($notifiable, '<br>'),
+            'billing_address' => new HtmlString($this->billingAddressLines($notifiable, '<br>', escape: true)),
             'billing_address_text' => $this->billingAddressLines($notifiable, "\n"),
             'orders_url' => route('orders.index'),
         ])->attachData($pdf->generate($this->order), $pdf->filename($this->order), [
@@ -66,13 +67,17 @@ class OrderInvoice extends Notification
         ]);
     }
 
-    private function billingAddressLines(object $user, string $separator): string
+    private function billingAddressLines(object $user, string $separator, bool $escape = false): string
     {
         $lines = array_filter([
             $user->address_line_1,
             $user->address_line_2,
             implode(', ', array_filter([$user->city, $user->state, $user->postal_code, $user->country])),
         ]);
+
+        if ($escape) {
+            $lines = array_map('e', $lines);
+        }
 
         return $lines ? implode($separator, $lines) : '—';
     }

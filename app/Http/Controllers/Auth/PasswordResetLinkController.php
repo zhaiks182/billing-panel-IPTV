@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\TurnstileSetting;
+use App\Models\User;
 use App\Rules\ValidTurnstile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,6 +48,15 @@ class PasswordResetLinkController extends Controller
             'email' => ['required', 'email'],
             'cf-turnstile-response' => [new ValidTurnstile],
         ]);
+
+        // El panel admin no tiene "olvidé mi contraseña" propio a propósito (la contraseña de
+        // un admin solo se cambia por SSH con `app:create-admin`, ver CLAUDE.md). Si dejáramos
+        // pasar esto, cualquiera podría tomar una cuenta admin resolviendo el reset por este
+        // flujo público de clientes. Respondemos igual que un envío exitoso para no filtrar
+        // siquiera si el correo pertenece a un admin.
+        if (User::where('email', $request->email)->where('role', 'admin')->exists()) {
+            return back()->with('status', self::STATUS_MESSAGES['passwords.sent']);
+        }
 
         // We will send the password reset link to this user. Once we have attempted
         // to send the link, we will examine the response then see the message we

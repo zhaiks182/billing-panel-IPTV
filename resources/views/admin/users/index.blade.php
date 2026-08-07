@@ -99,7 +99,9 @@
                                             {{ $user->name }}
                                         </button>
                                     </td>
-                                    <td class="px-4 py-4 text-sm text-dim">{{ $user->email }}</td>
+                                    <td class="px-4 py-4 text-sm text-dim">
+                                        {{ $user->isAdmin() ? $user->username : $user->email }}
+                                    </td>
                                     <td class="px-4 py-4 text-sm text-dim">
                                         {{ $user->phone_country_code }} {{ $user->phone }}
                                     </td>
@@ -160,7 +162,7 @@
                                         @endunless
                                         @if ($user->id !== auth()->id())
                                             <form method="POST" action="{{ route('admin.users.destroy', $user) }}"
-                                                  onsubmit="return confirm('¿Eliminar permanentemente a {{ $user->email }}? Se borrarán también sus {{ $user->orders_count }} pedido(s) y {{ $user->lines_count }} línea(s). Esta acción no se puede deshacer.')">
+                                                  onsubmit="return confirm('¿Eliminar permanentemente a {{ $user->isAdmin() ? $user->username : $user->email }}? Se borrarán también sus {{ $user->orders_count }} pedido(s) y {{ $user->lines_count }} línea(s). Esta acción no se puede deshacer.')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button class="text-red-500 hover:underline">{{ __('Eliminar') }}</button>

@@ -10,7 +10,7 @@
 #     --install-dir=/var/www/billing-panel \
 #     --domain=facturacion.midominio.com \
 #     --db-name=billing_panel --db-user=billing_panel --db-pass='...' \
-#     --admin-name="Administrador" --admin-email=admin@midominio.com --admin-pass='...'
+#     --admin-name="Administrador" --admin-username=adm_panel --admin-pass='...'
 #
 # Solo verificar prerrequisitos, sin instalar nada:
 #   ./install.sh --check
@@ -39,7 +39,7 @@ DB_NAME="billing_panel"
 DB_USER="billing_panel"
 DB_PASS=""
 ADMIN_NAME="Administrador"
-ADMIN_EMAIL=""
+ADMIN_USERNAME=""
 ADMIN_PASS=""
 NON_INTERACTIVE=0
 SETUP_APACHE=""
@@ -63,7 +63,7 @@ for arg in "$@"; do
         --db-user=*) DB_USER="${arg#*=}" ;;
         --db-pass=*) DB_PASS="${arg#*=}" ;;
         --admin-name=*) ADMIN_NAME="${arg#*=}" ;;
-        --admin-email=*) ADMIN_EMAIL="${arg#*=}" ;;
+        --admin-username=*) ADMIN_USERNAME="${arg#*=}" ;;
         --admin-pass=*) ADMIN_PASS="${arg#*=}" ;;
         --mysql-root-pass=*) MYSQL_ROOT_PASS="${arg#*=}" ;;
         --with-apache) SETUP_APACHE=1 ;;
@@ -176,7 +176,7 @@ DB_PASS="$(ask_secret "  Clave del usuario de la base de datos" "$DB_PASS")"
 
 echo -e "\nUsuario administrador del sistema (para iniciar sesión en el panel). Mismo cuidado con la clave:"
 ADMIN_NAME="$(ask "  Nombre" "$ADMIN_NAME")"
-ADMIN_EMAIL="$(ask "  Correo" "${ADMIN_EMAIL:-admin@$DOMAIN}")"
+ADMIN_USERNAME="$(ask "  Usuario (sin @, no es un correo)" "${ADMIN_USERNAME:-admin}")"
 ADMIN_PASS="$(ask_secret "  Clave" "$ADMIN_PASS")"
 
 if [ -z "$SETUP_APACHE" ]; then
@@ -202,7 +202,7 @@ echo -e "\n${C_BLUE}Resumen:${C_RESET}"
 echo "  Directorio:  $INSTALL_DIR"
 echo "  Dominio:     $DOMAIN"
 echo "  Base datos:  $DB_NAME (usuario: $DB_USER)"
-echo "  Admin:       $ADMIN_EMAIL"
+echo "  Admin:       $ADMIN_USERNAME"
 echo "  Apache:      $([ "$SETUP_APACHE" = 1 ] && echo sí || echo no)"
 echo "  Build npm:   $([ "$BUILD_ASSETS" = 1 ] && echo sí || echo no)"
 echo "  Seed demo:   $([ "$RUN_SEED" = 1 ] && echo sí || echo no)"
@@ -293,7 +293,7 @@ if [ "$RUN_SEED" = 1 ]; then
 fi
 
 step "Creando usuario administrador"
-php artisan app:create-admin "$ADMIN_EMAIL" "$ADMIN_PASS" --name="$ADMIN_NAME"
+php artisan app:create-admin "$ADMIN_USERNAME" "$ADMIN_PASS" --name="$ADMIN_NAME"
 
 if [ "$BUILD_ASSETS" = 1 ]; then
     step "Compilando assets (npm)"
@@ -372,7 +372,7 @@ Base de datos:
   Clave:        ${DB_PASS}
 
 Administrador del panel:
-  Correo:       ${ADMIN_EMAIL}
+  Usuario:      ${ADMIN_USERNAME}
   Clave:        ${ADMIN_PASS}
 
 Guarda esta información en un lugar seguro (gestor de contraseñas) y luego
