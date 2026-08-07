@@ -7,37 +7,29 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-            <div class="flex flex-wrap items-start justify-between gap-4">
-                <form method="GET" action="{{ route('admin.dashboard') }}" class="flex flex-wrap items-end gap-3">
-                    <div>
-                        <x-input-label for="date_from" value="{{ __('Desde') }}" />
-                        <input id="date_from" name="date_from" type="date" value="{{ request('date_from', $dateFrom->format('Y-m-d')) }}"
-                               class="mt-1 bg-panel border-steel text-paper rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
-                    </div>
-                    <div>
-                        <x-input-label for="date_to" value="{{ __('Hasta') }}" />
-                        <input id="date_to" name="date_to" type="date" value="{{ request('date_to', $dateTo->format('Y-m-d')) }}"
-                               class="mt-1 bg-panel border-steel text-paper rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
-                    </div>
-                    <button type="submit" class="px-4 py-2 rounded-md bg-brand-500 text-ink text-sm font-semibold hover:brightness-110">
-                        {{ __('Filtrar') }}
-                    </button>
-                    @if (request('date_from') || request('date_to'))
-                        <a href="{{ route('admin.dashboard') }}" class="px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
-                            {{ __('Quitar fechas (mes actual)') }}
-                        </a>
-                    @endif
-                    <p class="text-xs text-dim-2 basis-full">
-                        {{ __('Los ingresos y clientes nuevos de abajo corresponden al período :from – :to.', ['from' => $dateFrom->format('d/m/Y'), 'to' => $dateTo->format('d/m/Y')]) }}
-                    </p>
-                </form>
-
-                <div class="bg-panel border border-steel rounded-lg px-5 py-3 text-right shrink-0" title="{{ __('XUI ONE no expone conexiones en vivo a la clave de reseller — es la suma de conexiones permitidas en líneas activas, no uso en tiempo real.') }}">
-                    <p class="text-xs text-dim-2">{{ __('Capacidad de conexiones') }}</p>
-                    <p class="text-2xl font-bold text-paper">{{ $totalConnectionsCapacity }}</p>
-                    <p class="text-[11px] text-dim-2 mt-0.5">{{ __('conexiones permitidas · líneas activas') }}</p>
+            <form method="GET" action="{{ route('admin.dashboard') }}" class="flex flex-wrap items-end gap-3">
+                <div>
+                    <x-input-label for="date_from" value="{{ __('Desde') }}" />
+                    <input id="date_from" name="date_from" type="date" value="{{ request('date_from', $dateFrom->format('Y-m-d')) }}"
+                           class="mt-1 bg-panel border-steel text-paper rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
                 </div>
-            </div>
+                <div>
+                    <x-input-label for="date_to" value="{{ __('Hasta') }}" />
+                    <input id="date_to" name="date_to" type="date" value="{{ request('date_to', $dateTo->format('Y-m-d')) }}"
+                           class="mt-1 bg-panel border-steel text-paper rounded-md shadow-sm focus:border-brand-500 focus:ring-brand-500 text-sm">
+                </div>
+                <button type="submit" class="px-4 py-2 rounded-md bg-brand-500 text-ink text-sm font-semibold hover:brightness-110">
+                    {{ __('Filtrar') }}
+                </button>
+                @if (request('date_from') || request('date_to'))
+                    <a href="{{ route('admin.dashboard') }}" class="px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
+                        {{ __('Quitar fechas (mes actual)') }}
+                    </a>
+                @endif
+                <p class="text-xs text-dim-2 basis-full">
+                    {{ __('Los ingresos y clientes nuevos de abajo corresponden al período :from – :to.', ['from' => $dateFrom->format('d/m/Y'), 'to' => $dateTo->format('d/m/Y')]) }}
+                </p>
+            </form>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <a href="{{ route('admin.orders.index', ['status' => 'approved']) }}" class="bg-panel border border-steel rounded-lg p-6 hover:shadow-md transition">
