@@ -83,6 +83,7 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::post('/lineas/{line}/password', [AdminLineController::class, 'changePassword'])->name('lines.change-password');
         Route::post('/lineas/{line}/reenviar', [AdminLineController::class, 'resend'])->name('lines.resend');
         Route::post('/lineas/{line}/sincronizar', [AdminLineController::class, 'sync'])->name('lines.sync');
+        Route::delete('/lineas/{line}', [AdminLineController::class, 'destroy'])->name('lines.destroy');
 
         Route::resource('paquetes', AdminPackageController::class)->except('show')->parameters(['paquetes' => 'package']);
         Route::resource('categorias', AdminPackageCategoryController::class)->except('show')->parameters(['categorias' => 'category']);

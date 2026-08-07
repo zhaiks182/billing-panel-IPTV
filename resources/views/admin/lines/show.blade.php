@@ -102,7 +102,7 @@
                         <h3 class="text-sm font-semibold text-dim-2 uppercase tracking-wide mb-1">{{ __('Acciones') }}</h3>
 
                         <form method="POST" action="{{ route('admin.lines.renew', $line) }}"
-                              onsubmit="return confirm('{{ __('¿Renovar esta línea por la duración de su plan?') }}')">
+                              onsubmit="return confirm('{{ __('¿Renovar esta línea por la duración de su plan?') }}') && lockLineAction(this)">
                             @csrf
                             <button class="w-full px-4 py-2 rounded-md bg-brand-500 text-ink text-sm font-semibold hover:brightness-110">
                                 {{ __('Renovar') }}
@@ -110,7 +110,7 @@
                         </form>
 
                         <form method="POST" action="{{ route('admin.lines.apply-package', $line) }}" class="flex gap-2"
-                              onsubmit="return confirm('{{ __('¿Aplicar la duración de este paquete al vencimiento de la línea?') }}')">
+                              onsubmit="return confirm('{{ __('¿Aplicar la duración de este paquete al vencimiento de la línea?') }}') && lockLineAction(this)">
                             @csrf
                             <select name="package_id" required class="flex-1 rounded-md border-steel bg-ink text-paper text-sm shadow-sm">
                                 <option value="" disabled selected>{{ __('Elegir paquete...') }}</option>
@@ -124,7 +124,7 @@
                         </form>
 
                         <form method="POST" action="{{ route('admin.lines.toggle-suspend', $line) }}"
-                              onsubmit="return confirm('{{ $line->status === 'suspended' ? __('¿Reactivar esta línea?') : __('¿Suspender esta línea? El cliente perderá acceso al servicio.') }}')">
+                              onsubmit="return confirm('{{ $line->status === 'suspended' ? __('¿Reactivar esta línea?') : __('¿Suspender esta línea? El cliente perderá acceso al servicio.') }}') && lockLineAction(this)">
                             @csrf
                             <button class="w-full px-4 py-2 rounded-md {{ $line->status === 'suspended' ? 'bg-brand-500 text-ink hover:brightness-110' : 'bg-amber/10 text-amber hover:bg-amber/20' }} text-sm font-semibold">
                                 {{ $line->status === 'suspended' ? __('Reactivar') : __('Suspender') }}
@@ -132,7 +132,7 @@
                         </form>
 
                         <form method="POST" action="{{ route('admin.lines.change-password', $line) }}"
-                              onsubmit="return confirm('{{ __('¿Generar una nueva contraseña para esta línea? La contraseña actual dejará de funcionar.') }}')">
+                              onsubmit="return confirm('{{ __('¿Generar una nueva contraseña para esta línea? La contraseña actual dejará de funcionar.') }}') && lockLineAction(this)">
                             @csrf
                             <button class="w-full px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
                                 {{ __('Cambiar contraseña') }}
@@ -140,19 +140,30 @@
                         </form>
 
                         <form method="POST" action="{{ route('admin.lines.resend', $line) }}"
-                              onsubmit="return confirm('{{ __('¿Reenviar las credenciales por correo al cliente?') }}')">
+                              onsubmit="return confirm('{{ __('¿Reenviar las credenciales por correo al cliente?') }}') && lockLineAction(this)">
                             @csrf
                             <button class="w-full px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
                                 {{ __('Reenviar credenciales') }}
                             </button>
                         </form>
 
-                        <form method="POST" action="{{ route('admin.lines.sync', $line) }}">
+                        <form method="POST" action="{{ route('admin.lines.sync', $line) }}" onsubmit="return lockLineAction(this)">
                             @csrf
                             <button class="w-full px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
                                 {{ __('Sincronizar con XUI') }}
                             </button>
                         </form>
+
+                        <div class="pt-2 mt-2 border-t border-steel">
+                            <form method="POST" action="{{ route('admin.lines.destroy', $line) }}"
+                                  onsubmit="return confirm('{{ __('¿Eliminar esta línea? Se borrará del panel XUI ONE y de este sistema, y el cliente dejará de verla en su panel. Esta acción no se puede deshacer.') }}') && lockLineAction(this)">
+                                @csrf
+                                @method('DELETE')
+                                <button class="w-full px-4 py-2 rounded-md bg-danger/10 text-danger text-sm font-semibold hover:bg-danger/20">
+                                    {{ __('Eliminar línea') }}
+                                </button>
+                            </form>
+                        </div>
 
                         <a href="{{ route('admin.lines.index') }}" class="block text-center text-sm text-dim hover:text-paper pt-1">
                             {{ __('Volver al listado') }}
@@ -162,4 +173,18 @@
             </div>
         </div>
     </div>
+
+    <script>
+        // Evita doble clic / doble envío en las acciones (ej. "Renovar" repetido sumaría
+        // el paquete varias veces, ya que cada aplicación extiende sobre el vencimiento
+        // ya extendido) — deshabilita el botón apenas se confirma el envío del formulario.
+        function lockLineAction(form) {
+            const btn = form.querySelector('button');
+            if (btn) {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+            return true;
+        }
+    </script>
 </x-admin-layout>

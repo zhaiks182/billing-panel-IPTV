@@ -128,4 +128,17 @@ class LineController extends Controller
 
         return back()->with('status', 'Línea sincronizada con XUI ONE.');
     }
+
+    public function destroy(Line $line, XuiLineService $xui)
+    {
+        $username = $line->xui_username;
+
+        try {
+            $xui->delete($line);
+        } catch (XuiApiException $e) {
+            return back()->withErrors(['xui' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.lines.index')->with('status', "Línea {$username} eliminada. Ya no aparecerá en el panel del cliente.");
+    }
 }

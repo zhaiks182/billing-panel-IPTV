@@ -77,6 +77,20 @@ class XuiLineService
         return $line->fresh();
     }
 
+    /**
+     * Borra la línea del panel XUI ONE (si tiene xui_line_id) y del sistema local. Al no
+     * quedar el registro, deja de aparecer en "Mis Enlaces M3U" del cliente (dashboard.php
+     * lista $user->lines() sin filtro de estado) y en el listado de Admin > Líneas.
+     */
+    public function delete(Line $line): void
+    {
+        if ($line->xui_line_id) {
+            $this->client->deleteLine($line->xui_line_id);
+        }
+
+        $line->delete();
+    }
+
     public function setSuspended(Line $line, bool $suspended): Line
     {
         if ($line->xui_line_id) {
