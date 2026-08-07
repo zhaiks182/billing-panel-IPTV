@@ -11,9 +11,22 @@ use Illuminate\Support\Facades\Http;
  *
  * Formato confirmado contra un panel real: GET {panel_url}/{access_code}/?api_key=...&action=...
  * Acciones confirmadas: packages, get_line, get_lines, create_line (param: package),
- * edit_line, delete_line. El mecanismo exacto de renovación (qué campo extiende exp_date
- * en edit_line) no pudo verificarse porque el único paquete disponible al integrar tenía
- * duración 0 (paquete "Demo"/trial) — revisar con un paquete real cuando exista.
+ * edit_line, enable_line, disable_line, delete_line.
+ *
+ * Renovación de vencimiento (verificado 2026-08-07 contra un panel real, con una línea demo
+ * real creada/borrada para la prueba): `edit_line` con `exp_date` (probado como timestamp Unix,
+ * como fecha "YYYY-MM-DD", y con 6 nombres de parámetro alternativos) **no tiene ningún efecto**
+ * — la API responde éxito pero el vencimiento real no cambia. La única forma confirmada de
+ * extender el vencimiento es reenviar `package` (el mismo xui_package_id que usa create_line):
+ * el panel reaplica la duración fija de ese paquete sobre el vencimiento actual. No existe
+ * ningún mecanismo para sumar una cantidad arbitraria de días.
+ *
+ * Suspender/reactivar: `edit_line` con un parámetro `enabled` tampoco tiene efecto — son
+ * acciones separadas, `enable_line`/`disable_line`, cada una con un único parámetro `id`.
+ *
+ * `edit_line` sí funciona para `password` (verificado) y presumiblemente otros campos simples
+ * de texto/número (username, max_connections, bouquets_selected) — solo `exp_date`/`enabled`
+ * están confirmados como no-funcionales en esta instalación.
  */
 class XuiOneClient
 {
@@ -45,16 +58,23 @@ class XuiOneClient
     }
 
     /**
-     * `edit_line` está confirmado como acción real de la API (ver docblock de la clase),
-     * pero el significado exacto de sus parámetros para extender `exp_date` no se pudo
-     * verificar contra un paquete real (ver "Puntos abiertos" en CLAUDE.md) — se usa la
-     * convención más común de XUI ONE (`exp_date` en timestamp Unix, `enabled` 0/1,
-     * `password`). Verificar contra el panel real antes de confiar en esto a ciegas con
-     * un cliente de pago.
+     * Uso confirmado: `password` (cambiar contraseña) y `package` (renovar aplicando la
+     * duración fija de ese paquete). `exp_date`/`enabled` no tienen efecto — ver docblock
+     * de la clase.
      */
     public function editLine(string $xuiLineId, array $params): array
     {
         return $this->call('edit_line', array_merge(['id' => $xuiLineId], $params));
+    }
+
+    public function enableLine(string $xuiLineId): array
+    {
+        return $this->call('enable_line', ['id' => $xuiLineId]);
+    }
+
+    public function disableLine(string $xuiLineId): array
+    {
+        return $this->call('disable_line', ['id' => $xuiLineId]);
     }
 
     private function call(string $action, array $params = []): array

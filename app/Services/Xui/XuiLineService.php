@@ -4,6 +4,7 @@ namespace App\Services\Xui;
 
 use App\Models\Line;
 use App\Models\Order;
+use App\Models\Package;
 use App\Models\XuiSetting;
 use Illuminate\Support\Carbon;
 use RuntimeException;
@@ -45,17 +46,30 @@ class XuiLineService
     }
 
     /**
-     * Extiende la línea $days días (acepta fracciones, para paquetes con duración en
-     * horas) desde su vencimiento actual si sigue vigente, o desde ahora si ya venció.
-     * Reactiva la línea si estaba suspendida — renovar siempre implica volver a activarla.
+     * Extiende la línea aplicando la duración fija de $package sobre su vencimiento actual
+     * (o desde ahora si ya venció). Usado tanto por "Renovar" (con el paquete original del
+     * pedido) como por "Aplicar paquete" (con cualquier paquete elegido por el admin) — es
+     * la ÚNICA forma de extender el vencimiento que la API de XUI ONE soporta de verdad
+     * (verificado 2026-08-07 contra un panel real): no existe forma de sumar una cantidad
+     * arbitraria de días, solo de reaplicar la duración fija de un paquete completo.
+     * Reactiva la línea si estaba suspendida — aplicar un paquete siempre reactiva.
      */
-    public function renew(Line $line, float $days): Line
+    public function applyPackage(Line $line, Package $package): Line
     {
-        $base = ($line->expires_at && $line->expires_at->isFuture()) ? $line->expires_at->copy() : now();
-        $newExpiry = $base->addSeconds((int) round($days * 86400));
+        if (! $package->xui_package_id) {
+            throw new RuntimeException("El paquete «{$package->name}» no tiene un ID de paquete XUI asignado (Admin > Paquetes).");
+        }
 
         if ($line->xui_line_id) {
-            $this->client->editLine($line->xui_line_id, ['exp_date' => $newExpiry->timestamp]);
+            $this->client->editLine($line->xui_line_id, ['package' => $package->xui_package_id]);
+
+            $fresh = $this->client->getLineInfo($line->xui_line_id);
+            $newExpiry = $this->parseExpiry($fresh['exp_date'] ?? null) ?? $line->expires_at;
+        } else {
+            // Sin xui_line_id (línea de prueba o importada) — no hay nada real que consultar,
+            // se calcula localmente sumando la duración del paquete al vencimiento actual.
+            $base = ($line->expires_at && $line->expires_at->isFuture()) ? $line->expires_at->copy() : now();
+            $newExpiry = $base->addSeconds((int) round($package->durationInDays() * 86400));
         }
 
         $line->update(['expires_at' => $newExpiry, 'status' => 'active']);
@@ -66,7 +80,9 @@ class XuiLineService
     public function setSuspended(Line $line, bool $suspended): Line
     {
         if ($line->xui_line_id) {
-            $this->client->editLine($line->xui_line_id, ['enabled' => $suspended ? 0 : 1]);
+            $suspended
+                ? $this->client->disableLine($line->xui_line_id)
+                : $this->client->enableLine($line->xui_line_id);
         }
 
         $line->update(['status' => $suspended ? 'suspended' : 'active']);
@@ -119,13 +135,22 @@ class XuiLineService
         return ((int) $data['enabled']) === 1 ? 'active' : 'suspended';
     }
 
+    /**
+     * Bug real encontrado y corregido 2026-08-07: Carbon::createFromTimestamp() crea el
+     * instante en UTC por defecto. Eloquent NO normaliza a config('app.timezone') antes de
+     * guardar en la columna DATETIME — escribe la hora tal cual el objeto la tiene (UTC), pero
+     * al releerla la interpreta como si estuviera en config('app.timezone') (America/Guayaquil,
+     * UTC-5). Sin el ->setTimezone() de abajo, cada ida y vuelta por la BD sumaba 5 horas de más
+     * al vencimiento real — afectaba tanto a esta función (ya existía desde activate()) como a
+     * cualquier lectura posterior de esa misma línea.
+     */
     private function parseExpiry(mixed $expDate): ?Carbon
     {
         if (! $expDate || ! is_numeric($expDate)) {
             return null;
         }
 
-        return Carbon::createFromTimestamp((int) $expDate);
+        return Carbon::createFromTimestamp((int) $expDate)->setTimezone(config('app.timezone'));
     }
 
     private function buildM3uUrl(?string $username, ?string $password): ?string

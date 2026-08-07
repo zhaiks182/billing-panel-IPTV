@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Line;
+use App\Models\Package;
 use App\Notifications\OrderApproved;
 use App\Services\Xui\XuiApiException;
 use App\Services\Xui\XuiLineService;
@@ -37,8 +38,9 @@ class LineController extends Controller
     public function show(Line $line)
     {
         $line->load(['user', 'order.package']);
+        $packages = Package::where('is_active', true)->where('is_trial', false)->orderBy('price')->get();
 
-        return view('admin.lines.show', compact('line'));
+        return view('admin.lines.show', compact('line', 'packages'));
     }
 
     public function renew(Line $line, XuiLineService $xui)
@@ -50,27 +52,29 @@ class LineController extends Controller
         }
 
         try {
-            $xui->renew($line, $line->order->package->durationInDays());
-        } catch (XuiApiException $e) {
+            $xui->applyPackage($line, $line->order->package);
+        } catch (XuiApiException|RuntimeException $e) {
             return back()->withErrors(['xui' => $e->getMessage()]);
         }
 
         return back()->with('status', 'Línea renovada correctamente.');
     }
 
-    public function addDays(Request $request, Line $line, XuiLineService $xui)
+    public function applyPackage(Request $request, Line $line, XuiLineService $xui)
     {
         $validated = $request->validate([
-            'days' => ['required', 'integer', 'min:1', 'max:365'],
+            'package_id' => ['required', 'exists:packages,id'],
         ]);
 
+        $package = Package::findOrFail($validated['package_id']);
+
         try {
-            $xui->renew($line, (float) $validated['days']);
-        } catch (XuiApiException $e) {
+            $xui->applyPackage($line, $package);
+        } catch (XuiApiException|RuntimeException $e) {
             return back()->withErrors(['xui' => $e->getMessage()]);
         }
 
-        return back()->with('status', "Se agregaron {$validated['days']} día(s) a la línea.");
+        return back()->with('status', "Se aplicó el paquete «{$package->name}» a la línea.");
     }
 
     public function toggleSuspend(Line $line, XuiLineService $xui)

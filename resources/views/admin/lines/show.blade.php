@@ -109,12 +109,17 @@
                             </button>
                         </form>
 
-                        <form method="POST" action="{{ route('admin.lines.add-days', $line) }}" class="flex gap-2">
+                        <form method="POST" action="{{ route('admin.lines.apply-package', $line) }}" class="flex gap-2"
+                              onsubmit="return confirm('{{ __('¿Aplicar la duración de este paquete al vencimiento de la línea?') }}')">
                             @csrf
-                            <input type="number" name="days" min="1" max="365" required placeholder="{{ __('Días') }}"
-                                   class="w-24 rounded-md border-steel bg-ink text-paper text-sm shadow-sm">
-                            <button class="flex-1 px-3 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
-                                {{ __('Sumar días') }}
+                            <select name="package_id" required class="flex-1 rounded-md border-steel bg-ink text-paper text-sm shadow-sm">
+                                <option value="" disabled selected>{{ __('Elegir paquete...') }}</option>
+                                @foreach ($packages as $package)
+                                    <option value="{{ $package->id }}">{{ $package->name }}</option>
+                                @endforeach
+                            </select>
+                            <button class="px-3 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
+                                {{ __('Aplicar') }}
                             </button>
                         </form>
 

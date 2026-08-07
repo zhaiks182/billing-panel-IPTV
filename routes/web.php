@@ -78,7 +78,7 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::get('/lineas', [AdminLineController::class, 'index'])->name('lines.index');
         Route::get('/lineas/{line}', [AdminLineController::class, 'show'])->name('lines.show');
         Route::post('/lineas/{line}/renovar', [AdminLineController::class, 'renew'])->name('lines.renew');
-        Route::post('/lineas/{line}/sumar-dias', [AdminLineController::class, 'addDays'])->name('lines.add-days');
+        Route::post('/lineas/{line}/aplicar-paquete', [AdminLineController::class, 'applyPackage'])->name('lines.apply-package');
         Route::post('/lineas/{line}/suspender', [AdminLineController::class, 'toggleSuspend'])->name('lines.toggle-suspend');
         Route::post('/lineas/{line}/password', [AdminLineController::class, 'changePassword'])->name('lines.change-password');
         Route::post('/lineas/{line}/reenviar', [AdminLineController::class, 'resend'])->name('lines.resend');
