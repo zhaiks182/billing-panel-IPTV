@@ -115,7 +115,8 @@
                 {{ __('Usuarios') }}
             </p>
             <div class="space-y-1">
-                <a href="{{ route('admin.users.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.users.*')) }}">{{ __('Usuarios') }}</a>
+                <a href="{{ route('admin.users.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.users.index')) }}">{{ __('Usuarios') }}</a>
+                <a href="{{ route('admin.users.admins') }}" class="{{ $navLinkClasses(request()->routeIs('admin.users.admins')) }}">{{ __('Administradores') }}</a>
             </div>
         </div>
     </nav>

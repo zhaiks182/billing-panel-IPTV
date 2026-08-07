@@ -28,7 +28,8 @@ class DashboardController extends Controller
             ->whereBetween('approved_at', [$dateFrom, $dateTo])
             ->sum('amount');
 
-        $newClientsInPeriod = User::whereBetween('created_at', [$dateFrom, $dateTo])
+        $newClientsInPeriod = User::where('role', 'customer')
+            ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->count();
 
         $activeLinesCount = Line::where('status', 'active')

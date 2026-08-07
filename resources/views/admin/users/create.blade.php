@@ -1,12 +1,13 @@
 <x-admin-layout>
+    @php $backRoute = $defaultRole === 'admin' ? route('admin.users.admins') : route('admin.users.index'); @endphp
     <x-slot name="header">
         <div class="flex items-center gap-3">
             <h2 class="font-semibold text-xl text-paper leading-tight">{{ __('Nuevo usuario') }}</h2>
-            <x-close-link :href="route('admin.users.index')" />
+            <x-close-link :href="$backRoute" />
         </div>
     </x-slot>
 
-    <div class="py-12" x-data="{ role: '{{ old('role', 'customer') }}' }" @keydown.escape.window="window.location = '{{ route('admin.users.index') }}'">
+    <div class="py-12" x-data="{ role: '{{ old('role', $defaultRole) }}' }" @keydown.escape.window="window.location = '{{ $backRoute }}'">
         <div class="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="bg-panel border border-steel rounded-lg p-6">
                 <form method="POST" action="{{ route('admin.users.store') }}">
@@ -23,8 +24,8 @@
                         <x-input-label for="role" value="{{ __('Tipo de usuario') }}" />
                         <select id="role" name="role" x-model="role" required
                                 class="mt-1 block w-full rounded-md border-steel bg-ink text-paper shadow-sm">
-                            <option value="customer" {{ old('role', 'customer') === 'customer' ? 'selected' : '' }}>{{ __('Cliente') }}</option>
-                            <option value="admin" {{ old('role') === 'admin' ? 'selected' : '' }}>{{ __('Administrador') }}</option>
+                            <option value="customer" {{ old('role', $defaultRole) === 'customer' ? 'selected' : '' }}>{{ __('Cliente') }}</option>
+                            <option value="admin" {{ old('role', $defaultRole) === 'admin' ? 'selected' : '' }}>{{ __('Administrador') }}</option>
                         </select>
                         <x-input-error :messages="$errors->get('role')" class="mt-2" />
                     </div>
@@ -62,7 +63,7 @@
 
                     <div class="mt-6 flex items-center gap-3">
                         <x-primary-button>{{ __('Crear usuario') }}</x-primary-button>
-                        <a href="{{ route('admin.users.index') }}" class="text-sm text-dim hover:text-paper">{{ __('Cancelar') }}</a>
+                        <a href="{{ $backRoute }}" class="text-sm text-dim hover:text-paper">{{ __('Cancelar') }}</a>
                     </div>
                 </form>
             </div>

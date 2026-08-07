@@ -15,13 +15,13 @@ class UserController extends Controller
     {
         $search = trim((string) $request->query('q'));
 
-        $users = User::withCount(['orders', 'lines'])
+        $users = User::where('role', 'customer')
+            ->withCount(['orders', 'lines'])
             ->with(['orders' => fn ($query) => $query->with('package:id,name')->latest(), 'lines' => fn ($query) => $query->latest()])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('username', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%");
                 });
             })
@@ -32,9 +32,29 @@ class UserController extends Controller
         return view('admin.users.index', compact('users', 'search'));
     }
 
-    public function create()
+    public function admins(Request $request)
     {
-        return view('admin.users.create');
+        $search = trim((string) $request->query('q'));
+
+        $admins = User::where('role', 'admin')
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%");
+                });
+            })
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('admin.users.admins', compact('admins', 'search'));
+    }
+
+    public function create(Request $request)
+    {
+        $defaultRole = $request->query('role') === 'admin' ? 'admin' : 'customer';
+
+        return view('admin.users.create', compact('defaultRole'));
     }
 
     public function store(Request $request)
@@ -66,7 +86,8 @@ class UserController extends Controller
 
         $label = $isAdmin ? $user->username : $user->email;
 
-        return redirect()->route('admin.users.index')->with('status', "Usuario {$label} creado correctamente.");
+        return redirect()->route($isAdmin ? 'admin.users.admins' : 'admin.users.index')
+            ->with('status', "Usuario {$label} creado correctamente.");
     }
 
     public function toggleBlock(User $user)

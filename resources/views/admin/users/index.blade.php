@@ -82,7 +82,6 @@
                                 <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Nombre') }}</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Correo') }}</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Teléfono') }}</th>
-                                <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Rol') }}</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Verificado') }}</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Estado') }}</th>
                                 <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Pedidos') }}</th>
@@ -99,18 +98,9 @@
                                             {{ $user->name }}
                                         </button>
                                     </td>
-                                    <td class="px-4 py-4 text-sm text-dim">
-                                        {{ $user->isAdmin() ? $user->username : $user->email }}
-                                    </td>
+                                    <td class="px-4 py-4 text-sm text-dim">{{ $user->email }}</td>
                                     <td class="px-4 py-4 text-sm text-dim">
                                         {{ $user->phone_country_code }} {{ $user->phone }}
-                                    </td>
-                                    <td class="px-4 py-4 text-sm">
-                                        @if ($user->isAdmin())
-                                            <span class="inline-flex px-1.5 py-0.5 text-xs rounded bg-brand-500/10 text-brand-300">{{ __('Admin') }}</span>
-                                        @else
-                                            <span class="text-dim-2">{{ __('Cliente') }}</span>
-                                        @endif
                                     </td>
                                     <td class="px-4 py-4 text-sm">
                                         @if ($user->hasVerifiedEmail())
@@ -120,9 +110,7 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-4 text-sm">
-                                        @if ($user->isAdmin())
-                                            <span class="text-dim-2">—</span>
-                                        @elseif ($user->is_blocked)
+                                        @if ($user->is_blocked)
                                             <span class="inline-flex px-1.5 py-0.5 text-xs rounded bg-red-500/10 text-red-400">{{ __('Bloqueado') }}</span>
                                         @else
                                             <span class="inline-flex px-1.5 py-0.5 text-xs rounded bg-brand-500/10 text-brand-300">{{ __('Activo') }}</span>
@@ -151,28 +139,24 @@
                                                 <button class="text-brand-400 hover:underline">{{ __('Verificar correo') }}</button>
                                             </form>
                                         @endif
-                                        @unless ($user->isAdmin())
-                                            <form method="POST" action="{{ route('admin.users.toggle-block', $user) }}"
-                                                  onsubmit="return confirm('{{ $user->is_blocked ? '¿Desbloquear' : '¿Bloquear' }} a {{ $user->email }}?')">
-                                                @csrf
-                                                <button class="{{ $user->is_blocked ? 'text-brand-400' : 'text-amber' }} hover:underline">
-                                                    {{ $user->is_blocked ? __('Desbloquear') : __('Bloquear') }}
-                                                </button>
-                                            </form>
-                                        @endunless
-                                        @if ($user->id !== auth()->id())
-                                            <form method="POST" action="{{ route('admin.users.destroy', $user) }}"
-                                                  onsubmit="return confirm('¿Eliminar permanentemente a {{ $user->isAdmin() ? $user->username : $user->email }}? Se borrarán también sus {{ $user->orders_count }} pedido(s) y {{ $user->lines_count }} línea(s). Esta acción no se puede deshacer.')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="text-red-500 hover:underline">{{ __('Eliminar') }}</button>
-                                            </form>
-                                        @endif
+                                        <form method="POST" action="{{ route('admin.users.toggle-block', $user) }}"
+                                              onsubmit="return confirm('{{ $user->is_blocked ? '¿Desbloquear' : '¿Bloquear' }} a {{ $user->email }}?')">
+                                            @csrf
+                                            <button class="{{ $user->is_blocked ? 'text-brand-400' : 'text-amber' }} hover:underline">
+                                                {{ $user->is_blocked ? __('Desbloquear') : __('Bloquear') }}
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}"
+                                              onsubmit="return confirm('¿Eliminar permanentemente a {{ $user->email }}? Se borrarán también sus {{ $user->orders_count }} pedido(s) y {{ $user->lines_count }} línea(s). Esta acción no se puede deshacer.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="text-red-500 hover:underline">{{ __('Eliminar') }}</button>
+                                        </form>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="10" class="px-4 py-8 text-center text-dim-2">{{ __('No se encontraron usuarios.') }}</td>
+                                    <td colspan="9" class="px-4 py-8 text-center text-dim-2">{{ __('No se encontraron usuarios.') }}</td>
                                 </tr>
                             @endforelse
                         </tbody>

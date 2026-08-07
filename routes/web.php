@@ -96,6 +96,7 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::put('/configuracion-correo', [MailSettingController::class, 'update'])->name('mail.update');
 
         Route::get('/usuarios', [AdminUserController::class, 'index'])->name('users.index');
+        Route::get('/administradores', [AdminUserController::class, 'admins'])->name('users.admins');
         Route::get('/usuarios/nuevo', [AdminUserController::class, 'create'])->name('users.create');
         Route::post('/usuarios', [AdminUserController::class, 'store'])->name('users.store');
         Route::post('/usuarios/{user}/verificar', [AdminUserController::class, 'verify'])->name('users.verify');
