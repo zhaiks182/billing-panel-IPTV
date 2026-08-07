@@ -28,6 +28,11 @@ class Ticket extends Model
         return $number;
     }
 
+    public function getRouteKeyName(): string
+    {
+        return 'ticket_number';
+    }
+
     protected function casts(): array
     {
         return [

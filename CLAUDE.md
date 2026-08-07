@@ -837,9 +837,10 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   ej. `0612`), generado en `Ticket::booted()`/`static::creating()` con reintento hasta
   encontrar uno no usado (`generateNumber()`). Es lo único que se muestra al
   cliente/admin como "Ticket #XXXX" — en correos, Telegram, listados y el detalle del
-  ticket. **El `id` interno sigue siendo la clave real** para las URLs
-  (`/soporte/{id}`, `/adm_4livepro/tickets/{id}`) y las relaciones (`ticket_messages.ticket_id`,
-  etc.) — no se tocó el route model binding ni ninguna FK, solo lo que se **muestra**.
+  ticket. **El `id` interno sigue siendo la clave real** para las relaciones
+  (`ticket_messages.ticket_id`, etc.) — no se tocó ninguna FK. Las **URLs** sí usan
+  `ticket_number` desde el 2026-08-06 (ver ajuste más abajo, "el enlace debe usar el
+  número de ticket, no el id").
   - Columna `ticket_number` (migración
     `2026_08_06_170000_add_ticket_number_to_tickets_table.php`) es `nullable` a nivel de
     esquema (para no depender de `doctrine/dbal`, que este proyecto no tiene instalado y
@@ -896,6 +897,27 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   `Validator` con `resolution: null` y `status: closed` pasa la validación, el ticket
   queda `closed` con `resolution` en `NULL`, y el Job de Telegram corre sin errores con
   el texto de reemplazo — datos de prueba eliminados después.
+- **El enlace del ticket debe usar el número público (`ticket_number`), no el `id`
+  interno** (2026-08-06, a pedido del usuario: "si el ticket empieza con 7533, el enlace
+  no puede ser el 10"). Antes las URLs (`/soporte/{ticket}`,
+  `/adm_4livepro/tickets/{ticket}`) seguían usando el `id` autoincremental para el route
+  model binding aunque ya se mostrara `ticket_number` en pantalla — quedaba la
+  inconsistencia de ver "Ticket #7533" en el título pero `/soporte/10` en la URL. Fix de
+  una sola línea: `Ticket::getRouteKeyName()` devuelve `'ticket_number'` en vez del
+  `id` por defecto de Eloquent — Laravel usa esto tanto para **resolver** las rutas
+  entrantes (`{ticket}` ahora busca por `ticket_number`, no por `id`) como para
+  **generar** URLs (`route('tickets.show', $ticket)`, `$ticket->publicUrl()`, y los
+  `route('admin.tickets.show', $ticket)` de los Jobs/Notifications de Telegram/correo),
+  así que no hizo falta tocar ningún controller, vista, Job ni Notification — todos ya
+  pasaban el modelo `$ticket` completo a `route()`, nunca `$ticket->id` a mano. Las
+  relaciones internas (`ticket_messages.ticket_id`, `assigned_admin_id`, etc.) siguen
+  usando el `id` real sin ningún cambio, ya que Eloquent solo usa `getRouteKeyName()`
+  para el binding de rutas, no para las FKs. Probado en local con `php artisan serve`:
+  `$ticket->publicUrl()` generó `/soporte/6284` (el `ticket_number`, no el `id` real 19);
+  un `GET` real a esa URL con el token correcto devolvió 200 con el ticket correcto, con
+  token incorrecto devolvió 403 (la autorización por `access_token` sigue intacta); un
+  `GET /soporte/19` (el `id` viejo) devolvió 404, confirmando que ya no es una ruta
+  válida — datos de prueba eliminados después.
 
 ## Plantillas de correo
 
