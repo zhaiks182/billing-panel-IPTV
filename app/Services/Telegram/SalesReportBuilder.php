@@ -15,7 +15,7 @@ class SalesReportBuilder
     {
         $today = now()->startOfDay();
 
-        $approvedToday = Order::where('status', 'approved')
+        $approvedToday = Order::whereIn('status', ['approved', 'activated'])
             ->whereDate('approved_at', $today)
             ->with('package')
             ->get();

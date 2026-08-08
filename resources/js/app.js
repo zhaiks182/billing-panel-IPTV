@@ -57,7 +57,7 @@ window.trialGateForm = function () {
                         this.modalOpen = true;
                         this.submitting = false;
                         this.pollStatus(data.order_id);
-                    } else if (data.status === 'approved') {
+                    } else if (data.status === 'activated') {
                         this.state = 'ready';
                         this.modalOpen = true;
                         this.submitting = false;
@@ -114,7 +114,7 @@ window.trialGateForm = function () {
                 fetch(statusUrl, { headers: { Accept: 'application/json' } })
                     .then((response) => response.json())
                     .then((data) => {
-                        if (data.status === 'approved') {
+                        if (data.status === 'activated') {
                             clearInterval(this.pollTimer);
                             this.state = 'ready';
                         } else if (data.status === 'error') {

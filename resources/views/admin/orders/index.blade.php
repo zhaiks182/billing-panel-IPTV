@@ -14,7 +14,7 @@
             @endif
 
             <div class="mb-4 flex gap-2 text-sm">
-                @foreach (['' => 'Todos', 'pending' => 'Pendientes', 'approved' => 'Aprobados', 'rejected' => 'Rechazados', 'error' => 'Con error'] as $value => $label)
+                @foreach (['' => 'Todos', 'pending' => 'Pendientes', 'approved' => 'Aprobados', 'activated' => 'Activados', 'rejected' => 'Cancelados', 'error' => 'Con error'] as $value => $label)
                     <a href="{{ route('admin.orders.index', array_filter(['status' => $value ?: null, 'date_from' => request('date_from'), 'date_to' => request('date_to')])) }}"
                        class="px-3 py-1.5 rounded-md border {{ request('status', '') === $value ? 'bg-brand-600 text-white border-brand-600' : 'bg-panel text-dim border-steel' }}">
                         {{ __($label) }}
@@ -104,10 +104,12 @@
                                             @csrf
                                             <button class="text-red-700 hover:underline">{{ __('Rechazar') }}</button>
                                         </form>
-                                    @elseif ($order->status === 'error')
+                                    @elseif (in_array($order->status, ['approved', 'error']))
                                         <form method="POST" action="{{ route('admin.orders.retry', $order) }}">
                                             @csrf
-                                            <button class="text-amber-700 hover:underline">{{ __('Reintentar') }}</button>
+                                            <button class="text-amber-700 hover:underline">
+                                                {{ $order->status === 'error' ? __('Reintentar activación') : __('Activar línea') }}
+                                            </button>
                                         </form>
                                         <form method="POST" action="{{ route('admin.orders.reject', $order) }}"
                                               onsubmit="return confirm('{{ __('¿Rechazar este pedido?') }}')">

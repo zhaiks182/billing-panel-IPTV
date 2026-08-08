@@ -44,4 +44,13 @@ class Order extends Model
     {
         return $this->hasOne(Line::class);
     }
+
+    /**
+     * "Aprobado" y "Activado" representan un pago ya confirmado — la diferencia entre
+     * ambos es únicamente si la línea logró crearse en XUI o no todavía.
+     */
+    public function isPaid(): bool
+    {
+        return in_array($this->status, ['approved', 'activated'], true);
+    }
 }

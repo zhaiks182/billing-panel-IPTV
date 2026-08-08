@@ -100,6 +100,8 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::get('/usuarios/nuevo', [AdminUserController::class, 'create'])->name('users.create');
         Route::post('/usuarios', [AdminUserController::class, 'store'])->name('users.store');
         Route::get('/usuarios/{user}', [AdminUserController::class, 'show'])->name('users.show');
+        Route::get('/usuarios/{user}/editar', [AdminUserController::class, 'edit'])->name('users.edit');
+        Route::put('/usuarios/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::post('/usuarios/{user}/verificar', [AdminUserController::class, 'verify'])->name('users.verify');
         Route::post('/usuarios/{user}/bloquear', [AdminUserController::class, 'toggleBlock'])->name('users.toggle-block');
         Route::delete('/usuarios/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');

@@ -64,7 +64,7 @@
             </form>
 
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <a href="{{ route('admin.orders.index', ['status' => 'approved']) }}" class="bg-panel border border-steel rounded-lg p-6 hover:shadow-md transition">
+                <a href="{{ route('admin.orders.index', ['status' => ['approved', 'activated']]) }}" class="bg-panel border border-steel rounded-lg p-6 hover:shadow-md transition">
                     <p class="text-sm text-dim-2">{{ __('Ingresos en el período') }}</p>
                     <p class="text-3xl font-bold text-paper">${{ number_format($periodRevenue, 2) }}</p>
                 </a>

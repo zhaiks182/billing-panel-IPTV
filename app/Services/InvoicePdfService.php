@@ -18,8 +18,8 @@ class InvoicePdfService
 
         $statusLabel = match (true) {
             $order->package->is_trial => 'Prueba gratuita',
-            $order->status === 'approved' => 'Pagada',
-            $order->status === 'rejected' => 'Rechazada',
+            $order->status === 'activated' => 'Pagada',
+            $order->status === 'rejected' => 'Cancelada',
             $order->status === 'error' => 'Error',
             default => 'Pendiente de pago',
         };

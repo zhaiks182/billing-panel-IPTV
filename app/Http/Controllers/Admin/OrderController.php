@@ -16,7 +16,7 @@ class OrderController extends Controller
     public function index(Request $request)
     {
         $orders = Order::with(['user', 'package', 'paymentMethod'])
-            ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+            ->when($request->status, fn ($q, $status) => $q->whereIn('status', (array) $status))
             ->when($request->date_from, fn ($q, $date) => $q->whereDate('created_at', '>=', $date))
             ->when($request->date_to, fn ($q, $date) => $q->whereDate('created_at', '<=', $date))
             ->latest()
@@ -37,7 +37,7 @@ class OrderController extends Controller
 
     public function retry(Order $order, XuiLineService $xui)
     {
-        abort_unless($order->status === 'error', 404);
+        abort_unless(in_array($order->status, ['approved', 'error']), 404);
 
         $this->activate($order, $xui);
 
@@ -46,7 +46,7 @@ class OrderController extends Controller
 
     public function reject(Request $request, Order $order)
     {
-        abort_unless(in_array($order->status, ['pending', 'error']), 404);
+        abort_unless(in_array($order->status, ['pending', 'approved', 'error']), 404);
 
         $validated = $request->validate([
             'admin_note' => ['nullable', 'string', 'max:1000'],
@@ -64,17 +64,28 @@ class OrderController extends Controller
         return back()->with('status', "Pedido #{$order->id} rechazado.");
     }
 
+    /**
+     * Dos pasos reales, no uno: primero se guarda "approved" (el pago ya está confirmado,
+     * esto nunca falla porque es solo una escritura local) y recién después se intenta
+     * crear la línea en XUI. Si XUI falla, el pedido queda en "error" pero con el registro
+     * de que sí se aprobó — antes pasaba directo de "pending" a "error" sin dejar rastro de
+     * que el pago se había confirmado. Esto también protege ante una caída del servidor
+     * justo entre ambos pasos: el pedido queda en "approved" (recuperable con "Reintentar
+     * activación"), no perdido a medio camino.
+     */
     private function activate(Order $order, XuiLineService $xui): void
     {
+        $order->update([
+            'status' => 'approved',
+            'admin_note' => null,
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
         try {
             $line = $xui->activate($order);
 
-            $order->update([
-                'status' => 'approved',
-                'admin_note' => null,
-                'approved_by' => auth()->id(),
-                'approved_at' => now(),
-            ]);
+            $order->update(['status' => 'activated']);
 
             $order->user->notify(new OrderApproved($order, $line));
 

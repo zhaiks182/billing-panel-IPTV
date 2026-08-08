@@ -131,6 +131,10 @@
                 <div class="bg-panel border border-steel rounded-lg p-6 space-y-3">
                     <h3 class="text-sm font-semibold text-dim-2 uppercase tracking-wide mb-1">{{ __('Acciones') }}</h3>
 
+                    <a href="{{ route('admin.users.edit', $user) }}" class="block text-center w-full px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
+                        {{ __('Editar') }}
+                    </a>
+
                     @unless ($user->hasVerifiedEmail())
                         <form method="POST" action="{{ route('admin.users.verify', $user) }}"
                               onsubmit="return confirm('{{ __('¿Verificar manualmente el correo de este usuario? Si tiene una prueba gratis pendiente, se activará.') }}')">

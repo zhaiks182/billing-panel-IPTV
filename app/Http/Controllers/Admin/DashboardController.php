@@ -24,7 +24,9 @@ class DashboardController extends Controller
         $pendingCount = Order::where('status', 'pending')->count();
         $errorCount = Order::where('status', 'error')->count();
 
-        $periodRevenue = Order::where('status', 'approved')
+        // 'approved' y 'activated' significan lo mismo para ingresos: el pago ya se
+        // confirmó, sin importar si la línea logró crearse en XUI o no todavía.
+        $periodRevenue = Order::whereIn('status', ['approved', 'activated'])
             ->whereBetween('approved_at', [$dateFrom, $dateTo])
             ->sum('amount');
 

@@ -36,7 +36,9 @@ class OrderInvoice extends Notification
 
         $pdf = app(InvoicePdfService::class);
         $isTrial = $this->order->package->is_trial;
-        $isApproved = $this->order->status === 'approved';
+        // Esta notificación solo se dispara en creación (pending) o justo tras activar con
+        // éxito (activated) — nunca mientras está en el 'approved' intermedio previo a XUI.
+        $isApproved = $this->order->status === 'activated';
 
         $statusLabel = match (true) {
             $isTrial => 'Prueba gratuita',

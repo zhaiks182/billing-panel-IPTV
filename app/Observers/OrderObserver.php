@@ -21,7 +21,8 @@ class OrderObserver
         $statusLabel = match ($order->status) {
             'pending' => 'Pendiente',
             'approved' => 'Aprobado',
-            'rejected' => 'Rechazado',
+            'activated' => 'Activado',
+            'rejected' => 'Cancelado',
             'error' => 'Error',
             default => $order->status,
         };

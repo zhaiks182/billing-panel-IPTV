@@ -181,12 +181,12 @@ class OrderController extends Controller
         try {
             $line = $xui->activate($order);
 
-            $order->update(['status' => 'approved', 'approved_at' => now()]);
+            $order->update(['status' => 'activated', 'approved_at' => now()]);
             $user->notify(new OrderInvoice($order));
             $user->notify(new OrderApproved($order, $line));
 
             if ($request->wantsJson()) {
-                return response()->json(['status' => 'approved', 'redirect' => route('dashboard')]);
+                return response()->json(['status' => 'activated', 'redirect' => route('dashboard')]);
             }
 
             return redirect()->route('dashboard')

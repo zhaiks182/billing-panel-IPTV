@@ -35,7 +35,9 @@ class TrialActivator
         try {
             $line = $this->xui->activate($order);
 
-            $order->update(['status' => 'approved', 'approved_at' => now()]);
+            // Sin paso intermedio "approved": una prueba gratis no la aprueba un admin, se
+            // activa sola al verificar el correo — pasa directo de "pending" a "activated".
+            $order->update(['status' => 'activated', 'approved_at' => now()]);
             $user->notify(new OrderInvoice($order));
             $user->notify(new OrderApproved($order, $line));
         } catch (XuiApiException $e) {

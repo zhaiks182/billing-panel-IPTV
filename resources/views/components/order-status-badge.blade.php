@@ -3,8 +3,9 @@
 @php
     $classes = match ($status) {
         'pending' => 'bg-amber/10 text-amber',
-        'approved' => 'bg-brand-500/10 text-brand-400',
-        'rejected' => 'bg-danger/10 text-danger',
+        'approved' => 'bg-amber/10 text-amber',
+        'activated' => 'bg-brand-500/10 text-brand-400',
+        'rejected' => 'bg-steel text-dim',
         'error' => 'bg-danger/10 text-danger',
         default => 'bg-steel text-dim',
     };
@@ -12,7 +13,8 @@
     $labels = [
         'pending' => 'Pendiente',
         'approved' => 'Aprobado',
-        'rejected' => 'Rechazado',
+        'activated' => 'Activado',
+        'rejected' => 'Cancelado',
         'error' => 'Error',
     ];
 @endphp

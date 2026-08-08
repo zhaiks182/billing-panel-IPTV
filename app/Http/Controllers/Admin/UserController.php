@@ -41,6 +41,36 @@ class UserController extends Controller
         return view('admin.users.show', compact('user', 'orders', 'lines'));
     }
 
+    public function edit(User $user)
+    {
+        abort_if($user->isAdmin(), 404);
+
+        return view('admin.users.edit', compact('user'));
+    }
+
+    public function update(Request $request, User $user)
+    {
+        abort_if($user->isAdmin(), 404);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone_country_code' => ['nullable', 'string', 'max:6'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'company' => ['nullable', 'string', 'max:255'],
+            'address_line_1' => ['nullable', 'string', 'max:255'],
+            'address_line_2' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255', 'regex:/^[\pL\s\.\'-]+$/u'],
+            'state' => ['nullable', 'string', 'max:255', 'regex:/^[\pL\s\.\'-]+$/u'],
+            'postal_code' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]+$/'],
+            'country' => ['nullable', 'string', Rule::in(collect(config('countries'))->pluck('name'))],
+        ]);
+
+        $user->update($validated);
+
+        return redirect()->route('admin.users.show', $user)->with('status', 'Datos del cliente actualizados.');
+    }
+
     public function admins(Request $request)
     {
         $search = trim((string) $request->query('q'));
