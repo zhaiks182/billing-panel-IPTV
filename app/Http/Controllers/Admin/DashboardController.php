@@ -48,9 +48,11 @@ class DashboardController extends Controller
 
         // "Atención requerida": un pedido con status=error en esta app YA significa "se
         // aprobó el pago pero XUI falló al crear la línea" (ver Admin\OrderController::activate),
-        // así que es un único conteo real, no dos señales distintas.
+        // así que es un único conteo real, no dos señales distintas. Solo paquetes de pago —
+        // a pedido del usuario, una demo que vence hoy no amerita la misma urgencia.
         $linesExpiringTodayCount = Line::where('status', 'active')
             ->whereDate('expires_at', today())
+            ->whereHas('order.package', fn ($q) => $q->where('is_trial', false))
             ->count();
 
         $recentOrders = Order::with(['user', 'package'])->latest()->take(5)->get();
