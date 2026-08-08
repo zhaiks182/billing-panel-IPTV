@@ -17,7 +17,6 @@ class UserController extends Controller
 
         $users = User::where('role', 'customer')
             ->withCount(['orders', 'lines'])
-            ->with(['orders' => fn ($query) => $query->with('package:id,name')->latest(), 'lines' => fn ($query) => $query->latest()])
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -30,6 +29,16 @@ class UserController extends Controller
             ->withQueryString();
 
         return view('admin.users.index', compact('users', 'search'));
+    }
+
+    public function show(User $user)
+    {
+        abort_if($user->isAdmin(), 404);
+
+        $orders = $user->orders()->with('package')->latest()->get();
+        $lines = $user->lines()->with('order.package')->latest('expires_at')->get();
+
+        return view('admin.users.show', compact('user', 'orders', 'lines'));
     }
 
     public function admins(Request $request)

@@ -44,11 +44,18 @@ class DashboardController extends Controller
 
         $expiringSoonCount = $expiringSoon->count();
 
+        // "Atención requerida": un pedido con status=error en esta app YA significa "se
+        // aprobó el pago pero XUI falló al crear la línea" (ver Admin\OrderController::activate),
+        // así que es un único conteo real, no dos señales distintas.
+        $linesExpiringTodayCount = Line::where('status', 'active')
+            ->whereDate('expires_at', today())
+            ->count();
+
         $recentOrders = Order::with(['user', 'package'])->latest()->take(5)->get();
 
         return view('admin.dashboard', compact(
             'pendingCount', 'errorCount', 'periodRevenue', 'expiringSoon', 'expiringSoonCount',
-            'newClientsInPeriod', 'activeLinesCount', 'recentOrders',
+            'newClientsInPeriod', 'activeLinesCount', 'recentOrders', 'linesExpiringTodayCount',
             'dateFrom', 'dateTo',
         ));
     }

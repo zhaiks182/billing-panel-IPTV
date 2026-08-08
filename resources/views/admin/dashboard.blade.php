@@ -7,6 +7,38 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+            @if ($errorCount > 0 || $linesExpiringTodayCount > 0)
+                <div class="bg-amber/10 border border-amber rounded-lg p-4">
+                    <p class="flex items-center gap-2 font-semibold text-amber">
+                        <svg class="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+                        </svg>
+                        {{ __('Atención requerida') }}
+                    </p>
+                    <ul class="mt-2 space-y-1 text-sm text-paper list-disc list-inside">
+                        @if ($errorCount > 0)
+                            <li>
+                                <a href="{{ route('admin.orders.index', ['status' => 'error']) }}" class="hover:underline">
+                                    {{ __(':count pedido(s) con error de activación en XUI', ['count' => $errorCount]) }}
+                                </a>
+                            </li>
+                        @endif
+                        @if ($linesExpiringTodayCount > 0)
+                            <li>
+                                <a href="{{ route('admin.lines.index') }}" class="hover:underline">
+                                    {{ __(':count línea(s) vencen hoy', ['count' => $linesExpiringTodayCount]) }}
+                                </a>
+                            </li>
+                        @endif
+                    </ul>
+                </div>
+            @else
+                <div class="flex items-center gap-2 bg-brand-500/10 border border-brand-800 text-brand-300 rounded-lg p-4 text-sm">
+                    <span>✓</span>
+                    {{ __('No hay incidencias pendientes.') }}
+                </div>
+            @endif
+
             <form method="GET" action="{{ route('admin.dashboard') }}" class="flex flex-wrap items-end gap-3">
                 <div>
                     <x-input-label for="date_from" value="{{ __('Desde') }}" />
