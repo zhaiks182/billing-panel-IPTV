@@ -9,6 +9,17 @@ use Throwable;
 
 class TelegramNotifier
 {
+    /**
+     * Escapa &, < y > para insertar texto de terceros (nombre de cliente, asunto/mensaje de
+     * un ticket, etc.) dentro de un mensaje enviado con parse_mode=HTML — sin esto, alguien
+     * podría meter un `<a href="...">` que Telegram renderiza como link clickeable en el chat
+     * del bot, o romper el envío completo con una etiqueta inválida.
+     */
+    public static function escape(string $text): string
+    {
+        return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    }
+
     public function send(string $message): bool
     {
         $settings = TelegramSetting::current();

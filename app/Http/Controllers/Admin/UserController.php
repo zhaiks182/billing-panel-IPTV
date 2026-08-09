@@ -117,9 +117,11 @@ class UserController extends Controller
             'email' => $isAdmin ? "{$validated['username']}@admin.local" : $validated['email'],
             'username' => $isAdmin ? $validated['username'] : null,
             'password' => $validated['password'],
-            'role' => $validated['role'],
             'phone' => $validated['phone'] ?? null,
         ]);
+
+        $user->role = $validated['role'];
+        $user->save();
 
         $user->markEmailAsVerified();
 
@@ -133,7 +135,8 @@ class UserController extends Controller
     {
         abort_if($user->isAdmin(), 403, 'No se puede bloquear a un administrador.');
 
-        $user->update(['is_blocked' => ! $user->is_blocked]);
+        $user->is_blocked = ! $user->is_blocked;
+        $user->save();
 
         $status = $user->is_blocked ? 'bloqueado' : 'desbloqueado';
 

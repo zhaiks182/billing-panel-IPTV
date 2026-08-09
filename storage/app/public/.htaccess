@@ -1,0 +1,16 @@
+# Defensa en profundidad: este directorio se sirve públicamente vía el symlink public/storage
+# (comprobantes de pago, adjuntos de tickets). La validación de subida ya rechaza archivos que
+# no sean imágenes/PDF/txt reales (por contenido, no por extensión) — esto es una capa extra
+# por si esa validación llegara a fallar alguna vez: nunca ejecutar nada aquí, pase lo que pase.
+<FilesMatch "\.(php|phtml|php\d*|pht|phar|cgi|pl|py|sh|asp|aspx)$">
+    Require all denied
+</FilesMatch>
+
+# Sintaxis para Apache 2.2 (por si el VPS corriera una versión más vieja que no soporte
+# "Require all denied" de 2.4+) — inofensiva si Apache no la reconoce.
+<IfModule !mod_authz_core.c>
+    <FilesMatch "\.(php|phtml|php\d*|pht|phar|cgi|pl|py|sh|asp|aspx)$">
+        Order allow,deny
+        Deny from all
+    </FilesMatch>
+</IfModule>

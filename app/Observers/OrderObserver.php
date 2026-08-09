@@ -28,8 +28,8 @@ class OrderObserver
         };
 
         $message = "<b>{$type} #{$order->id}</b>\n"
-            ."Cliente: {$order->user->name} ({$order->user->email})\n"
-            ."Paquete: {$order->package->name}\n"
+            .'Cliente: '.TelegramNotifier::escape($order->user->name).' ('.TelegramNotifier::escape($order->user->email).")\n"
+            .'Paquete: '.TelegramNotifier::escape($order->package->name)."\n"
             ."Monto: {$amount}\n"
             ."Estado: {$statusLabel}\n\n"
             .'Aprobar pedido: '.route('admin.orders.index', ['status' => 'pending']);

@@ -42,9 +42,13 @@ class CreateAdminUser extends Command
                 'name' => $name,
                 'email' => "{$username}@admin.local",
                 'password' => Hash::make($password),
-                'role' => 'admin',
             ]
         );
+
+        // 'role' tampoco está en el mass-assignment permitido (a propósito, ver App\Models\User)
+        // — se asigna por propiedad directa, igual que 'email_verified_at' abajo.
+        $user->role = 'admin';
+        $user->save();
 
         // 'email_verified_at' no está en el mass-assignment permitido del modelo (a propósito,
         // ver App\Models\User) — se marca aparte con el mismo método que usa el resto de la app.

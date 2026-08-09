@@ -10,10 +10,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
+// role e is_blocked NO son mass-assignable a propósito (ver Admin\UserController::store()/
+// toggleBlock(), que los asignan por propiedad directa) — así ningún mass-assignment futuro
+// (p. ej. $request->all()) podría autopromover a un usuario a admin o desbloquearse.
 #[Fillable([
     'name', 'first_name', 'last_name', 'email', 'username', 'password', 'phone', 'phone_country_code',
     'company', 'address_line_1', 'address_line_2', 'city', 'state', 'postal_code', 'country',
-    'role', 'is_blocked',
 ])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail

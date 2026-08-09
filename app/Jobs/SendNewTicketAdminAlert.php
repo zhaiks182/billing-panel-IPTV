@@ -35,11 +35,11 @@ class SendNewTicketAdminAlert implements ShouldQueue
 
         $telegram->send(
             "🎫 <b>Nuevo ticket #{$ticket->ticket_number}</b>\n\n".
-            "Cliente: {$ticket->customerName()} ({$ticket->customerEmail()})\n".
+            'Cliente: '.TelegramNotifier::escape($ticket->customerName()).' ('.TelegramNotifier::escape($ticket->customerEmail()).")\n".
             "Categoría: {$ticket->categoryLabel()}\n".
             "Prioridad: {$ticket->priorityLabel()}\n".
-            "Asunto: {$ticket->subject}\n\n".
-            "Mensaje:\n{$this->firstMessage}\n\n".
+            'Asunto: '.TelegramNotifier::escape($ticket->subject)."\n\n".
+            "Mensaje:\n".TelegramNotifier::escape($this->firstMessage)."\n\n".
             'Ver ticket: '.route('admin.tickets.show', $ticket)
         );
 

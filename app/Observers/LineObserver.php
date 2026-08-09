@@ -19,9 +19,9 @@ class LineObserver
         $type = $package?->is_trial ? '🎁 Demo' : '💳 Pago';
 
         $message = "✅ <b>Línea activada ({$type})</b>\n"
-            ."Cliente: {$line->user->name} ({$line->user->email})\n"
-            .($package ? "Paquete: {$package->name}\n" : '')
-            ."Usuario XUI: {$line->xui_username}\n"
+            .'Cliente: '.TelegramNotifier::escape($line->user->name).' ('.TelegramNotifier::escape($line->user->email).")\n"
+            .($package ? 'Paquete: '.TelegramNotifier::escape($package->name)."\n" : '')
+            .'Usuario XUI: '.TelegramNotifier::escape($line->xui_username)."\n"
             ."Vence: {$line->expires_at->format('d/m/Y H:i')}";
 
         $this->telegram->send($message);
