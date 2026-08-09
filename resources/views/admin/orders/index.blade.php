@@ -23,7 +23,11 @@
             </div>
 
             <form method="GET" action="{{ route('admin.orders.index') }}" class="mb-6 flex flex-wrap items-end gap-3">
-                @if (request('status'))
+                @if (is_array(request('status')))
+                    @foreach (request('status') as $statusValue)
+                        <input type="hidden" name="status[]" value="{{ $statusValue }}">
+                    @endforeach
+                @elseif (request('status'))
                     <input type="hidden" name="status" value="{{ request('status') }}">
                 @endif
                 <div>
