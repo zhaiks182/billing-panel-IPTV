@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Line;
+use App\Models\LineActivityLog;
 use App\Models\Package;
 use App\Notifications\OrderApproved;
 use App\Services\Xui\XuiApiException;
@@ -59,8 +60,9 @@ class LineController extends Controller
     {
         $line->load(['user', 'order.package']);
         $packages = Package::where('is_active', true)->where('is_trial', false)->orderBy('price')->get();
+        $activityLogs = LineActivityLog::where('line_id', $line->id)->with('admin')->latest()->get();
 
-        return view('admin.lines.show', compact('line', 'packages'));
+        return view('admin.lines.show', compact('line', 'packages', 'activityLogs'));
     }
 
     public function renew(Line $line, XuiLineService $xui)
@@ -71,11 +73,17 @@ class LineController extends Controller
             return back()->withErrors(['xui' => 'Esta línea no tiene un pedido/paquete asociado para renovar.']);
         }
 
+        $packageName = $line->order->package->name;
+
         try {
             $xui->applyPackage($line, $line->order->package);
         } catch (XuiApiException|RuntimeException $e) {
+            LineActivityLog::record($line, 'renew_failed', "Intentó renovar con el paquete «{$packageName}» pero falló: {$e->getMessage()}");
+
             return back()->withErrors(['xui' => $e->getMessage()]);
         }
+
+        LineActivityLog::record($line, 'renewed', "Renovó la línea aplicando el paquete «{$packageName}».");
 
         return back()->with('status', 'Línea renovada correctamente.');
     }
@@ -91,8 +99,12 @@ class LineController extends Controller
         try {
             $xui->applyPackage($line, $package);
         } catch (XuiApiException|RuntimeException $e) {
+            LineActivityLog::record($line, 'apply_package_failed', "Intentó aplicar el paquete «{$package->name}» pero falló: {$e->getMessage()}");
+
             return back()->withErrors(['xui' => $e->getMessage()]);
         }
+
+        LineActivityLog::record($line, 'apply_package', "Aplicó el paquete «{$package->name}» a la línea.");
 
         return back()->with('status', "Se aplicó el paquete «{$package->name}» a la línea.");
     }
@@ -104,10 +116,14 @@ class LineController extends Controller
         try {
             $xui->setSuspended($line, $suspending);
         } catch (XuiApiException $e) {
+            $verb = $suspending ? 'suspender' : 'reactivar';
+            LineActivityLog::record($line, 'suspend_failed', "Intentó {$verb} la línea pero falló: {$e->getMessage()}");
+
             return back()->withErrors(['xui' => $e->getMessage()]);
         }
 
         $verb = $suspending ? 'suspendida' : 'reactivada';
+        LineActivityLog::record($line, $suspending ? 'suspended' : 'reactivated', "Dejó la línea {$verb}.");
 
         return back()->with('status', "Línea {$verb} correctamente.");
     }
@@ -119,8 +135,12 @@ class LineController extends Controller
         try {
             $xui->changePassword($line, $newPassword);
         } catch (XuiApiException $e) {
+            LineActivityLog::record($line, 'password_change_failed', "Intentó cambiar la contraseña pero falló: {$e->getMessage()}");
+
             return back()->withErrors(['xui' => $e->getMessage()]);
         }
+
+        LineActivityLog::record($line, 'password_changed', 'Cambió la contraseña de la línea.');
 
         return back()->with('status', "Contraseña actualizada. Nueva contraseña: {$newPassword}");
     }
@@ -135,6 +155,8 @@ class LineController extends Controller
 
         $line->user->notify(new OrderApproved($line->order, $line));
 
+        LineActivityLog::record($line, 'credentials_resent', "Reenvió las credenciales por correo a {$line->user->email}.");
+
         return back()->with('status', "Credenciales reenviadas a {$line->user->email}.");
     }
 
@@ -143,8 +165,12 @@ class LineController extends Controller
         try {
             $xui->syncFromXui($line);
         } catch (XuiApiException|RuntimeException $e) {
+            LineActivityLog::record($line, 'sync_failed', "Intentó sincronizar con XUI ONE pero falló: {$e->getMessage()}");
+
             return back()->withErrors(['xui' => $e->getMessage()]);
         }
+
+        LineActivityLog::record($line, 'synced', 'Sincronizó la línea con XUI ONE.');
 
         return back()->with('status', 'Línea sincronizada con XUI ONE.');
     }
@@ -152,12 +178,20 @@ class LineController extends Controller
     public function destroy(Line $line, XuiLineService $xui)
     {
         $username = $line->xui_username;
+        $customerEmail = $line->user?->email;
 
         try {
             $xui->delete($line);
         } catch (XuiApiException $e) {
+            LineActivityLog::record($line, 'delete_failed', "Intentó eliminar la línea de {$username} pero falló: {$e->getMessage()}");
+
             return back()->withErrors(['xui' => $e->getMessage()]);
         }
+
+        // La línea ya no existe en este punto (xui->delete() la borró) — line_id queda NULL
+        // en el log (nullOnDelete), por eso el texto trae el usuario XUI y el correo del
+        // cliente para que el registro siga siendo entendible sin la fila original.
+        LineActivityLog::record(null, 'deleted', "Eliminó la línea {$username} del cliente {$customerEmail}.");
 
         return redirect()->route('admin.lines.index')->with('status', "Línea {$username} eliminada. Ya no aparecerá en el panel del cliente.");
     }

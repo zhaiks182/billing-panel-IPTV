@@ -95,6 +95,25 @@
                             </div>
                         </dl>
                     </div>
+
+                    <div class="bg-panel border border-steel rounded-lg p-6">
+                        <h3 class="text-sm font-semibold text-dim-2 uppercase tracking-wide mb-4">{{ __('Historial') }}</h3>
+                        <ul class="space-y-3 text-sm max-h-80 overflow-y-auto scrollbar-dark">
+                            @forelse ($activityLogs as $log)
+                                <li class="border-b border-steel pb-3 last:border-0 last:pb-0">
+                                    <p class="{{ str_ends_with($log->action, '_failed') ? 'text-danger' : 'text-paper' }}">
+                                        {{ $log->description }}
+                                    </p>
+                                    <p class="text-dim-2 text-xs mt-1">
+                                        {{ $log->admin?->username ?? $log->admin?->name ?? __('Sistema') }}
+                                        &middot; {{ $log->created_at->format('d/m/Y H:i') }}
+                                    </p>
+                                </li>
+                            @empty
+                                <li class="text-dim-2 text-center py-4">{{ __('Todavía no hay acciones registradas sobre esta línea.') }}</li>
+                            @endforelse
+                        </ul>
+                    </div>
                 </div>
 
                 <div class="space-y-4">

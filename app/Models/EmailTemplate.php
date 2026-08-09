@@ -49,6 +49,12 @@ class EmailTemplate extends Model
                 'days_label' => 'Texto de días restantes (ej. "mañana" o "en 3 días")',
                 'renew_url' => 'Enlace para renovar',
             ],
+            'line_expired' => [
+                'user_name' => 'Nombre del usuario',
+                'package_name' => 'Nombre del paquete',
+                'line_expired_at' => 'Fecha en que venció',
+                'renew_url' => 'Enlace para renovar',
+            ],
             'password_reset' => [
                 'user_name' => 'Nombre del usuario',
                 'reset_url' => 'Enlace para restablecer la contraseña',
@@ -147,6 +153,12 @@ class EmailTemplate extends Model
                 'package_name' => '1 mes - 1 pantalla',
                 'line_expires_at' => now()->addDays(2)->format('d/m/Y H:i'),
                 'days_label' => 'en 2 días',
+                'renew_url' => route('home'),
+            ],
+            'line_expired' => [
+                'user_name' => 'Juan Pérez',
+                'package_name' => '1 mes - 1 pantalla',
+                'line_expired_at' => now()->subHours(3)->format('d/m/Y H:i'),
                 'renew_url' => route('home'),
             ],
             'password_reset' => [
