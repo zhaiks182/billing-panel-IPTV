@@ -69,12 +69,17 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
 - `EmailTemplateController` — editor de las 9 plantillas de correo, ver "Plantillas de correo".
 - `TicketController` — listado/detalle/respuesta/gestión de tickets, ver "Módulo de Tickets
   de Soporte".
+- `LineController` — listado/detalle/acciones de líneas (renovar, aplicar paquete,
+  suspender/reactivar, cambiar contraseña, reenviar credenciales, sincronizar con XUI,
+  eliminar), ver "Módulo de Líneas (Admin)".
 
 **Modelos** (`app/Models`)
 - `User` — `role` (customer/admin), dirección completa, `isAdmin()`, `hasVerifiedEmail()`.
 - `PackageCategory`, `Package`, `PaymentMethod`, `Order`, `Line` — ver "Modelo de datos".
 - `EmailTemplate` — ver "Plantillas de correo".
 - `Ticket`, `TicketMessage`, `TicketAttachment` — ver "Módulo de Tickets de Soporte".
+- `LineActivityLog` — auditoría de acciones de admin sobre una línea, ver "Módulo de Líneas
+  (Admin)" → "Auditoría".
 - `XuiSetting`, `MailSetting`, `TurnstileSetting`, `TelegramSetting` — singletons de config
   (patrón `::current()`, un solo registro en la tabla, se crea vacío si no existe).
 
@@ -84,6 +89,12 @@ cliente/invitado crea o responde un ticket, encolados porque bloqueaban la respu
 varios segundos), `SendAdminReplyTelegramNotice`, `SendTicketClosedTelegramNotice` (solo
 Telegram, cuando el **admin** responde o cierra un ticket — antes esas dos acciones no
 avisaban nada a Telegram, solo mandaban el correo al cliente).
+
+**Comandos Artisan de líneas** (`app/Console/Commands`, programados en `routes/console.php`):
+`SendLineExpirationReminders` (`lines:send-expiration-reminders`, diario 9:00am, avisa
+**antes** de vencer) y `SendExpiredLineNotices` (`lines:send-expired-notices`, diario
+9:15am, avisa cuando **ya** venció y marca la línea `expired`) — ver "Módulo de Líneas
+(Admin)" → "Aviso de vencimiento".
 
 **Layouts** (`resources/views/layouts`, componentes en `app/View/Components`) — desde
 2026-08-06 hay dos layouts totalmente separados, ver "Panel de administración" →
@@ -116,6 +127,8 @@ avisaban nada a Telegram, solo mandaban el correo al cliente).
 
 **Notificaciones** (`app/Notifications`) — todas pasan por `EmailTemplate::mail()`, ver
 "Plantillas de correo": `OrderInvoice`, `OrderApproved`, `OrderRejected`, `LineExpiringSoon`,
+`LineExpired` (línea de pago que ya venció, ver "Módulo de Líneas (Admin)" → "Aviso de
+vencimiento" — distinta de `LineExpiringSoon`, que avisa *antes* de vencer),
 `TicketCreated`, `TicketReplied`, `TicketClosed`.
 (`VerifyEmail` y `ResetPassword` no son clases propias — se personalizan vía
 `Notification::toMailUsing()` en `AppServiceProvider`, no archivos en `app/Notifications`.)
@@ -400,10 +413,23 @@ del formulario de registro.
   está vacío, la activación falla** con mensaje explícito), `features` (texto multilínea).
 - `payment_methods`: nombre + instrucciones de pago (texto libre), `is_active`.
 - `orders`: `user_id`, `package_id`, `payment_method_id` (nullable — permite pedidos sin
-  método, ej. trials), `amount`, `proof_path`, `status` (`pending`|`approved`|`rejected`|`error`),
+  método, ej. trials), `amount`, `proof_path`, `status`
+  (`pending`|`approved`|`activated`|`rejected`|`error` — `approved`/`activated` representan
+  ambos un pago ya confirmado, la diferencia es solo si la línea llegó a crearse en XUI o no
+  todavía; `Order::isPaid()` los trata igual. `rejected` se muestra como "Cancelado" en las
+  vistas),
   `admin_note`, `is_renewal`, `approved_by`, `approved_at`. `hasOne(Line)`.
 - `lines`: `user_id`, `order_id`, `xui_line_id`, `xui_username`, `xui_password`, `m3u_url`,
-  `max_connections`, `expires_at`, `status`, `reminder_sent_at`.
+  `max_connections`, `expires_at`, `status` (`active`|`suspended`|`expired`, columna real en
+  BD), `reminder_sent_at`. `Line::displayStatus()` es un estado **computado** aparte, no la
+  columna: agrega `expiring_soon` cuando falta `Line::EXPIRING_SOON_DAYS` (7) días o menos
+  para vencer, usado en el listado/badges del admin — ver "Módulo de Líneas (Admin)".
+- `line_activity_logs`: auditoría de acciones de admin sobre una línea — `line_id`/`admin_id`
+  (ambos `nullable` + `nullOnDelete()`, para que el registro sobreviva si se borra la línea o
+  el admin), `action` (slug corto: `renewed`, `apply_package`, `suspended`/`reactivated`,
+  `password_changed`, `credentials_resent`, `synced`, `deleted`, y su versión `_failed` para
+  cada uno salvo `credentials_resent`/`deleted`), `description` (texto humano ya armado, no
+  depende de joins para tener sentido). Ver "Módulo de Líneas (Admin)" → "Auditoría".
 - `xui_settings` (singleton vía `XuiSetting::current()`): `panel_url`, `access_code`,
   `api_token` (**encriptado** con cast `encrypted`), `stream_url`, `server_url`.
 - `mail_settings`, `telegram_settings`, `turnstile_settings`: configuración dinámica en BD
@@ -597,6 +623,61 @@ veía el dropdown plano "Admin" con ~11 enlaces sin agrupar. Ahora:
   demo (`orders/create.blade.php`). No escala a miles de usuarios por página (manda todos los
   datos igual estén abiertos o no), pero con paginación de 20 no es un problema.
 - Plantillas de correo (`/adm_4livepro/plantillas-correo`): ver sección dedicada abajo.
+
+## Módulo de Líneas (Admin) (`/adm_4livepro/lineas`)
+
+Listado y detalle de todas las líneas XUI del sistema, con acciones directas sobre cada una
+sin tener que pasar por el pedido original. `Admin\LineController`:
+- `index` — filtros por búsqueda (usuario XUI, nombre/correo del cliente) y por estado
+  (`active`/`expiring_soon`/`expired`/`suspended`/`demo`), usando `Line::displayStatus()`
+  como criterio (no la columna `status` cruda — ver "Modelo de datos").
+- `show` — credenciales (usuario/contraseña/URL M3U con botón de copiar), detalles del
+  pedido/paquete, y las tarjetas "Historial" (ver "Auditoría" abajo) y "Acciones".
+- Acciones, todas vía `Xui\XuiLineService` y todas registradas en el historial (ver abajo):
+  `renew` (aplica el paquete ya asociado al pedido de la línea), `apply-package` (aplica un
+  paquete distinto elegido en un `<select>`, ej. para upgrades), `toggle-suspend`
+  (suspende/reactiva — `XuiOneClient` usa acciones separadas `enable_line`/`disable_line`,
+  no `edit_line`), `change-password` (genera una contraseña aleatoria de 10 caracteres con
+  `Str::random`), `resend` (reenvía el correo `OrderApproved` original con las credenciales),
+  `sync` (trae el estado actual desde XUI ONE con `syncFromXui`, falla si la línea no tiene
+  `xui_line_id` — pasa con líneas creadas a mano o con datos inconsistentes), `destroy`
+  (borra la línea en XUI y en la BD; irreversible, confirmación en el frontend).
+- El frontend (`admin/lines/show.blade.php`) deshabilita el botón apenas se confirma el
+  envío (`lockLineAction()`) para evitar doble clic — importante en `renew`, ya que aplicar
+  el mismo paquete dos veces sumaría la duración dos veces sobre el vencimiento ya extendido.
+
+### Auditoría (2026-08-09)
+
+A pedido del usuario, para poder responder "¿quién tocó esta línea y qué pasó" ante un
+reclamo de cliente. Cada acción de `LineController` (las 7 de arriba) llama a
+`LineActivityLog::record($line, $action, $description)` — tanto en el camino de éxito como
+en el `catch` de `XuiApiException`/`RuntimeException` (con un `action` distinto, sufijo
+`_failed`, salvo `credentials_resent` y `deleted`, que no tienen rama de fallo con excepción
+propia). La tarjeta "Historial" en `admin/lines/show.blade.php` lista los registros más
+recientes primero, con la descripción en rojo si el `action` termina en `_failed`. El caso
+de `destroy` es especial: la línea ya no existe cuando se registra el log, así que se llama
+`LineActivityLog::record(null, 'deleted', ...)` con el username/correo ya armados en el
+texto (el `line_id` queda `NULL` gracias a `nullOnDelete()`, el registro sigue siendo
+legible sin la fila original). Probado en producción con una línea/pedido/usuario
+sintéticos (sin tocar el XUI real — nunca se le asignó `xui_line_id`, por eso el intento de
+`sync` falló a propósito como parte de la prueba), verificado visualmente, y **eliminados
+después de la demo** (no queda ningún dato de prueba en la BD real).
+
+### Aviso de vencimiento (2026-08-09)
+
+Ya existía `SendLineExpirationReminders` (`lines:send-expiration-reminders`, diario 9am),
+que avisa **antes** de vencer (`LineExpiringSoon`) y marca `reminder_sent_at`. Faltaba el
+aviso simétrico para cuando la línea **ya venció** — se agregó `SendExpiredLineNotices`
+(`lines:send-expired-notices`, programado en `routes/console.php` diario a las **9:15am**,
+justo después del anterior): busca líneas con `status = active` y `expires_at <= now()`
+(excluye paquetes trial/demo, mismo criterio que el comando de recordatorio), notifica
+`LineExpired` a cada cliente (plantilla `line_expired`, editable en Admin > Plantillas de
+correo, estilo rojo/`#dc2626` para distinguirla visualmente de la ámbar
+`line_expiring_soon`) y marca la línea como `status = expired` — este cambio de estado
+también sirve de bandera de "ya procesada", así que el comando no vuelve a seleccionarla en
+la próxima corrida sin necesidad de una columna de control aparte. Migración de datos
+`2026_08_09_125449_add_line_expired_email_template.php` inserta la fila en
+`email_templates` (mismo patrón `$wrap()`/heredoc que el resto).
 
 ## Bot de Telegram: comando `/ventashoy` y resumen automático (2026-08-06)
 
@@ -1215,12 +1296,15 @@ a pedido explícito del usuario: "para generar los PDF debes hacerlo en el servi
 
 ## Puntos abiertos / riesgos conocidos
 
-- **Renovación en XUI**: el comentario en `XuiOneClient` dice explícitamente que el
-  mecanismo de renovación (qué campo de `edit_line` extiende `exp_date`) **no se pudo
-  verificar** porque solo había un paquete demo (duración 0) disponible al integrar.
-  Falta probar con un paquete real cuando exista uno con `xui_package_id` de pago.
-  `Order.is_renewal` existe en el modelo pero no vi lógica que lo use todavía — revisar.
-  (Explícitamente fuera de alcance para el usuario por ahora, ver instrucción del 05-08.)
+- ✅ **Renovación en XUI resuelta**: `XuiLineService::applyPackage()` (usada tanto por
+  "Renovar" como por "Aplicar paquete" en Admin > Líneas) llama `editLine($xui_line_id,
+  ['package' => $xui_package_id])` — el parámetro correcto es `package` (el ID de paquete en
+  XUI), **no** `exp_date` como se creía originalmente; XUI calcula el nuevo vencimiento
+  internamente y se relee con `getLineInfo()`. Si la línea no tiene `xui_line_id` (de
+  prueba/importada), se calcula localmente sumando la duración del paquete al vencimiento
+  actual. Ver "Módulo de Líneas (Admin)".
+  `Order.is_renewal` existe en el modelo pero no vi lógica que lo use todavía — revisar si
+  hace falta a futuro.
 - XAMPP local mencionado por el usuario en la sesión del 05-08 pero nunca se llegó a usar ni
   configurar en este repo (`launch.json` apunta a Laragon) — probablemente ya no aplica, dado
   que el flujo de trabajo actual es local (Laragon) → VPS vía `deploy.sh`, sin depender de un
@@ -1243,6 +1327,7 @@ php artisan migrate                            # aplicar migraciones
 php artisan db:seed                            # catálogo demo (categoría/paquetes/métodos de pago, sin usuarios)
 php artisan app:create-admin correo clave      # crear/actualizar el usuario admin
 php artisan lines:send-expiration-reminders    # recordatorios de vencimiento (cron, diario 9am)
+php artisan lines:send-expired-notices         # avisa lineas ya vencidas y las marca expired (cron, diario 9:15am)
 php artisan telegram:daily-summary             # resumen de ventas por Telegram (cron, diario 10pm)
 php artisan schedule:list                      # ver qué comandos están programados y cuándo corren
 php artisan queue:work                         # procesar la cola a mano (local, sin worker persistente)
@@ -1764,3 +1849,47 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   contra `php artisan serve` (correo duplicado, campos vacíos, contraseña débil, país inválido,
   confirmación de contraseña distinta, y un envío 100% válido de control) — todos los mensajes
   salieron en español con el nombre de campo correcto, y el flujo válido no se vio afectado.
+
+### 2026-08-09
+
+- Se agregaron las dos mejoras al módulo de Líneas que el usuario pidió (dejando 2FA para
+  admin explícitamente para después, a pedido suyo): aviso de línea vencida
+  (`LineExpired` + `lines:send-expired-notices`) y auditoría de acciones sobre líneas
+  (`LineActivityLog`, tarjeta "Historial" en el detalle de línea) — ver sección dedicada
+  "Módulo de Líneas (Admin)" más arriba para el detalle completo. Probado en local, luego
+  con datos sintéticos reales en `desarrollo.4livepro.com` (línea/pedido/usuario de prueba,
+  sin tocar el XUI real), mostrado al usuario, y eliminado después — no quedó nada de la
+  demo en la base de datos de producción. Commit `24a882d`, desplegado con
+  `deploy.sh --migrate --no-build`.
+- Al mismo tiempo se detectó que este documento (`CLAUDE.md`) tenía un vacío grande: el
+  módulo completo de Líneas del admin (`Admin\LineController`, las 7 acciones sobre una
+  línea, `Line::displayStatus()`) nunca había quedado documentado de sesiones anteriores, y
+  el punto abierto "Renovación en XUI sin verificar" seguía ahí aunque ya se había resuelto
+  (confirmado revisando `XuiLineService::applyPackage()` — usa `editLine(...,
+  ['package' => ...])`, no `exp_date`). Se completó/corrigió esta sesión, junto con el
+  estado `activated` de `Order.status` que tampoco estaba en "Modelo de datos". Motivo:
+  el usuario empezó a abrir Claude Code desde una terminal nueva (ver punto siguiente) y
+  preguntó explícitamente si el proyecto "ya sabe todo" — la respuesta depende de que este
+  archivo esté al día, ya que es lo único que viaja entre sesiones distintas (el historial
+  de chat en sí no).
+- **Diagnóstico de los cierres inesperados de la terminal** (`conhost.exe` "Application
+  Hang", recurrente varios días): la causa raíz resultó ser el acceso directo/consola con la
+  que el usuario abría Claude Code, que tenía su propio "Modo de edición rápida" (QuickEdit)
+  activado — un ajuste de consola de Windows que pausa la I/O si se hace clic accidental
+  dentro de la ventana, y que tiene prioridad sobre cualquier corrección hecha por registro
+  (`HKCU:\Console\...`), por eso el arreglo por registro se revertía solo cada vez. Se le
+  recomendó migrar a abrir Claude Code desde **Windows Terminal**, que no hereda ese
+  problema. Al hacerlo, se encontró un segundo bug real y separado: el PATH de usuario de
+  Windows tenía la entrada de `claude` mal armada — apuntaba al **archivo**
+  `C:\Users\Jbrito\.local\bin\claude.exe` en vez de a la **carpeta**
+  `C:\Users\Jbrito\.local\bin` (Windows busca ejecutables dentro de carpetas listadas en el
+  PATH, no dentro de una ruta que ya incluye el nombre del `.exe`) — por eso `cmd`/PowerShell
+  nuevos no encontraban el comando `claude` aunque sí funcionaba desde el lanzador especial
+  de la sesión anterior. Corregido con `[Environment]::SetEnvironmentVariable('Path', ...,
+  'User')` reemplazando esa entrada por la carpeta correcta. Confirmado funcionando: el
+  usuario abrió una sesión nueva de Claude Code desde Windows Terminal en
+  `C:\Claude\Billing Panel` sin problema. Pendiente de confirmar en los próximos días si los
+  cierres inesperados dejaron de repetirse (no es 100% seguro que el acceso directo viejo
+  fuera la única causa, pero es la explicación más consistente con lo observado: el registro
+  se revertía solo, lo cual apunta a algo con mayor prioridad reescribiéndolo al cerrar la
+  ventana).
