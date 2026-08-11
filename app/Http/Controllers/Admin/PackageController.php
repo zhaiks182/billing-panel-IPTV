@@ -31,6 +31,13 @@ class PackageController extends Controller
         $validated = $this->validated($request);
         $validated['slug'] = Sluggable::unique('packages', $validated['name']);
 
+        // Un paquete recién creado no tiene pedidos todavía, así que el punto de partida
+        // del cupo es 0 (ver Package::soldSinceLimit()) — sin esto, "vendidos desde hoy"
+        // quedaría sin definir hasta el próximo cambio de cupo.
+        if ($validated['stock_limit'] !== null) {
+            $validated['stock_baseline_sold'] = 0;
+        }
+
         Package::create($validated);
 
         return redirect()->route('admin.paquetes.index')->with('status', 'Paquete creado.');
@@ -50,6 +57,17 @@ class PackageController extends Controller
 
         if ($validated['name'] !== $package->name) {
             $validated['slug'] = Sluggable::unique('packages', $validated['name'], $package->id);
+        }
+
+        // El cupo cuenta "vendidos desde que se puso/cambió el número" (no el historial
+        // completo, ver Package::soldSinceLimit()) — a pedido del usuario, que probó con un
+        // paquete que ya tenía ventas reales y esperaba que el cupo nuevo arrancara en 0.
+        // Solo se recongela el punto de partida cuando el número realmente cambia, para no
+        // resetear el cupo cada vez que se edita cualquier otro campo del paquete.
+        if ($validated['stock_limit'] !== $package->stock_limit) {
+            $validated['stock_baseline_sold'] = $validated['stock_limit'] !== null
+                ? $package->orders()->where('status', '!=', 'rejected')->count()
+                : null;
         }
 
         $package->update($validated);

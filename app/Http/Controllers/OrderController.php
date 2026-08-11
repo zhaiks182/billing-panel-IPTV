@@ -182,8 +182,9 @@ class OrderController extends Controller
 
             if ($locked->stock_limit !== null) {
                 $sold = Order::where('package_id', $locked->id)->where('status', '!=', 'rejected')->count();
+                $soldSinceLimit = max(0, $sold - (int) ($locked->stock_baseline_sold ?? 0));
 
-                if ($sold >= $locked->stock_limit) {
+                if ($soldSinceLimit >= $locked->stock_limit) {
                     throw new PackageSoldOutException;
                 }
             }

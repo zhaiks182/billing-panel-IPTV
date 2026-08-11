@@ -101,7 +101,12 @@
                   placeholder="{{ __('Sin límite') }}"
                   value="{{ old('stock_limit', $package->stock_limit ?? '') }}" />
     <x-input-error :messages="$errors->get('stock_limit')" class="mt-2" />
-    <p class="mt-1 text-xs text-dim-2">{{ __('Deja vacío para no limitar las ventas. Si lo llenas, el paquete se marca "Agotado" y deja de poder comprarse al alcanzar este número de pedidos (no cuentan los pedidos cancelados).') }}</p>
+    <p class="mt-1 text-xs text-dim-2">{{ __('Deja vacío para no limitar las ventas. Cuenta unidades nuevas a partir de ahora (no las ventas de antes de poner este número) — si escribes 2, se podrán vender 2 más y luego se marca "Agotado" (no cuentan los pedidos cancelados). Cambiar este número reinicia el conteo desde cero.') }}</p>
+    @if (isset($package) && $package->stock_limit !== null)
+        <p class="mt-1 text-xs text-dim-2">
+            {{ __('Con el cupo actual, ya se vendieron :sold desde que se puso/cambió.', ['sold' => $package->soldSinceLimit()]) }}
+        </p>
+    @endif
 </div>
 
 <div class="mt-4">

@@ -1412,6 +1412,22 @@ Facturas". Varios cambios chicos relacionados:
     para que `Package::isSoldOut()`/`availableCount()` no disparen una consulta extra por
     cada tarjeta del catálogo (evita N+1).
   - Configurable desde Admin > Paquetes (campo "Cupo disponible", vacío = sin límite).
+  - **El cupo cuenta desde que se pone/cambia, no el historial completo** (2026-08-11,
+    corregido a pedido del usuario tras probarlo con un paquete que ya tenía ventas reales
+    — con la primera versión, poner cupo=2 en un paquete que ya llevaba 2 ventas lo
+    marcaba "Agotado" al instante, contra lo que esperaba). Columna nueva
+    `stock_baseline_sold` (entero nullable) en `packages`: cada vez que
+    `Admin\PackageController::update()` detecta que `stock_limit` cambió de valor (no en
+    cada guardado, solo cuando el número realmente cambia), "congela" ahí el total vendido
+    hasta ese momento. `Package::soldSinceLimit()` = vendidos totales menos ese punto de
+    partida, y es lo que usan `isSoldOut()`/`availableCount()` — así "cupo: 2" siempre
+    significa "2 más a partir de ahora", sin importar cuántas ventas hubiera antes de
+    activar el límite. `store()` (paquete nuevo) fija el punto de partida en 0 directo. El
+    checkout (`createOrderWithStockCheck()`) usa la misma fórmula dentro del
+    `lockForUpdate()`. Probado end-to-end simulando el escenario real reportado (paquete
+    con 2 pedidos previos + `stock_limit=2` vía el controller real → queda "2 disponibles",
+    no agotado; 2 pedidos nuevos sí lo agotan; un tercero se bloquea) — datos de prueba
+    eliminados después.
   - **Agotado manual** (2026-08-11, a pedido del usuario tras probar el campo numérico):
     columna aparte `force_sold_out` (booleano, default `false`) + checkbox "Marcar como
     agotado manualmente" en el mismo formulario — fuerza `isSoldOut() = true` de inmediato
