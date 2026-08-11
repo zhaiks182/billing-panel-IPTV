@@ -11,7 +11,7 @@
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex sm:items-center">
                     <x-nav-link :href="route('home')" :active="request()->routeIs('home')">
                         {{ __('Paquetes') }}
                     </x-nav-link>
@@ -29,7 +29,7 @@
                                 : 'inline-flex items-center gap-1 px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-dim hover:text-paper hover:border-steel focus:outline-none focus:text-paper focus:border-steel transition duration-150 ease-in-out';
                         @endphp
 
-                        <x-dropdown align="left" width="48">
+                        <x-dropdown align="left" width="48" class="flex items-center">
                             <x-slot name="trigger">
                                 <button type="button" class="{{ $navDropdownClasses(request()->routeIs('dashboard')) }}">
                                     {{ __('Servicios') }}
@@ -43,7 +43,7 @@
                             </x-slot>
                         </x-dropdown>
 
-                        <x-dropdown align="left" width="48">
+                        <x-dropdown align="left" width="48" class="flex items-center">
                             <x-slot name="trigger">
                                 <button type="button" class="{{ $navDropdownClasses(request()->routeIs('orders.*')) }}">
                                     {{ __('Facturación') }}
