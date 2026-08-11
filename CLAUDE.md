@@ -1354,6 +1354,71 @@ automatizados en la misma tanda, a pedido explícito del usuario).
   las barras con la altura proporcional esperada. Usuarios/pedidos/admin de prueba
   eliminados después, sin dejar nada en la base de datos real.
 
+## Control de stock por paquete + catálogo con sidebar de categorías (2026-08-11)
+
+A pedido del usuario, inspirado en una captura de WHMCS de "Comprar Servicios"/"Mis
+Facturas". Varios cambios chicos relacionados:
+
+- **Menú de cliente reestructurado**: "Mis Enlaces M3U" y "Mis Pedidos" pasaron a ser
+  desplegables "Servicios" (→ "Mis Servicios", el dashboard de siempre) y "Facturación"
+  (→ "Mis Facturas", la página de pedidos rediseñada) en
+  [`layouts/navigation.blade.php`](resources/views/layouts/navigation.blade.php) —
+  desktop y móvil. **A propósito no se agregaron** "Comprar Complementos" ni "Pago Masivo"
+  de la referencia de WHMCS, porque no existe ninguna funcionalidad de complementos ni pago
+  masivo en este sistema.
+  - Bug encontrado y corregido el mismo día: los `<div>` planos del componente
+    `<x-dropdown>` (usado para los triggers de estos dos menús) no tenían la misma
+    alineación `inline-flex items-center` que ya traían los `<a>` normales del menú, así
+    que quedaban más abajo que el resto — se corrigió agregando `items-center` al
+    contenedor del menú y `flex items-center` a cada `<x-dropdown>`.
+- **"Comprar Servicios"** (`GET /comprar`, `packages.shop`) — nueva entrada al menú
+  "Servicios" que redirige a la primera categoría activa
+  (`PackageController::shop()`). La página de categoría
+  ([`packages/category.blade.php`](resources/views/packages/category.blade.php)) ahora
+  muestra un sidebar con todas las categorías activas (nombre + cantidad de paquetes,
+  usando `withCount` como ya hacía antes) y resalta la seleccionada — antes solo mostraba
+  el grid de paquetes de una categoría aislada, sin forma de cambiar de categoría sin
+  volver al inicio. Esa página usa tarjetas de paquete **compactas** (3 por fila en vez de
+  las 2 originales) vía un nuevo prop `compact` en
+  [`<x-package-card>`](resources/views/components/package-card.blade.php) — la portada
+  (`/`, "Paquetes") sigue usando el tamaño de tarjeta original sin cambios, a pedido
+  explícito del usuario.
+- **Control de stock/disponibilidad por paquete** — columna nueva `stock_limit` (entero,
+  nullable) en `packages`: `null` = sin límite (comportamiento de siempre, ningún paquete
+  existente lo tiene seteado hoy). Si se configura, el paquete se muestra como "Agotado"
+  (botón deshabilitado en la tarjeta y en el checkout directo) al llegar a ese número de
+  pedidos — "vendido" cuenta **cualquier pedido que no sea `rejected`**
+  (`pending`/`approved`/`activated`/`error` representan una unidad comprometida; solo
+  `rejected` la libera). El conteo es en vivo (`COUNT(*)`), sin columna contadora
+  desnormalizada, para no tener que sincronizarla en cada punto donde un pedido cambia de
+  estado (`Admin\OrderController::approve()/reject()/retry()`).
+  - **Seguridad real ante condición de carrera** (dos compras simultáneas del último
+    cupo): [`OrderController::createOrderWithStockCheck()`](app/Http/Controllers/OrderController.php)
+    (privado, usado por `store()` y `storeTrial()`) envuelve la relectura del paquete con
+    `Package::where('id', ...)->lockForUpdate()->first()` **como primera consulta** dentro
+    de una `DB::transaction()`, antes del `COUNT` — así una segunda compra que llega
+    mientras la primera todavía no confirmó queda bloqueada hasta que la primera termine.
+    Lanza `App\Exceptions\PackageSoldOutException` si no hay cupo, capturada en `store()`/
+    `storeTrial()` para redirigir con el mensaje de agotado (mismo patrón que el mensaje
+    de "ya usaste tu prueba gratuita" que ya existía ahí).
+    **Probado con concurrencia real** (no simulada): dos procesos PHP separados
+    (`php artisan tinker` no sirve para esto, se necesitan procesos de verdad) atacando al
+    mismo tiempo un paquete con `stock_limit=1` y cero pedidos previos — uno recibió
+    `OK order_id=...`, el otro `SOLD_OUT`, y la base de datos quedó con exactamente 1
+    pedido, nunca 2. Sin este `lockForUpdate()`, ambos procesos habrían pasado el chequeo
+    de "hay cupo" antes de que cualquiera de los dos confirmara su pedido.
+  - `PackageController::index()`/`category()` precargan `sold_count` vía
+    `withCount(['orders as sold_count' => fn ($q) => $q->where('status', '!=', 'rejected')])`
+    para que `Package::isSoldOut()`/`availableCount()` no disparen una consulta extra por
+    cada tarjeta del catálogo (evita N+1).
+  - Configurable desde Admin > Paquetes (campo "Cupo disponible", vacío = sin límite).
+  - Probado end-to-end: paquete sin `stock_limit` se comporta exactamente igual que antes
+    (sin badge, sin bloqueo); paquete agotado muestra "Agotado" en el catálogo y en
+    `orders/create.blade.php` (formulario completo reemplazado por el aviso, igual patrón
+    visual que "ya usaste tu prueba gratuita"); rechazar un pedido libera el cupo solo, sin
+    tocar ningún contador a mano — datos de prueba eliminados después, sin afectar el único
+    pedido real que había en la BD local.
+
 ## Puntos abiertos / riesgos conocidos
 
 - ✅ **Renovación en XUI resuelta**: `XuiLineService::applyPackage()` (usada tanto por

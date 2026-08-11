@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\PackageSoldOutException;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\PaymentMethod;
@@ -16,6 +17,7 @@ use App\Services\Xui\XuiLineService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -39,7 +41,9 @@ class OrderController extends Controller
             ? TurnstileSetting::current()->site_key
             : null;
 
-        return view('orders.create', compact('package', 'paymentMethods', 'trialAlreadyUsed', 'needsVerificationGate', 'turnstileSiteKey'));
+        $soldOut = $package->isSoldOut();
+
+        return view('orders.create', compact('package', 'paymentMethods', 'trialAlreadyUsed', 'needsVerificationGate', 'turnstileSiteKey', 'soldOut'));
     }
 
     public function status(Order $order)
@@ -90,15 +94,24 @@ class OrderController extends Controller
 
         $proofPath = $request->file('proof')->store('proofs', 'public');
 
-        $order = $user->orders()->create([
-            'package_id' => $package->id,
-            'payment_method_id' => $validated['payment_method_id'],
-            'amount' => $package->price,
-            'proof_path' => $proofPath,
-            'customer_note' => $validated['customer_note'] ?? null,
-            'is_renewal' => $user->lines()->where('status', 'active')->exists(),
-            'status' => 'pending',
-        ]);
+        try {
+            $order = $this->createOrderWithStockCheck($user, $package, [
+                'payment_method_id' => $validated['payment_method_id'],
+                'amount' => $package->price,
+                'proof_path' => $proofPath,
+                'customer_note' => $validated['customer_note'] ?? null,
+                'is_renewal' => $user->lines()->where('status', 'active')->exists(),
+                'status' => 'pending',
+            ]);
+        } catch (PackageSoldOutException) {
+            $message = 'Este paquete se agotó. Elige otro plan o contáctanos.';
+
+            if ($request->wantsJson()) {
+                return response()->json(['status' => 'sold_out', 'message' => $message], 422);
+            }
+
+            return redirect()->route('orders.create', $package)->with('status', $message);
+        }
 
         $user->notify(new OrderInvoice($order));
 
@@ -152,6 +165,29 @@ class OrderController extends Controller
         return $user;
     }
 
+    /**
+     * Crea el pedido dentro de una transacción, re-leyendo el paquete con lockForUpdate()
+     * como primera consulta (antes del conteo) — así dos compras casi simultáneas del
+     * último cupo se serializan en vez de vender de más. "Vendido" = cualquier pedido que
+     * no sea 'rejected' (ver Package::soldCount()). No aplica si stock_limit es null.
+     */
+    private function createOrderWithStockCheck(User $user, Package $package, array $attributes): Order
+    {
+        return DB::transaction(function () use ($user, $package, $attributes) {
+            $locked = Package::where('id', $package->id)->lockForUpdate()->first();
+
+            if ($locked->stock_limit !== null) {
+                $sold = Order::where('package_id', $locked->id)->where('status', '!=', 'rejected')->count();
+
+                if ($sold >= $locked->stock_limit) {
+                    throw new PackageSoldOutException;
+                }
+            }
+
+            return $user->orders()->create(array_merge(['package_id' => $package->id], $attributes));
+        });
+    }
+
     private function hasUsedTrial($user): bool
     {
         if ($user->isAdmin()) {
@@ -165,13 +201,22 @@ class OrderController extends Controller
 
     private function storeTrial(Request $request, Package $package, XuiLineService $xui, $user)
     {
-        $order = $user->orders()->create([
-            'package_id' => $package->id,
-            'payment_method_id' => null,
-            'amount' => 0,
-            'is_renewal' => $user->lines()->where('status', 'active')->exists(),
-            'status' => 'pending',
-        ]);
+        try {
+            $order = $this->createOrderWithStockCheck($user, $package, [
+                'payment_method_id' => null,
+                'amount' => 0,
+                'is_renewal' => $user->lines()->where('status', 'active')->exists(),
+                'status' => 'pending',
+            ]);
+        } catch (PackageSoldOutException) {
+            $message = 'Este paquete se agotó. Elige otro plan o contáctanos.';
+
+            if ($request->wantsJson()) {
+                return response()->json(['status' => 'sold_out', 'message' => $message], 422);
+            }
+
+            return redirect()->route('orders.create', $package)->with('status', $message);
+        }
 
         session()->forget('cart_package_id');
 

@@ -82,6 +82,7 @@ class PackageController extends Controller
             'duration_days' => ['required', 'integer', 'min:1'],
             'duration_unit' => ['required', 'in:hours,days'],
             'max_connections' => ['required', 'integer', 'min:1', 'max:255'],
+            'stock_limit' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['boolean'],
             'is_trial' => ['boolean'],
         ]);

@@ -11,16 +11,20 @@ class PackageController extends Controller
     {
         $categories = PackageCategory::where('is_active', true)
             ->orderBy('sort_order')
-            ->with(['packages' => fn ($q) => $q->where('is_active', true)])
+            ->with(['packages' => fn ($q) => $q->where('is_active', true)
+                ->withCount(['orders as sold_count' => fn ($o) => $o->where('status', '!=', 'rejected')])])
             ->get()
             ->filter(fn ($category) => $category->packages->isNotEmpty());
 
         $uncategorized = Package::whereNull('package_category_id')
             ->where('is_active', true)
+            ->withCount(['orders as sold_count' => fn ($q) => $q->where('status', '!=', 'rejected')])
             ->orderBy('price')
             ->get();
 
-        $trialPackage = Package::where('is_trial', true)->where('is_active', true)->first();
+        $trialPackage = Package::where('is_trial', true)->where('is_active', true)
+            ->withCount(['orders as sold_count' => fn ($q) => $q->where('status', '!=', 'rejected')])
+            ->first();
 
         $trialAlreadyUsed = $trialPackage
             && auth()->check()
@@ -48,7 +52,9 @@ class PackageController extends Controller
     {
         abort_unless($category->is_active, 404);
 
-        $packages = $category->packages()->where('is_active', true)->get();
+        $packages = $category->packages()->where('is_active', true)
+            ->withCount(['orders as sold_count' => fn ($q) => $q->where('status', '!=', 'rejected')])
+            ->get();
 
         $categories = PackageCategory::where('is_active', true)
             ->orderBy('sort_order')

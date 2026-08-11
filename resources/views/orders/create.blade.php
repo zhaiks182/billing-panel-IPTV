@@ -69,7 +69,17 @@
                         </div>
                     </div>
 
-                    @if ($package->is_trial && $trialAlreadyUsed)
+                    @if ($soldOut)
+                        <div class="bg-panel border border-steel rounded-lg p-6">
+                            <h3 class="text-base font-semibold text-paper mb-2">{{ __('Paquete agotado') }}</h3>
+                            <p class="text-sm text-dim mb-4">
+                                {{ __('Este paquete alcanzó su cupo disponible. Elige otro plan o contáctanos para más información.') }}
+                            </p>
+                            <a href="{{ route('home') }}" class="inline-flex items-center justify-center w-full py-3 rounded-md bg-steel text-paper font-semibold hover:bg-steel/80">
+                                {{ __('Ver planes de pago') }}
+                            </a>
+                        </div>
+                    @elseif ($package->is_trial && $trialAlreadyUsed)
                         <div class="bg-panel border border-steel rounded-lg p-6">
                             <h3 class="text-base font-semibold text-paper mb-2">{{ __('Prueba gratuita') }}</h3>
                             <p class="text-sm text-dim mb-4">

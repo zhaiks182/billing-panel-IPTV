@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['package_category_id', 'xui_package_id', 'name', 'slug', 'description', 'features', 'price', 'duration_days', 'duration_unit', 'max_connections', 'is_active', 'is_trial'])]
+#[Fillable(['package_category_id', 'xui_package_id', 'name', 'slug', 'description', 'features', 'price', 'duration_days', 'duration_unit', 'max_connections', 'stock_limit', 'is_active', 'is_trial'])]
 class Package extends Model
 {
     protected function casts(): array
@@ -50,5 +50,34 @@ class Package extends Model
         return $this->duration_unit === 'hours'
             ? $this->duration_days / 24
             : $this->duration_days;
+    }
+
+    /**
+     * "Vendido" = cualquier pedido que no sea `rejected` (pending/approved/activated/error
+     * representan una unidad comprometida, ver CLAUDE.md → "Control de stock"). Usa
+     * `sold_count` si ya viene precargado vía withCount() (patrón usado en
+     * PackageController para evitar N+1); si no, cae a una consulta directa.
+     */
+    public function soldCount(): int
+    {
+        if (array_key_exists('sold_count', $this->attributes)) {
+            return (int) $this->attributes['sold_count'];
+        }
+
+        return $this->orders()->where('status', '!=', 'rejected')->count();
+    }
+
+    public function isSoldOut(): bool
+    {
+        return $this->stock_limit !== null && $this->soldCount() >= $this->stock_limit;
+    }
+
+    public function availableCount(): ?int
+    {
+        if ($this->stock_limit === null) {
+            return null;
+        }
+
+        return max(0, $this->stock_limit - $this->soldCount());
     }
 }

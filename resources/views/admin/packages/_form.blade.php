@@ -95,6 +95,15 @@
     </div>
 </div>
 
+<div class="mt-4">
+    <x-input-label for="stock_limit" value="{{ __('Cupo disponible (opcional)') }}" />
+    <x-text-input id="stock_limit" name="stock_limit" type="number" min="0" class="mt-1 block w-full sm:w-48"
+                  placeholder="{{ __('Sin límite') }}"
+                  value="{{ old('stock_limit', $package->stock_limit ?? '') }}" />
+    <x-input-error :messages="$errors->get('stock_limit')" class="mt-2" />
+    <p class="mt-1 text-xs text-dim-2">{{ __('Deja vacío para no limitar las ventas. Si lo llenas, el paquete se marca "Agotado" y deja de poder comprarse al alcanzar este número de pedidos (no cuentan los pedidos cancelados).') }}</p>
+</div>
+
 <div class="mt-4 space-y-2">
     <label class="inline-flex items-center">
         <input type="checkbox" name="is_active" value="1"

@@ -17,6 +17,11 @@
             @if ($package->is_trial)
                 <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-amber/10 text-amber">{{ __('Demo') }}</span>
             @endif
+            @if ($package->isSoldOut())
+                <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-full bg-danger/10 text-danger">{{ __('Agotado') }}</span>
+            @elseif ($package->availableCount() !== null)
+                <span class="text-xs text-dim-2">{{ $package->availableCount() }} {{ __('disponibles') }}</span>
+            @endif
         </div>
         @if ($package->description)
             <p class="mt-1 text-sm text-dim-2">{{ $package->description }}</p>
@@ -50,17 +55,24 @@
                 {{ __('Cada') }} {{ $package->durationLabel() }}
             </p>
 
-            <form method="POST" action="{{ route('cart.store', $package) }}">
-                @csrf
-                <button type="submit"
-                        class="flex items-center justify-center gap-2 w-full bg-brand-500 text-ink {{ $buttonPad }} rounded-md hover:brightness-110 transition font-medium">
-                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2.25 2.75a.75.75 0 000 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a2.25 2.25 0 002.175 1.68h6.494a2.25 2.25 0 002.19-1.75l1.202-5.25a.75.75 0 00-.73-.92H6.24l-.62-2.328A1.87 1.87 0 003.636 2.75H2.25z" />
-                        <path d="M8.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM17 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
-                    </svg>
-                    {{ __('Pedir Ahora') }}
+            @if ($package->isSoldOut())
+                <button type="button" disabled
+                        class="flex items-center justify-center gap-2 w-full bg-steel text-dim-2 {{ $buttonPad }} rounded-md font-medium cursor-not-allowed">
+                    {{ __('Agotado') }}
                 </button>
-            </form>
+            @else
+                <form method="POST" action="{{ route('cart.store', $package) }}">
+                    @csrf
+                    <button type="submit"
+                            class="flex items-center justify-center gap-2 w-full bg-brand-500 text-ink {{ $buttonPad }} rounded-md hover:brightness-110 transition font-medium">
+                        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M2.25 2.75a.75.75 0 000 1.5h1.386c.17 0 .318.114.362.278l2.558 9.592a2.25 2.25 0 002.175 1.68h6.494a2.25 2.25 0 002.19-1.75l1.202-5.25a.75.75 0 00-.73-.92H6.24l-.62-2.328A1.87 1.87 0 003.636 2.75H2.25z" />
+                            <path d="M8.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM17 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+                        </svg>
+                        {{ __('Pedir Ahora') }}
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
 </div>
