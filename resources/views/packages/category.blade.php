@@ -37,9 +37,9 @@
                             {{ __('No hay paquetes disponibles en esta categoría por ahora.') }}
                         </div>
                     @else
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 items-stretch">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-stretch">
                             @foreach ($packages as $package)
-                                <x-package-card :package="$package" />
+                                <x-package-card :package="$package" :compact="true" />
                             @endforeach
                         </div>
                     @endif
