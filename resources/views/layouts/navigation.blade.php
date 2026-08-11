@@ -23,12 +23,40 @@
                     @endguest
 
                     @auth
-                        <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                            {{ __('Mis Enlaces M3U') }}
-                        </x-nav-link>
-                        <x-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.*')">
-                            {{ __('Mis Pedidos') }}
-                        </x-nav-link>
+                        @php
+                            $navDropdownClasses = fn (bool $active) => $active
+                                ? 'inline-flex items-center gap-1 px-1 pt-1 border-b-2 border-brand-500 text-sm font-medium leading-5 text-paper focus:outline-none transition duration-150 ease-in-out'
+                                : 'inline-flex items-center gap-1 px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 text-dim hover:text-paper hover:border-steel focus:outline-none focus:text-paper focus:border-steel transition duration-150 ease-in-out';
+                        @endphp
+
+                        <x-dropdown align="left" width="48">
+                            <x-slot name="trigger">
+                                <button type="button" class="{{ $navDropdownClasses(request()->routeIs('dashboard')) }}">
+                                    {{ __('Servicios') }}
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </x-slot>
+                            <x-slot name="content" :contentClasses="'py-1 bg-panel-alt border border-steel'">
+                                <x-dropdown-link :href="route('dashboard')">{{ __('Mis Servicios') }}</x-dropdown-link>
+                            </x-slot>
+                        </x-dropdown>
+
+                        <x-dropdown align="left" width="48">
+                            <x-slot name="trigger">
+                                <button type="button" class="{{ $navDropdownClasses(request()->routeIs('orders.*')) }}">
+                                    {{ __('Facturación') }}
+                                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </x-slot>
+                            <x-slot name="content" :contentClasses="'py-1 bg-panel-alt border border-steel'">
+                                <x-dropdown-link :href="route('orders.index')">{{ __('Mis Facturas') }}</x-dropdown-link>
+                            </x-slot>
+                        </x-dropdown>
+
                         <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
                             {{ __('Abrir Ticket') }}
                         </x-nav-link>
@@ -132,10 +160,10 @@
 
             @auth
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                    {{ __('Mis Enlaces M3U') }}
+                    {{ __('Mis Servicios') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.*')">
-                    {{ __('Mis Pedidos') }}
+                    {{ __('Mis Facturas') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
                     {{ __('Abrir Ticket') }}
