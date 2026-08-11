@@ -30,6 +30,15 @@ class DashboardController extends Controller
             ->whereBetween('approved_at', [$dateFrom, $dateTo])
             ->sum('amount');
 
+        // Mismo rango/filtro que $periodRevenue de arriba, desglosado por día — así el
+        // gráfico del dashboard siempre suma exactamente el mismo total que esa tarjeta.
+        $revenueByDay = Order::whereIn('status', ['approved', 'activated'])
+            ->whereBetween('approved_at', [$dateFrom, $dateTo])
+            ->selectRaw('DATE(approved_at) as day, SUM(amount) as total')
+            ->groupBy('day')
+            ->orderBy('day')
+            ->get();
+
         $newClientsInPeriod = User::where('role', 'customer')
             ->whereBetween('created_at', [$dateFrom, $dateTo])
             ->count();
@@ -58,7 +67,7 @@ class DashboardController extends Controller
         $recentOrders = Order::with(['user', 'package'])->latest()->take(5)->get();
 
         return view('admin.dashboard', compact(
-            'pendingCount', 'errorCount', 'periodRevenue', 'expiringSoon', 'expiringSoonCount',
+            'pendingCount', 'errorCount', 'periodRevenue', 'revenueByDay', 'expiringSoon', 'expiringSoonCount',
             'newClientsInPeriod', 'activeLinesCount', 'recentOrders', 'linesExpiringTodayCount',
             'dateFrom', 'dateTo',
         ));

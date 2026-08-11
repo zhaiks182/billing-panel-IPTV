@@ -56,6 +56,7 @@ Route::middleware(['auth', 'no-admin', 'not-blocked'])->group(function () {
 
     Route::get('/pedidos', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/pedidos/{order}/estado', [OrderController::class, 'status'])->name('orders.status');
+    Route::get('/pedidos/{order}/factura', [OrderController::class, 'invoice'])->name('orders.invoice');
 
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
 });
@@ -71,6 +72,7 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
         Route::get('/pedidos', [AdminOrderController::class, 'index'])->name('orders.index');
+        Route::get('/pedidos/exportar', [AdminOrderController::class, 'export'])->name('orders.export');
         Route::post('/pedidos/{order}/aprobar', [AdminOrderController::class, 'approve'])->name('orders.approve');
         Route::post('/pedidos/{order}/rechazar', [AdminOrderController::class, 'reject'])->name('orders.reject');
         Route::post('/pedidos/{order}/reintentar', [AdminOrderController::class, 'retry'])->name('orders.retry');

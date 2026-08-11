@@ -1294,6 +1294,66 @@ a pedido explícito del usuario: "para generar los PDF debes hacerlo en el servi
     (insignia ámbar "PRUEBA GRATUITA", $0.00 USD, dirección completa, logo) — usuario y
     pedido de prueba eliminados después.
 
+## Backups, factura PDF, export CSV y gráfico de ingresos (2026-08-11)
+
+Cuatro mejoras agregadas en una sola sesión (se descartó a propósito agregar tests
+automatizados en la misma tanda, a pedido explícito del usuario).
+
+- **Backups automáticos de la BD** (solo VPS, sin tocar código): script
+  `/root/scripts/backup-billing-panel-db.sh` — `mysqldump --single-transaction` +
+  `gzip` a `/var/backups/billing-panel/db-YYYY-MM-DD-HHMMSS.sql.gz`, con rotación (borra
+  los de más de 14 días, solo si el dump nuevo no quedó vacío). Las credenciales de MySQL
+  viven en `/root/.backup-billing-panel.cnf` (modo 600, formato `--defaults-extra-file` de
+  mysqldump, para no exponer la clave en `ps aux` como pasaría con `-p`). Cron agregado
+  **sin tocar** las entradas ya existentes de otros proyectos en el mismo VPS
+  (`check_providers.php` de otro sitio, `cod2.4livepro.com`): `0 3 * * *
+  /root/scripts/backup-billing-panel-db.sh >> /var/log/billing-panel-backup.log 2>&1`.
+  Probado corriendo el script a mano: genera un `.sql.gz` válido (~15KB, 24 tablas
+  confirmadas con `zcat | grep -c 'CREATE TABLE'`). **Limitación conocida**: los backups
+  quedan en el mismo VPS — si el servidor completo se pierde, se pierden con él; no hay
+  copia fuera del servidor configurada (quedaría para una mejora futura si se pide).
+- **Descargar factura en PDF** (`GET /pedidos/{order}/factura`, `orders.invoice`) — reusa
+  `InvoicePdfService::generate()`/`filename()` ya existente (antes solo se adjuntaba a
+  correos, nunca se servía por HTTP; esta es la primera respuesta PDF cruda de la app).
+  `OrderController::invoice()` devuelve `response($pdf->generate($order))` con
+  `Content-Type: application/pdf` + `Content-Disposition: attachment`. Autorización: mismo
+  idioma que `orders.status` (`abort_unless($order->user_id === auth()->id(), 403)`) — solo
+  el dueño del pedido, sin acceso de admin por esta ruta (el admin ya ve todo desde
+  Admin > Pedidos, no hizo falta duplicar acceso).
+- **Rediseño de "Mis Pedidos"** (`orders/index.blade.php`), inspirado en una captura de
+  "Mis Facturas" de WHMCS que compartió el usuario, adaptado a lo que este sistema
+  realmente tiene: sidebar con contador de pedidos por estado (calculado en
+  `OrderController::index()` con `selectRaw('status, count(*) as total')->groupBy('status')`,
+  filtra por click vía `?status=`), buscador client-side con Alpine (filtra por nombre de
+  paquete dentro de la página actual, sin ida y vuelta al servidor — volumen por cliente es
+  bajo), y columna nueva "Acciones" con el link de descarga de factura. **A propósito no se
+  replicó** "Fecha de Vencimiento" ni "Pagar Todo" de la referencia de WHMCS — este sistema
+  no tiene facturas recurrentes con pago pendiente programado, todo pedido ya pasó por
+  aprobación de admin o pago en línea antes de aparecer en la lista, así que esos dos
+  elementos no tienen a qué mapear.
+- **Exportar pedidos a CSV** (`GET /adm_4livepro/pedidos/exportar`, `admin.orders.export`) —
+  `Admin\OrderController::export()` reusa exactamente la misma cadena de filtros que
+  `index()` (`status`, `date_from`/`date_to` sobre `created_at`) pero con `->get()` en vez
+  de paginar, y `response()->streamDownload()` con `fputcsv` nativo de PHP (sin librerías
+  nuevas). El botón "Exportar a CSV" en `admin/orders/index.blade.php` pasa
+  `request()->only(['status','date_from','date_to'])` para exportar exactamente lo que se
+  ve filtrado en pantalla en ese momento.
+- **Gráfico de ingresos por día** en el Dashboard admin — sin librería de gráficos (el
+  proyecto no tenía ninguna, solo Alpine/Tailwind/Vite; se armó con barras `<div>` de
+  Tailwind con altura proporcional calculada en Blade, no SVG ni Chart.js).
+  `Admin\DashboardController::index()` agrega `$revenueByDay` con el mismo filtro de fechas
+  y mismo `whereIn('status', ['approved','activated'])` que ya usa `$periodRevenue` —
+  a propósito, así el gráfico siempre suma exactamente el mismo total que la tarjeta
+  "Ingresos en el período" de al lado, nunca pueden desincronizarse.
+- Probado end-to-end en local con datos sintéticos (cliente con 2 pedidos —uno `activated`
+  con monto real, uno `pending`—, y un admin de prueba): sidebar mostró los contadores
+  correctos (2 total, 1 activado, 1 pendiente), filtro por estado funcionó, PDF descargó
+  con headers correctos y un usuario distinto al dueño recibió 403 al intentar acceder al
+  mismo pedido, CSV exportado con las columnas y datos correctos (incluyendo el fallback
+  "Prueba Gratis" para pedidos trial con `payment_method_id` nulo), y el gráfico renderizó
+  las barras con la altura proporcional esperada. Usuarios/pedidos/admin de prueba
+  eliminados después, sin dejar nada en la base de datos real.
+
 ## Puntos abiertos / riesgos conocidos
 
 - ✅ **Renovación en XUI resuelta**: `XuiLineService::applyPackage()` (usada tanto por

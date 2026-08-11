@@ -49,6 +49,10 @@
                         {{ __('Quitar fechas') }}
                     </a>
                 @endif
+                <a href="{{ route('admin.orders.export', request()->only(['status', 'date_from', 'date_to'])) }}"
+                   class="px-4 py-2 rounded-md bg-steel text-paper text-sm font-medium hover:bg-steel/80">
+                    {{ __('Exportar a CSV') }}
+                </a>
             </form>
 
             <div class="bg-panel border border-steel rounded-lg overflow-x-auto">

@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\OrderApproved;
 use App\Notifications\OrderInvoice;
 use App\Rules\ValidTurnstile;
+use App\Services\InvoicePdfService;
 use App\Services\Xui\XuiApiException;
 use App\Services\Xui\XuiLineService;
 use Illuminate\Auth\Events\Registered;
@@ -46,6 +47,15 @@ class OrderController extends Controller
         abort_unless($order->user_id === auth()->id(), 403);
 
         return response()->json(['status' => $order->status]);
+    }
+
+    public function invoice(Order $order, InvoicePdfService $pdf)
+    {
+        abort_unless($order->user_id === auth()->id(), 403);
+
+        return response($pdf->generate($order))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="'.$pdf->filename($order).'"');
     }
 
     public function store(Request $request, Package $package, XuiLineService $xui)
@@ -205,11 +215,20 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
-        $orders = $request->user()->orders()
-            ->with(['package', 'paymentMethod', 'line'])
-            ->latest()
-            ->paginate(10);
+        $user = $request->user();
 
-        return view('orders.index', compact('orders'));
+        $statusCounts = $user->orders()
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
+        $orders = $user->orders()
+            ->with(['package', 'paymentMethod', 'line'])
+            ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('orders.index', compact('orders', 'statusCounts'));
     }
 }

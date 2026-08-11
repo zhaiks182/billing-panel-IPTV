@@ -26,6 +26,37 @@ class OrderController extends Controller
         return view('admin.orders.index', compact('orders'));
     }
 
+    public function export(Request $request)
+    {
+        $orders = Order::with(['user', 'package', 'paymentMethod'])
+            ->when($request->status, fn ($q, $status) => $q->whereIn('status', (array) $status))
+            ->when($request->date_from, fn ($q, $date) => $q->whereDate('created_at', '>=', $date))
+            ->when($request->date_to, fn ($q, $date) => $q->whereDate('created_at', '<=', $date))
+            ->latest()
+            ->get();
+
+        return response()->streamDownload(function () use ($orders) {
+            $out = fopen('php://output', 'w');
+
+            fputcsv($out, ['#', 'Cliente', 'Correo', 'Paquete', 'Monto', 'Método de pago', 'Estado', 'Fecha']);
+
+            foreach ($orders as $order) {
+                fputcsv($out, [
+                    $order->id,
+                    $order->user->name,
+                    $order->user->email,
+                    $order->package->name,
+                    number_format($order->amount, 2, '.', ''),
+                    $order->paymentMethod->name ?? ($order->package->is_trial ? 'Prueba Gratis' : '—'),
+                    $order->status,
+                    $order->created_at->format('Y-m-d H:i:s'),
+                ]);
+            }
+
+            fclose($out);
+        }, 'pedidos.csv', ['Content-Type' => 'text/csv']);
+    }
+
     public function approve(Order $order, XuiLineService $xui)
     {
         abort_unless($order->status === 'pending', 404);
