@@ -40,6 +40,7 @@
                             </x-slot>
                             <x-slot name="content" :contentClasses="'py-1 bg-panel-alt border border-steel'">
                                 <x-dropdown-link :href="route('dashboard')">{{ __('Mis Servicios') }}</x-dropdown-link>
+                                <x-dropdown-link :href="route('packages.shop')">{{ __('Comprar Servicios') }}</x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
 
@@ -161,6 +162,9 @@
             @auth
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                     {{ __('Mis Servicios') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('packages.shop')" :active="request()->routeIs('packages.category') || request()->routeIs('packages.shop')">
+                    {{ __('Comprar Servicios') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.*')">
                     {{ __('Mis Facturas') }}

@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])->name('telegram.webhook');
 
 Route::get('/', [PackageController::class, 'index'])->name('home');
+Route::get('/comprar', [PackageController::class, 'shop'])->name('packages.shop');
 Route::get('/categoria/{category:slug}', [PackageController::class, 'category'])->name('packages.category');
 
 // Rutas de cliente/invitado que no exigen sesión iniciada, pero si quien las visita resulta
