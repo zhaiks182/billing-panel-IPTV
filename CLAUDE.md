@@ -1412,6 +1412,13 @@ Facturas". Varios cambios chicos relacionados:
     para que `Package::isSoldOut()`/`availableCount()` no disparen una consulta extra por
     cada tarjeta del catálogo (evita N+1).
   - Configurable desde Admin > Paquetes (campo "Cupo disponible", vacío = sin límite).
+  - **Agotado manual** (2026-08-11, a pedido del usuario tras probar el campo numérico):
+    columna aparte `force_sold_out` (booleano, default `false`) + checkbox "Marcar como
+    agotado manualmente" en el mismo formulario — fuerza `isSoldOut() = true` de inmediato
+    sin importar `stock_limit`/cupo restante. Se decidió como checkbox separado (no mezclar
+    un valor mágico tipo la palabra "agotado" dentro del campo numérico) para no arriesgar
+    errores de tipeo en un campo que además acepta números reales. `createOrderWithStockCheck()`
+    lo revisa primero, dentro del mismo `lockForUpdate()`, antes del chequeo de `stock_limit`.
   - Probado end-to-end: paquete sin `stock_limit` se comporta exactamente igual que antes
     (sin badge, sin bloqueo); paquete agotado muestra "Agotado" en el catálogo y en
     `orders/create.blade.php` (formulario completo reemplazado por el aviso, igual patrón

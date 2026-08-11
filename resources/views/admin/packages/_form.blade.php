@@ -104,6 +104,16 @@
     <p class="mt-1 text-xs text-dim-2">{{ __('Deja vacío para no limitar las ventas. Si lo llenas, el paquete se marca "Agotado" y deja de poder comprarse al alcanzar este número de pedidos (no cuentan los pedidos cancelados).') }}</p>
 </div>
 
+<div class="mt-4">
+    <label class="inline-flex items-center">
+        <input type="checkbox" name="force_sold_out" value="1"
+               {{ old('force_sold_out', $package->force_sold_out ?? false) ? 'checked' : '' }}
+               class="rounded border-steel bg-panel text-danger focus:ring-danger">
+        <span class="ms-2 text-sm text-dim">{{ __('Marcar como agotado manualmente') }}</span>
+    </label>
+    <p class="mt-1 text-xs text-dim-2">{{ __('Fuerza "Agotado" de inmediato, sin importar el cupo o cuántos pedidos haya. Útil para pausar la venta de un paquete al instante.') }}</p>
+</div>
+
 <div class="mt-4 space-y-2">
     <label class="inline-flex items-center">
         <input type="checkbox" name="is_active" value="1"

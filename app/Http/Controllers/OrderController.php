@@ -176,6 +176,10 @@ class OrderController extends Controller
         return DB::transaction(function () use ($user, $package, $attributes) {
             $locked = Package::where('id', $package->id)->lockForUpdate()->first();
 
+            if ($locked->force_sold_out) {
+                throw new PackageSoldOutException;
+            }
+
             if ($locked->stock_limit !== null) {
                 $sold = Order::where('package_id', $locked->id)->where('status', '!=', 'rejected')->count();
 

@@ -83,10 +83,12 @@ class PackageController extends Controller
             'duration_unit' => ['required', 'in:hours,days'],
             'max_connections' => ['required', 'integer', 'min:1', 'max:255'],
             'stock_limit' => ['nullable', 'integer', 'min:0'],
+            'force_sold_out' => ['boolean'],
             'is_active' => ['boolean'],
             'is_trial' => ['boolean'],
         ]);
 
+        $validated['force_sold_out'] = $request->boolean('force_sold_out');
         $validated['is_active'] = $request->boolean('is_active');
         $validated['is_trial'] = $request->boolean('is_trial');
 

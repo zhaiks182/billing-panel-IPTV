@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['package_category_id', 'xui_package_id', 'name', 'slug', 'description', 'features', 'price', 'duration_days', 'duration_unit', 'max_connections', 'stock_limit', 'is_active', 'is_trial'])]
+#[Fillable(['package_category_id', 'xui_package_id', 'name', 'slug', 'description', 'features', 'price', 'duration_days', 'duration_unit', 'max_connections', 'stock_limit', 'force_sold_out', 'is_active', 'is_trial'])]
 class Package extends Model
 {
     protected function casts(): array
@@ -14,6 +14,7 @@ class Package extends Model
             'price' => 'decimal:2',
             'is_active' => 'boolean',
             'is_trial' => 'boolean',
+            'force_sold_out' => 'boolean',
         ];
     }
 
@@ -67,13 +68,25 @@ class Package extends Model
         return $this->orders()->where('status', '!=', 'rejected')->count();
     }
 
+    /**
+     * "Agotado" es verdadero si el admin lo marcó a mano (`force_sold_out`, independiente
+     * del cupo/conteo) o si se alcanzó el `stock_limit` numérico.
+     */
     public function isSoldOut(): bool
     {
+        if ($this->force_sold_out) {
+            return true;
+        }
+
         return $this->stock_limit !== null && $this->soldCount() >= $this->stock_limit;
     }
 
     public function availableCount(): ?int
     {
+        if ($this->force_sold_out) {
+            return 0;
+        }
+
         if ($this->stock_limit === null) {
             return null;
         }
