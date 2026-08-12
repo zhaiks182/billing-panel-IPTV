@@ -25,7 +25,7 @@ and the system automatically provisions the line on a **XUI ONE** panel via its 
 - Users: list, verify email manually, block/unblock.
 - Support tickets: reply, reassign, close, with Telegram + email alerts.
 - Email template editor for every transactional email, with live preview and test send.
-- Dashboard with date-range filters, revenue-by-day chart, and CSV export of orders.
+- Dashboard with date-range filters and CSV export of orders.
 - Configurable from the panel itself (no `.env` editing needed): XUI ONE connection, SMTP,
   Cloudflare Turnstile, Telegram bot.
 

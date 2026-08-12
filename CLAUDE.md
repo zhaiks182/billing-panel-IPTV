@@ -1370,13 +1370,13 @@ automatizados en la misma tanda, a pedido explícito del usuario).
   nuevas). El botón "Exportar a CSV" en `admin/orders/index.blade.php` pasa
   `request()->only(['status','date_from','date_to'])` para exportar exactamente lo que se
   ve filtrado en pantalla en ese momento.
-- **Gráfico de ingresos por día** en el Dashboard admin — sin librería de gráficos (el
-  proyecto no tenía ninguna, solo Alpine/Tailwind/Vite; se armó con barras `<div>` de
-  Tailwind con altura proporcional calculada en Blade, no SVG ni Chart.js).
-  `Admin\DashboardController::index()` agrega `$revenueByDay` con el mismo filtro de fechas
-  y mismo `whereIn('status', ['approved','activated'])` que ya usa `$periodRevenue` —
-  a propósito, así el gráfico siempre suma exactamente el mismo total que la tarjeta
-  "Ingresos en el período" de al lado, nunca pueden desincronizarse.
+- ~~**Gráfico de ingresos por día** en el Dashboard admin~~ — **eliminado a pedido del
+  usuario el 2026-08-12** (ver bitácora de ese día). Se había armado sin librería de
+  gráficos (barras `<div>` de Tailwind, altura proporcional calculada en Blade), con
+  `Admin\DashboardController::index()` agregando `$revenueByDay` con el mismo filtro de
+  fechas y mismo `whereIn('status', ['approved','activated'])` que `$periodRevenue` — todo
+  ese código (la sección en `admin/dashboard.blade.php` y el cálculo de `$revenueByDay` en
+  el controller) se quitó por completo, no quedó oculto ni comentado.
 - Probado end-to-end en local con datos sintéticos (cliente con 2 pedidos —uno `activated`
   con monto real, uno `pending`—, y un admin de prueba): sidebar mostró los contadores
   correctos (2 total, 1 activado, 1 pendiente), filtro por estado funcionó, PDF descargó
@@ -2212,3 +2212,29 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   fuera la única causa, pero es la explicación más consistente con lo observado: el registro
   se revertía solo, lo cual apunta a algo con mayor prioridad reescribiéndolo al cerrar la
   ventana).
+
+### 2026-08-12
+
+- El usuario pidió simular, con datos reales de negocio, el aviso de vencimiento de línea
+  para el usuario real `jorgeevil182@gmail.com` — se creó localmente (BD local, MySQL de
+  Laragon, `MAIL_MAILER=log` para no mandar nada al correo real del cliente) un pedido +
+  línea con `expires_at` a 2 días, se corrió el comando real
+  `lines:send-expiration-reminders`, y se le mandó al usuario el correo `LineExpiringSoon`
+  resultante (extraído del log, logo embebido como base64) para que lo viera tal cual
+  llegaría. Datos de prueba eliminados después.
+- A partir de esa prueba, el usuario pidió **dos etapas de aviso** (7 días y luego 3 días)
+  en vez del único aviso a 3 días que existía — ver "Módulo de Líneas (Admin)" → "Aviso de
+  vencimiento" para el detalle completo (columnas `reminder_7d_sent_at`/
+  `reminder_3d_sent_at`, ventanas sin solape). Probado con la misma línea sintética
+  reseteada a 2 y a 5 días para disparar cada etapa por separado. Commit `11905d9`,
+  desplegado con `deploy.sh --migrate`.
+- **Menú "Tienda" para visitantes sin sesión** — ver sección dedicada más arriba. Commit
+  `89e072e`, desplegado con `deploy.sh --no-build`.
+- **Se eliminó el gráfico de "Ingresos por día en el período"** del Dashboard admin (a
+  pedido del usuario, sin dar motivo específico) — se quitó por completo el bloque de
+  `admin/dashboard.blade.php` y el cálculo de `$revenueByDay` en
+  `Admin\DashboardController::index()`, no quedó código muerto ni comentado. El resto del
+  dashboard (tarjetas de resumen, líneas por vencer, pedidos recientes) no se tocó.
+  Verificado en local entrando al panel admin real (`/adm_4livepro`) con un admin de
+  prueba: la sección ya no aparece entre las tarjetas de resumen y "Líneas por vencer" —
+  admin de prueba eliminado después.

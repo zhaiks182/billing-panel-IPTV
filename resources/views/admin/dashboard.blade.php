@@ -94,32 +94,6 @@
             </div>
 
             <div>
-                <h3 class="text-lg font-semibold text-paper mb-3">{{ __('Ingresos por día en el período') }}</h3>
-                <div class="bg-panel border border-steel rounded-lg p-6">
-                    @if ($revenueByDay->isEmpty())
-                        <p class="text-dim-2 text-sm text-center py-6">{{ __('Sin ingresos registrados en este período.') }}</p>
-                    @else
-                        @php $maxRevenue = $revenueByDay->max('total') ?: 1; @endphp
-                        <div class="flex items-end gap-1 h-40">
-                            @foreach ($revenueByDay as $day)
-                                <div class="flex-1 flex flex-col justify-end items-center group relative h-full">
-                                    <div class="absolute -top-7 hidden group-hover:block text-xs bg-ink border border-steel rounded px-2 py-1 whitespace-nowrap text-paper z-10">
-                                        {{ \Carbon\Carbon::parse($day->day)->format('d/m') }} — ${{ number_format($day->total, 2) }}
-                                    </div>
-                                    <div class="w-full bg-brand-500/70 hover:bg-brand-500 rounded-t transition"
-                                         style="height: {{ max(2, ($day->total / $maxRevenue) * 100) }}%"></div>
-                                </div>
-                            @endforeach
-                        </div>
-                        <div class="flex justify-between mt-2 text-xs text-dim-2">
-                            <span>{{ \Carbon\Carbon::parse($revenueByDay->first()->day)->format('d/m') }}</span>
-                            <span>{{ \Carbon\Carbon::parse($revenueByDay->last()->day)->format('d/m') }}</span>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <div>
                 <h3 class="text-lg font-semibold text-paper mb-3">{{ __('Líneas por vencer (próximos :days días)', ['days' => \App\Models\Line::EXPIRING_SOON_DAYS]) }}</h3>
                 <div class="bg-panel border border-steel rounded-lg overflow-x-auto">
                     <table class="min-w-full divide-y divide-steel">
