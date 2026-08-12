@@ -1474,6 +1474,38 @@ Facturas". Varios cambios chicos relacionados:
     tocar ningún contador a mano — datos de prueba eliminados después, sin afectar el único
     pedido real que había en la BD local.
 
+## Menú "Tienda" para visitantes sin sesión (2026-08-12)
+
+A pedido del usuario, que compartió como referencia el menú "Tienda" de otro sitio (WHMCS):
+un desplegable con "Ver Todos" arriba y las categorías del catálogo debajo. Antes, un
+visitante sin sesión solo veía "Paquetes" (portada) y "Abrir Ticket" en la nav — sin forma de
+saltar directo a una categoría concreta sin pasar por la portada. Los clientes **con**
+sesión no se tocaron: siguen viendo "Servicios"/"Facturación" exactamente como antes (ver
+"Control de stock..." arriba) — el pedido fue explícito en que la vista de invitado y la de
+cliente logueado son casos separados, no hay que unificarlas.
+
+- [`layouts/navigation.blade.php`](resources/views/layouts/navigation.blade.php): el bloque
+  `$navDropdownClasses` (antes solo dentro de `@auth`) se movió arriba de `@guest`/`@auth`
+  para poder reusarlo en los dos casos sin duplicar las clases del botón. Nuevo
+  `<x-dropdown>` "Tienda" **solo dentro de `@guest`**, con "Ver Todos" (→ `route('home')`,
+  la portada con todas las categorías) y debajo, separadas por un divisor, cada categoría
+  activa (→ `route('packages.category', $categoria)`) — mismo patrón de query inline en
+  `@php` que ya usa el badge de tickets pendientes del admin en este mismo archivo (sin
+  service/composer nuevo, `PackageCategory::where('is_active', true)->orderBy('sort_order')
+  ->get()`, consulta barata en una página que ya hace varias). Réplica reducida en el menú
+  responsive (móvil): ahí no hay "Ver Todos" aparte porque el enlace "Paquetes" de arriba ya
+  cumple esa función — solo se listan las categorías como enlaces sueltos, mismo patrón ya
+  usado para "Mis Servicios"/"Mis Facturas" en el menú móvil de clientes.
+- Probado en el navegador local (Laragon): como invitado, el botón "Tienda" abre el
+  desplegable con "Ver Todos" (→ `/`) y "IPTV 4livepro" (→ `/categoria/iptv-4livepro`, la
+  única categoría activa hoy) — confirmado por JS que el contenido del desplegable es
+  visible (`display: block`, no oculto por Alpine) y que los `href` apuntan a las rutas
+  correctas; en mobile (375px) el enlace de la categoría aparece en el menú hamburguesa,
+  entre "Carrito" y "Abrir Ticket". Con un cliente de prueba con sesión iniciada, se
+  confirmó que "Servicios" sigue mostrando exactamente "Mis Servicios"/"Comprar Servicios"
+  sin cambios (el refactor de `$navDropdownClasses` no le afectó) — usuario de prueba
+  eliminado después.
+
 ## Auditoría de seguridad (2026-08-09)
 
 A pedido explícito del usuario ("actúa como QA y realiza todas las pruebas necesarias"),
