@@ -92,7 +92,8 @@ avisaban nada a Telegram, solo mandaban el correo al cliente).
 
 **Comandos Artisan de líneas** (`app/Console/Commands`, programados en `routes/console.php`):
 `SendLineExpirationReminders` (`lines:send-expiration-reminders`, diario 9:00am, avisa
-**antes** de vencer) y `SendExpiredLineNotices` (`lines:send-expired-notices`, diario
+**antes** de vencer, en **dos etapas** — 7 días y 3 días, ver "Módulo de Líneas (Admin)" →
+"Aviso de vencimiento") y `SendExpiredLineNotices` (`lines:send-expired-notices`, diario
 9:15am, avisa cuando **ya** venció y marca la línea `expired`) — ver "Módulo de Líneas
 (Admin)" → "Aviso de vencimiento".
 
@@ -399,9 +400,11 @@ del formulario de registro.
    crea en `pending` pero la línea **no** se activa hasta que el usuario verifica su email
    (`VerifyEmailController` → `TrialActivator::activatePendingFor`). Esto evita crear
    líneas XUI reales para correos falsos.
-5. Vencimientos: `php artisan lines:send-expiration-reminders {--days=3}` (comando Artisan,
-   pensado para cron) busca líneas activas no-trial que vencen pronto y sin recordatorio
-   enviado, notifica `LineExpiringSoon` y marca `reminder_sent_at`.
+5. Vencimientos: `php artisan lines:send-expiration-reminders {--first=7} {--second=3}`
+   (comando Artisan, pensado para cron) busca líneas activas no-trial que vencen pronto y
+   manda hasta dos avisos independientes por línea (a 7 y a 3 días), notifica
+   `LineExpiringSoon` y marca `reminder_7d_sent_at`/`reminder_3d_sent_at` por separado — ver
+   "Módulo de Líneas (Admin)" → "Aviso de vencimiento" para el detalle de las dos etapas.
 
 ## Modelo de datos (tablas/relaciones clave)
 
@@ -678,6 +681,35 @@ también sirve de bandera de "ya procesada", así que el comando no vuelve a sel
 la próxima corrida sin necesidad de una columna de control aparte. Migración de datos
 `2026_08_09_125449_add_line_expired_email_template.php` inserta la fila en
 `email_templates` (mismo patrón `$wrap()`/heredoc que el resto).
+
+**Aviso en dos etapas (2026-08-12)**, a pedido del usuario, que quería un primer aviso con
+más margen además del de último momento: `SendLineExpirationReminders` ahora manda **hasta
+dos correos independientes** por línea, `LineExpiringSoon` en ambos casos (el texto ya
+calculaba los días restantes de forma dinámica, así que no hizo falta tocar la plantilla) —
+uno cuando faltan **7 días** y otro cuando faltan **3 días**, cada uno con su propia marca
+de "ya enviado" para no repetirse. Antes solo existía una columna `reminder_sent_at` (un
+único aviso, a 3 días); se reemplazó por dos columnas nullable en `lines`:
+`reminder_7d_sent_at` y `reminder_3d_sent_at` (migración
+`2026_08_12_190000_split_line_reminder_into_two_stages.php`, dropea la columna vieja y
+agrega las dos nuevas — no había ninguna vista que mostrara `reminder_sent_at`, así que no
+hubo que tocar nada más). El comando expone `--first=7`/`--second=3` (antes era solo
+`--days=3`) y corre cada etapa por separado (`sendStage()` privado, mismo query reusado con
+distinta columna/ventana de fechas) con **ventanas que no se solapan**: la de 7 días cubre
+`(ahora + $second, ahora + $first]` y la de 3 días `[ahora, ahora + $second]` — así una
+línea nunca recibe los dos correos el mismo día bajo operación normal (el cron sigue
+corriendo diario a las 9am sin cambios, ver arriba); si el comando lleva varios días sin
+correr y una línea salta directo a menos de 3 días sin haber pasado por la ventana de 7,
+recibe solo el aviso de 3 días (nunca los dos a la vez retroactivamente). El umbral del
+badge ámbar "Por vencer" en Admin > Líneas (`Line::EXPIRING_SOON_DAYS = 7`) es un valor
+**aparte**, no relacionado con estos dos avisos por correo — no se tocó.
+Probado en local simulando ambas etapas por separado sobre la misma línea sintética
+(usuario `jorgeevil182@gmail.com`, mismo que ya se había usado para probar el aviso de un
+único umbral el 2026-08-12): con `expires_at` a 2 días, solo se disparó la etapa de 3 días
+("vence en 2 días" en el correo, verificado en `storage/logs/laravel.log`); reseteando
+`expires_at` a 5 días y las dos columnas a `null`, solo se disparó la etapa de 7 días
+("vence en 5 días"); correr el comando de nuevo sin cambiar nada dio "Recordatorios
+enviados: 0" en ambos casos, confirmando que no se duplica. Usuario/pedido/línea de prueba
+eliminados después.
 
 ## Bot de Telegram: comando `/ventashoy` y resumen automático (2026-08-06)
 
