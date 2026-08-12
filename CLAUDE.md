@@ -1442,6 +1442,70 @@ Facturas". Varios cambios chicos relacionados:
     tocar ningún contador a mano — datos de prueba eliminados después, sin afectar el único
     pedido real que había en la BD local.
 
+## Auditoría de seguridad (2026-08-09)
+
+A pedido explícito del usuario ("actúa como QA y realiza todas las pruebas necesarias"),
+revisión completa de los módulos de conexión a API y del resto de la superficie de ataque.
+Metodología: revisión de código + pruebas reales (no solo lectura) — inyección SQL/XSS
+probada de verdad contra el formulario de tickets local, subida de archivos probada con un
+payload PHP disfrazado de `.jpg`, y una prueba en vivo contra Apache en producción para el
+punto 3 de abajo.
+
+**Áreas revisadas sin hallazgos** (Eloquent/Blade ya protegen correctamente, sin necesidad
+de cambios): inyección SQL y XSS en `TicketController` (probado con payloads reales tipo
+`'; DROP TABLE tickets; --` y `<script>` — Eloquent parametriza, Blade escapa, quedaron
+guardados como texto literal inofensivo); webhook de Telegram (`TelegramWebhookController`,
+firma comparada con `hash_equals()`); integración XUI (`api_token` cifrado, sin SSRF, sin
+fugas en logs); IDOR en rutas con datos por usuario (`orders.status`, `tickets.show/reply`
+verifican propiedad); CSRF (única excepción es el webhook, correcto); dependencias
+(`composer audit`/`npm audit` sin CVEs conocidas).
+
+**3 hallazgos reales, corregidos el mismo día:**
+
+1. **Inyección HTML en los avisos de Telegram** — el nombre/asunto/mensaje de un ticket (o
+   el nombre con el que alguien se registra) se interpolaban **sin escapar** en mensajes
+   enviados con `parse_mode=HTML` a la API de Telegram. Un invitado podía meter un
+   `<a href="...">` que Telegram renderiza como link clickeable dentro del chat del bot del
+   admin (vector de phishing), o romper el envío completo con una etiqueta inválida. Se
+   agregó [`TelegramNotifier::escape()`](app/Services/Telegram/TelegramNotifier.php) (helper
+   estático, `htmlspecialchars($text, ENT_QUOTES, 'UTF-8')`) y se aplicó en los 4 Jobs de
+   avisos de tickets (`SendNewTicketAdminAlert`, `SendTicketReplyAdminAlert`,
+   `SendAdminReplyTelegramNotice`, `SendTicketClosedTelegramNotice`) y en los 2 Observers
+   (`OrderObserver`, `LineObserver`, que interpolan `$order->user->name`/`email`). **Regla
+   para el futuro**: cualquier texto de usuario nuevo que se agregue a un mensaje de
+   Telegram debe pasar por `TelegramNotifier::escape()` primero.
+2. **`role` e `is_blocked` eran mass-assignable en `User`** — no era explotable hoy (ningún
+   controlador público hacía `$request->all()`), pero era un riesgo latente: un futuro bug
+   o refactor apurado que sí lo hiciera habría permitido que un cliente se auto-promoviera a
+   admin. Se sacaron del `#[Fillable]` de [`App\Models\User`](app/Models/User.php);
+   `Admin\UserController::store()`/`toggleBlock()` ahora los asignan por propiedad directa
+   (`$user->role = ...; $user->save();`), mismo patrón que ya usaba `email_verified_at`.
+3. **Sin defensa en profundidad contra ejecución de PHP en uploads** — la validación de
+   subida (`mimes:`) ya rechazaba correctamente un `.php` disfrazado de imagen (probado:
+   Laravel detecta el tipo real vía `finfo`, no por extensión), pero no había ninguna capa
+   extra en `storage/app/public` (servido públicamente vía `public/storage`) por si esa
+   validación fallara alguna vez. Se agregó un `.htaccess` ahí (`<FilesMatch>` +
+   `Require all denied` para `.php`/`.phtml`/etc.) — **verificado en vivo contra el Apache
+   real de producción**: subir un `.php` inofensivo directo por SSH y pedirlo por HTTP dio
+   `403 Forbidden`.
+
+Commit `fb2dbed`, desplegado con `deploy.sh --no-build`.
+
+## SEO: sitio marcado como noindex (2026-08-11)
+
+A pedido del usuario, el sitio completo lleva `<meta name="robots" content="noindex, nofollow">`
+para no aparecer en buscadores — el panel admin ya lo tenía (`admin.blade.php`/
+`admin-guest.blade.php`), se extendió a la tienda pública
+([`layouts/app.blade.php`](resources/views/layouts/app.blade.php) y
+[`layouts/guest.blade.php`](resources/views/layouts/guest.blade.php): home, checkout,
+login, registro). `public/robots.txt` también se endureció (`Disallow: /` en vez de vacío)
+como respaldo para crawlers que no respeten el meta tag. Nota: Cloudflare (que está delante
+de este dominio) inyecta su propio bloque "managed content" al `robots.txt` con
+`Allow: /` para bots generales — esto **no** anula el noindex, es el orden correcto (dejar
+rastrear para que el bot vea la etiqueta `noindex` y excluya la página; bloquear el rastreo
+del todo a veces hace que la URL aparezca "pelada" sin descripción en vez de excluirse).
+Commit `9498618`.
+
 ## Puntos abiertos / riesgos conocidos
 
 - ✅ **Renovación en XUI resuelta**: `XuiLineService::applyPackage()` (usada tanto por
@@ -1997,6 +2061,49 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   contra `php artisan serve` (correo duplicado, campos vacíos, contraseña débil, país inválido,
   confirmación de contraseña distinta, y un envío 100% válido de control) — todos los mensajes
   salieron en español con el nombre de campo correcto, y el flujo válido no se vio afectado.
+- **Auditoría de seguridad completa** a pedido del usuario ("actúa como QA") — ver sección
+  dedicada "Auditoría de seguridad" más arriba para el detalle. 3 hallazgos reales
+  corregidos (inyección HTML en avisos de Telegram, `role`/`is_blocked` mass-assignable en
+  `User`, sin defensa en profundidad contra ejecución de PHP en uploads); el resto de la
+  superficie revisada (SQLi/XSS en tickets, webhook de Telegram, integración XUI, IDOR,
+  CSRF, dependencias) salió limpia. Commit `fb2dbed`.
+
+### 2026-08-11
+
+- **Sitio marcado `noindex`** para no aparecer en buscadores (tienda pública, el admin ya lo
+  tenía) — ver sección dedicada "SEO" más arriba. Commit `9498618`.
+- **Cuatro mejoras de una sola tanda**: backups automáticos de la BD en el VPS (cron diario
+  3am, sin tocar los otros dos proyectos que comparten el servidor), descarga de factura en
+  PDF desde "Mis Pedidos", exportar pedidos a CSV desde Admin, y gráfico de ingresos por día
+  en el Dashboard — ver sección "Backups, factura PDF, export CSV y gráfico de ingresos"
+  más arriba. A pedido explícito del usuario, **sin tests automatizados** en esta tanda
+  (se había diagnosticado por qué fallaban —`RefreshDatabase` nunca aplicado— pero no se
+  pidió arreglarlo). Commit `a202433`.
+- **Menú de cliente reestructurado** ("Servicios"/"Facturación" como desplegables,
+  inspirado en una captura de WHMCS) + bug de alineación vertical encontrado y corregido el
+  mismo día — ver sección "Control de stock por paquete + catálogo con sidebar de
+  categorías" más arriba. Commits `9f85e3b`, `9822786`.
+- **"Comprar Servicios"** con catálogo de categorías tipo WHMCS (sidebar + tarjetas
+  compactas, 3 por fila) — misma sección de arriba. Commits `86a9c70`, `c4779aa`.
+- **Control de stock/disponibilidad por paquete**, con dos idas y vueltas reales con el
+  usuario tras probarlo: primero el checkbox "Agotado manual" (separado del cupo numérico,
+  para no mezclar un valor mágico de texto en un campo numérico), después la corrección de
+  que el cupo debía contar solo "desde que se pone/cambia" y no el historial completo de
+  ventas — ambas ya explicadas en la misma sección de arriba. Probado con concurrencia real
+  (dos procesos PHP separados compitiendo por el último cupo). Commits `9c5df2e`,
+  `4587a6f`, `2679dfe`.
+- **Se intentó integrar Payphone y luego Binance Pay como pasarelas de pago** (Botón de
+  Pago por Redirección y Binance Pay Merchant respectivamente) — ambos intentos se
+  planificaron a fondo (arquitectura completa, extracción de `OrderActivator`/
+  `RegistersGuestCustomers`, manejo de condiciones de carrera) pero se **revirtieron por
+  completo a pedido del usuario** antes de desplegar: Payphone porque "el sitio web no es
+  apto para la integración" (requisitos de dominio/negocio de Payphone), Binance Pay quedó
+  a mitad de implementación cuando el usuario pidió detener el desarrollo. **No queda
+  ningún rastro de ninguno de los dos en el código, git, ni en las bases de datos** — se
+  verificó con `git status` limpio después de cada reversión. Si se retoma alguno de los
+  dos más adelante, no hay nada que recuperar del código, hay que empezar de cero (aunque
+  la investigación de los contratos de API de ambos ya está resumida en el historial de
+  chat de esa sesión, no en este archivo).
 
 ### 2026-08-09
 
