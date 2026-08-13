@@ -78,6 +78,7 @@ class HelpArticleController extends Controller
         $validated = $request->validate([
             'help_category_id' => ['required', 'exists:help_categories,id'],
             'title' => ['required', 'string', 'max:255'],
+            'icon' => ['nullable', 'string', 'max:10'],
             'excerpt' => ['nullable', 'string', 'max:255'],
             'content' => ['required', 'string'],
             'sort_order' => ['nullable', 'integer', 'min:0'],

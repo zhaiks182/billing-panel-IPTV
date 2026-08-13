@@ -83,6 +83,24 @@ code, .font-mono {
     @apply bg-panel-alt text-brand-300 px-1.5 py-0.5 rounded text-sm;
 }
 
+/* Caja de "Resumen" al inicio de un artículo — <div class="help-summary"> con un ícono y
+   texto, ej. <div class="help-summary"><span class="help-summary-icon">💡</span><div><strong>Resumen</strong><p>...</p></div></div> */
+.help-content .help-summary {
+    @apply flex gap-3 items-start bg-brand-500/10 border border-brand-800 rounded-lg p-4 mb-6;
+}
+
+.help-content .help-summary-icon {
+    @apply text-xl leading-none shrink-0 mt-0.5;
+}
+
+.help-content .help-summary strong {
+    @apply block text-brand-300 text-xs uppercase tracking-wide mb-1;
+}
+
+.help-content .help-summary p {
+    @apply text-dim mb-0;
+}
+
 .help-content blockquote {
     @apply border-l-4 border-steel pl-4 text-dim-2 italic my-4;
 }

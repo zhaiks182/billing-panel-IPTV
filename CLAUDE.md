@@ -1531,6 +1531,35 @@ que la documentación de XUI ONE **también fuera pública**, no exclusiva del a
   (este último conecta bien con el propio modelo de negocio del panel). Migración
   `2026_08_13_220000_add_more_faq_articles.php`, mismo patrón `updateOrInsert`/heredoc que
   el resto — total del módulo ahora: 4 categorías, 29 artículos.
+- **Reordenados según una captura del sitio de referencia** (migración
+  `2026_08_13_230000_reorder_faq_articles.php`, solo `sort_order`) y, tras otra captura
+  mostrando el diseño visual de un artículo suyo (ícono grande junto al H1, caja de
+  "Resumen" al inicio, íconos por sección), se replicó **el patrón de diseño** — no el
+  texto — en los 11 artículos de "Preguntas frecuentes". El usuario insistió varias veces
+  en que se copiara/tradujera el contenido real de esa página ("replicalo igual", "lee el
+  contenido de cada tema y agrégalo") — se rechazó cada vez, mismo motivo de derechos de
+  autor ya explicado arriba; en su lugar se construyó el sistema de diseño y se reescribió
+  cada artículo con esa estructura, contenido igual de original que antes.
+  - Columna nueva `icon` en `help_articles` (migración
+    `2026_08_13_240000_add_icon_to_help_articles.php`, mismo patrón que
+    `help_categories.icon`) — se muestra grande junto al `<h1>` en `help/article.blade.php`
+    y `admin/help-articles/show.blade.php`.
+  - Clase CSS nueva `.help-content .help-summary` en
+    [`resources/css/app.css`](resources/css/app.css) — caja de introducción con ícono
+    (💡 fijo) + texto, usada como convención `<div class="help-summary">...</div>` al
+    inicio del `content` de un artículo. **Requiere `npm run build`** al desplegar.
+  - Migración de datos `2026_08_13_240100_add_visual_design_to_faq_articles.php`
+    (`down()` intencionalmente vacío — no vale la pena reconstruir el contenido anterior
+    para un rollback de texto) reescribe los 11 artículos de "Preguntas frecuentes" con
+    ícono + caja de resumen + encabezados `<h2>` con ícono al inicio (ej. "🔄 El recorrido
+    de la señal") — mismo contenido/ideas que ya existían, solo reestructurado con el
+    patrón visual nuevo.
+  - Probado en local: `/ayuda/preguntas-frecuentes/como-funciona-iptv` muestra el ícono 🔄
+    junto al título, la caja "RESUMEN" con fondo verde-marca (confirmado
+    `background-color: rgba(52, 195, 166, 0.1)` por `getComputedStyle`), y los `<h2>` con
+    su propio ícono; en el editor admin, la vista previa en vivo (`x-html`) renderiza la
+    caja correctamente sin necesidad de guardar primero — admin de prueba eliminado
+    después.
 
 ## Plantillas de correo
 

@@ -33,7 +33,7 @@
                     <tbody class="divide-y divide-steel">
                         @forelse ($articles as $article)
                             <tr>
-                                <td class="px-6 py-4 text-sm text-paper">{{ $article->title }}</td>
+                                <td class="px-6 py-4 text-sm text-paper">{{ $article->icon }} {{ $article->title }}</td>
                                 <td class="px-6 py-4 text-sm text-dim">{{ $article->category->name }}</td>
                                 <td class="px-6 py-4 text-sm">
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $article->category->audience === 'internal' ? 'bg-amber/10 text-amber' : 'bg-brand-500/10 text-brand-400' }}">

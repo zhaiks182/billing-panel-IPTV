@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['help_category_id', 'title', 'slug', 'excerpt', 'content', 'sort_order', 'is_active'])]
+#[Fillable(['help_category_id', 'title', 'icon', 'slug', 'excerpt', 'content', 'sort_order', 'is_active'])]
 class HelpArticle extends Model
 {
     protected function casts(): array

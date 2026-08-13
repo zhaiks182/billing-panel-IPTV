@@ -15,11 +15,19 @@
         <x-input-error :messages="$errors->get('help_category_id')" class="mt-2" />
     </div>
 
-    <div class="mt-4">
-        <x-input-label for="title" value="{{ __('Título') }}" />
-        <x-text-input id="title" name="title" type="text" class="mt-1 block w-full" required
-                      value="{{ old('title', $article->title ?? '') }}" />
-        <x-input-error :messages="$errors->get('title')" class="mt-2" />
+    <div class="mt-4 flex gap-4">
+        <div class="w-24">
+            <x-input-label for="icon" value="{{ __('Ícono') }}" />
+            <x-text-input id="icon" name="icon" type="text" class="mt-1 block w-full text-center text-lg" maxlength="10"
+                          placeholder="📺" value="{{ old('icon', $article->icon ?? '') }}" />
+            <x-input-error :messages="$errors->get('icon')" class="mt-2" />
+        </div>
+        <div class="flex-1">
+            <x-input-label for="title" value="{{ __('Título') }}" />
+            <x-text-input id="title" name="title" type="text" class="mt-1 block w-full" required
+                          value="{{ old('title', $article->title ?? '') }}" />
+            <x-input-error :messages="$errors->get('title')" class="mt-2" />
+        </div>
     </div>
 
     <div class="mt-4">

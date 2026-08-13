@@ -17,6 +17,12 @@
 
                 <div class="lg:col-span-3">
                     <div class="bg-panel border border-steel rounded-lg p-6 sm:p-8">
+                        <div class="flex items-center gap-3 mb-6">
+                            @if ($article->icon)
+                                <span class="text-3xl leading-none">{{ $article->icon }}</span>
+                            @endif
+                            <h1 class="text-2xl sm:text-3xl font-display font-bold text-paper">{{ $article->title }}</h1>
+                        </div>
                         <x-help-article-content :article="$article" />
                     </div>
 
