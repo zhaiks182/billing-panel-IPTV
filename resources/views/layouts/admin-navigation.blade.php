@@ -94,6 +94,19 @@
         <div>
             <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">
                 <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M9.25 2.25a.75.75 0 00-1.5 0v.5H6a2 2 0 00-2 2v10.5a2 2 0 002 2h8a2 2 0 002-2V4.75a2 2 0 00-2-2h-1.75v-.5a.75.75 0 00-1.5 0v.5h-2.5v-.5zM6.5 8.25a.75.75 0 01.75-.75h5.5a.75.75 0 010 1.5h-5.5a.75.75 0 01-.75-.75zm.75 2.75a.75.75 0 000 1.5h3.5a.75.75 0 000-1.5h-3.5z" />
+                </svg>
+                {{ __('Documentación') }}
+            </p>
+            <div class="space-y-1">
+                <a href="{{ route('admin.help.categories.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.help.categories.*')) }}">{{ __('Categorías') }}</a>
+                <a href="{{ route('admin.help.articles.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.help.articles.*')) }}">{{ __('Artículos') }}</a>
+            </div>
+        </div>
+
+        <div>
+            <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">
+                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
                 </svg>
                 {{ __('Configuración') }}

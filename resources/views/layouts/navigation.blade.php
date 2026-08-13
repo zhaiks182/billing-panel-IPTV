@@ -16,6 +16,10 @@
                         {{ __('Paquetes') }}
                     </x-nav-link>
 
+                    <x-nav-link :href="route('help.index')" :active="request()->routeIs('help.*')">
+                        {{ __('Ayuda') }}
+                    </x-nav-link>
+
                     @php
                         $navDropdownClasses = fn (bool $active) => $active
                             ? 'inline-flex items-center gap-1 px-1 pt-1 border-b-2 border-brand-500 text-sm font-medium leading-5 text-paper focus:outline-none transition duration-150 ease-in-out'
@@ -168,6 +172,10 @@
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('home')" :active="request()->routeIs('home')">
                 {{ __('Paquetes') }}
+            </x-responsive-nav-link>
+
+            <x-responsive-nav-link :href="route('help.index')" :active="request()->routeIs('help.*')">
+                {{ __('Ayuda') }}
             </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('cart.index')" :active="request()->routeIs('cart.index')">

@@ -40,3 +40,49 @@ code, .font-mono {
 .scrollbar-dark::-webkit-scrollbar-thumb:hover {
     background-color: #5d7085;
 }
+
+/* Contenido de artículos de Ayuda (help_articles.content) — HTML semántico simple escrito
+   desde el editor del admin, sin librería de Markdown/typography nueva. */
+.help-content h2 {
+    @apply text-xl font-semibold text-paper mt-8 mb-3;
+}
+
+.help-content h3 {
+    @apply text-lg font-semibold text-paper mt-6 mb-2;
+}
+
+.help-content p {
+    @apply text-dim mb-4 leading-relaxed;
+}
+
+.help-content ul {
+    @apply text-dim mb-4 pl-6 space-y-1 list-disc;
+}
+
+.help-content ol {
+    @apply text-dim mb-4 pl-6 space-y-1 list-decimal;
+}
+
+.help-content li strong {
+    @apply text-paper;
+}
+
+.help-content a {
+    @apply text-brand-400 hover:underline;
+}
+
+.help-content strong {
+    @apply text-paper font-semibold;
+}
+
+.help-content img {
+    @apply rounded-lg border border-steel my-4 max-w-full;
+}
+
+.help-content code {
+    @apply bg-panel-alt text-brand-300 px-1.5 py-0.5 rounded text-sm;
+}
+
+.help-content blockquote {
+    @apply border-l-4 border-steel pl-4 text-dim-2 italic my-4;
+}

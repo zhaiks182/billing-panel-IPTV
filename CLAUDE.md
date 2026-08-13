@@ -40,6 +40,8 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
   "Bot de Telegram" más abajo.
 - `TicketController` — módulo de soporte (clientes con sesión **e** invitados sin cuenta),
   ver sección "Módulo de Tickets de Soporte".
+- `HelpController` — sección pública de Ayuda/Tutoriales (`/ayuda`), ver "Módulo de
+  Ayuda/Tutoriales".
 
 **Auth** (`app/Http/Controllers/Auth`) — Breeze de fábrica excepto donde se indica:
 - `RegisteredUserController` — **personalizado**, ver "Registro de usuarios".
@@ -73,6 +75,8 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
 - `LineController` — listado/detalle/acciones de líneas (renovar, aplicar paquete,
   suspender/reactivar, cambiar contraseña, reenviar credenciales, sincronizar con XUI,
   eliminar), ver "Módulo de Líneas (Admin)".
+- `HelpCategoryController`, `HelpArticleController` — CRUD de categorías/artículos de la
+  sección de Ayuda, ver "Módulo de Ayuda/Tutoriales".
 
 **Modelos** (`app/Models`)
 - `User` — `role` (customer/admin), dirección completa, `isAdmin()`, `hasVerifiedEmail()`.
@@ -83,6 +87,7 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
   (Admin)" → "Auditoría".
 - `EmailLog` — historial de correos enviados por usuario, ver "Historial de correos por
   cliente".
+- `HelpCategory`, `HelpArticle` — ver "Módulo de Ayuda/Tutoriales".
 - `XuiSetting`, `MailSetting`, `TurnstileSetting`, `TelegramSetting` — singletons de config
   (patrón `::current()`, un solo registro en la tabla, se crea vacío si no existe).
 
@@ -1383,6 +1388,97 @@ con números aleatorios únicos los pedidos que ya existían.
   muestra "Factura N.º6209" (no el id) en el encabezado y el pie — pedidos de prueba
   eliminados después.
 
+## Módulo de Ayuda/Tutoriales (2026-08-13)
+
+El usuario compartió https://iptv-help.net/docs/overview (sitio Docusaurus con tutoriales de
+IPTV/XUI ONE) pidiendo "implementarlo como ellos, de tal manera que podamos copiar la
+información y traducirla al español". **Se le aclaró que no se puede copiar/traducir su
+contenido** (derechos de autor de terceros — traducir sigue siendo reproducir la obra); en
+su lugar se tomó solo la **estructura de temas** (no protegida) y se escribió contenido
+**100% original** en español, adaptado a este negocio (no copiado ni traducido de ninguna
+fuente). Se planificó con `EnterPlanMode` antes de escribir código. Con `AskUserQuestion` se
+confirmó el alcance más amplio: no solo guías para el cliente final, también documentación
+interna de administración de XUI ONE para uso del propio equipo.
+
+- **Un solo modelo de datos para dos audiencias** — la audiencia (`public`|`internal`) vive
+  en `HelpCategory`, no en cada artículo; todo artículo hereda la audiencia de su categoría.
+  Evita duplicar CRUD/vistas para "ayuda de cliente" vs. "documentación interna".
+  - `help_categories`: `name`, `slug` (único, vía `App\Support\Sluggable::unique()` — mismo
+    helper que `PackageCategory`/`Package`), `description`, `audience`, `sort_order`,
+    `is_active`.
+  - `help_articles`: `help_category_id`, `title`, `slug` (único global), `excerpt`
+    (opcional, para las tarjetas de listado), `content` (longText, HTML plano — mismo
+    criterio que `email_templates.html_body`, sin motor de Markdown nuevo), `sort_order`,
+    `is_active`.
+- **Rutas públicas** (`/ayuda`, `/ayuda/{categoria}`, `/ayuda/{categoria}/{articulo}`) viven
+  dentro del mismo `Route::middleware('no-admin')->group(...)` de `routes/web.php` donde ya
+  están `/`, `/comprar`, `/categoria/{slug}` — un admin autenticado tampoco "existe" en
+  `/ayuda`, mismo criterio que se corrigió hoy mismo en la sesión (ver "Panel de
+  administración" → "Home y categorías cerradas también"). `HelpController` hace
+  `abort_unless` si la categoría/artículo pedido es `internal` o está inactivo — así una
+  categoría interna nunca es alcanzable por URL directa aunque alguien adivine el slug.
+- **Rutas admin** bajo `/adm_4livepro/documentacion/{categorias,articulos}` —
+  `Route::resource(...)` con `->names([...])` explícito (`admin.help.categories.*` /
+  `admin.help.articles.*`): **importante no dejar los nombres por defecto acá**, porque
+  `Route::resource('documentacion/categorias', ...)` por convención de Laravel deriva el
+  nombre de ruta del **último segmento** del primer argumento (`categorias`), no de la ruta
+  completa — habría colisionado con las rutas ya existentes `admin.categorias.*` de
+  `PackageCategoryController`. Se descubrió durante la implementación (no en producción,
+  revisando `getResourcePrefix()` de Laravel antes de correr nada) y se corrigió con
+  `->names([...])` explícito antes de probar.
+- `HelpArticleController` **sí incluye `show`** (a diferencia de `PackageController`, que lo
+  excluye) — es la vista de lectura pulida para las guías internas, ya que no existe ninguna
+  página pública a la que ir a "previsualizarlas"; de paso también sirve para previsualizar
+  un artículo público antes de publicarlo.
+- **Editor con vista previa en vivo** (`admin/help-articles/_form.blade.php`) — más simple
+  que el de Plantillas de correo: en vez de un `<iframe>` cargando una hoja de estilos
+  aparte (frágil, porque el nombre del CSS compilado por Vite lleva un hash que cambia en
+  cada build), la vista previa es un `<div class="help-content" x-html="content">` **en la
+  misma página** — el layout admin ya carga `resources/css/app.css` vía `@vite(...)`, así
+  que la clase `.help-content` ya está disponible sin nada extra.
+- **CSS nuevo**: clase `.help-content` en
+  [`resources/css/app.css`](resources/css/app.css) (junto a `.scrollbar-dark`, mismo
+  estilo de archivo) con `@apply` de Tailwind por selector anidado (`h2`, `h3`, `p`,
+  `ul`/`ol`, `a`, `strong`, `img`, `code`, `blockquote`) — para no instalar
+  `@tailwindcss/typography` (dependencia nueva) solo para esto. Los artículos se escriben
+  con HTML semántico simple (`<h2>`, `<p>`, `<ol><li>`, etc.) y la clase los estiliza sola.
+  **Este cambio requiere `npm run build` al desplegar**, a diferencia de la mayoría de
+  deploys `--no-build` de esta sesión.
+- **Navegación**: enlace "Ayuda" agregado a
+  [`layouts/navigation.blade.php`](resources/views/layouts/navigation.blade.php) — a
+  diferencia de "Servicios"/"Tienda" (que dependen de `@auth`/`@guest`), este queda
+  **siempre visible**, junto a "Paquetes", igual para invitados y clientes con sesión.
+  Grupo nuevo "Documentación" en
+  [`layouts/admin-navigation.blade.php`](resources/views/layouts/admin-navigation.blade.php)
+  (mismo patrón visual que los otros 6 grupos del sidebar).
+- **Contenido inicial**: migración de datos
+  `2026_08_13_190200_seed_help_articles.php` (mismo patrón `updateOrInsert`/heredoc que las
+  plantillas de correo) — 4 categorías, 21 artículos originales:
+  - Pública **"Instalación"** (4): activar la lista M3U en Android/Fire TV Stick, Smart TV,
+    iPhone/Apple TV, dispositivos MAG.
+  - Pública **"Preguntas frecuentes"** (3): qué es IPTV, qué es una lista M3U, cuántas
+    conexiones simultáneas.
+  - Interna **"XUI ONE: Administración del panel"** (8): agregar servidor, crear bouquets,
+    crear categorías, crear paquetes, agregar proveedor, importar canales, agregar EPG,
+    crear access codes.
+  - Interna **"XUI ONE: Líneas y revendedores"** (6): crear línea, crear línea MAG,
+    extender/renovar línea, descargar playlist, obtener API key, crear sub-revendedor.
+  - Este set inicial no pretende cubrir cada tema del sitio de referencia — es un punto de
+    partida razonable; agregar más artículos después es solo usar el CRUD del admin, sin
+    tocar código ni desplegar nada.
+- Probado en local end-to-end: `/ayuda` muestra solo las 2 categorías públicas (con sus
+  contadores de artículos correctos); un artículo público abre y el HTML se ve bien
+  estilizado con `.help-content` (confirmado por `getComputedStyle` en el navegador: colores
+  `paper`/`dim`, `list-style: decimal` en las listas numeradas); pedir por URL directa una
+  categoría o artículo `internal` (`/ayuda/xui-one-administracion`) devuelve `404`; un admin
+  autenticado pidiendo `/ayuda` rebota a `admin.dashboard` (mismo comportamiento que el
+  resto de rutas públicas). Admin: las 21 filas aparecen correctas en el listado con su
+  badge Pública/Interna; "Leer" en un artículo interno (`Cómo agregar un servidor`) muestra
+  el contenido con el mismo diseño que vería un cliente en `/ayuda`; el editor precarga el
+  contenido existente en la vista previa en vivo; creación y eliminación de una categoría de
+  prueba confirmadas end-to-end en el navegador — datos y admin de prueba eliminados
+  después.
+
 ## Plantillas de correo
 
 Los 9 correos transaccionales del sistema (verificación de cuenta, **factura pendiente de
@@ -2439,3 +2535,19 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   real de entrega/apertura (habría requerido migrar de Gmail SMTP a un proveedor
   transaccional con webhooks, fuera de alcance). Bug real de doble-registro del listener
   encontrado y corregido durante la prueba (ver detalle en la sección dedicada).
+- **Número de pedido público de 4 dígitos** — ver sección "Número de pedido público" más
+  arriba, mismo patrón ya usado para `Ticket::ticket_number`.
+- **Nombre del cliente enlazado a su perfil en Pedidos y Líneas** — ver "Módulo de Líneas
+  (Admin)".
+- **Cerrada la tienda pública también para admins autenticados** (`/`, `/comprar`,
+  `/categoria/{slug}`) — ver "Panel de administración" → "Home y categorías cerradas
+  también".
+- **Resumen diario de ventas también por correo** a soporte@4livepro.com — ver "Bot de
+  Telegram" → "También por correo a soporte".
+- **Módulo de Ayuda/Tutoriales** (`/ayuda` + documentación interna de XUI ONE en el admin) —
+  ver sección dedicada "Módulo de Ayuda/Tutoriales" más arriba para el diseño completo.
+  Planificado con `EnterPlanMode`/`AskUserQuestion` antes de escribir código; contenido
+  100% original en español (no copiado/traducido de la referencia que compartió el
+  usuario, por derechos de autor). 4 categorías, 21 artículos, 2 modelos nuevos
+  (`HelpCategory`/`HelpArticle`), CRUD admin completo, clase CSS `.help-content` nueva.
+  Desplegado con `deploy.sh --migrate` (sin `--no-build`, por el CSS nuevo).

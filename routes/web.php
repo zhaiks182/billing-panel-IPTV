@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmailTemplateController;
+use App\Http\Controllers\Admin\HelpArticleController as AdminHelpArticleController;
+use App\Http\Controllers\Admin\HelpCategoryController as AdminHelpCategoryController;
 use App\Http\Controllers\Admin\LineController as AdminLineController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\PackageCategoryController as AdminPackageCategoryController;
@@ -15,6 +17,7 @@ use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\XuiSettingController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\Admin\TicketController as AdminTicketController;
@@ -36,6 +39,10 @@ Route::middleware('no-admin')->group(function () {
     Route::get('/', [PackageController::class, 'index'])->name('home');
     Route::get('/comprar', [PackageController::class, 'shop'])->name('packages.shop');
     Route::get('/categoria/{category:slug}', [PackageController::class, 'category'])->name('packages.category');
+
+    Route::get('/ayuda', [HelpController::class, 'index'])->name('help.index');
+    Route::get('/ayuda/{category:slug}', [HelpController::class, 'category'])->name('help.category');
+    Route::get('/ayuda/{category:slug}/{article:slug}', [HelpController::class, 'article'])->name('help.article');
 
     Route::get('/tickets/nuevo', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store')->middleware('throttle:10,1');
@@ -95,6 +102,28 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::resource('paquetes', AdminPackageController::class)->except('show')->parameters(['paquetes' => 'package']);
         Route::resource('categorias', AdminPackageCategoryController::class)->except('show')->parameters(['categorias' => 'category']);
         Route::resource('metodos-pago', AdminPaymentMethodController::class)->except('show')->parameters(['metodos-pago' => 'paymentMethod']);
+        Route::resource('documentacion/categorias', AdminHelpCategoryController::class)
+            ->except('show')
+            ->parameters(['categorias' => 'category'])
+            ->names([
+                'index' => 'help.categories.index',
+                'create' => 'help.categories.create',
+                'store' => 'help.categories.store',
+                'edit' => 'help.categories.edit',
+                'update' => 'help.categories.update',
+                'destroy' => 'help.categories.destroy',
+            ]);
+        Route::resource('documentacion/articulos', AdminHelpArticleController::class)
+            ->parameters(['articulos' => 'article'])
+            ->names([
+                'index' => 'help.articles.index',
+                'create' => 'help.articles.create',
+                'store' => 'help.articles.store',
+                'show' => 'help.articles.show',
+                'edit' => 'help.articles.edit',
+                'update' => 'help.articles.update',
+                'destroy' => 'help.articles.destroy',
+            ]);
 
         Route::get('/configuracion-xui', [XuiSettingController::class, 'edit'])->name('xui.edit');
         Route::put('/configuracion-xui', [XuiSettingController::class, 'update'])->name('xui.update');
