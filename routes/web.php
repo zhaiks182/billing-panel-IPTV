@@ -25,14 +25,18 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/telegram/webhook', [TelegramWebhookController::class, 'handle'])->name('telegram.webhook');
 
-Route::get('/', [PackageController::class, 'index'])->name('home');
-Route::get('/comprar', [PackageController::class, 'shop'])->name('packages.shop');
-Route::get('/categoria/{category:slug}', [PackageController::class, 'category'])->name('packages.category');
-
 // Rutas de cliente/invitado que no exigen sesión iniciada, pero si quien las visita resulta
 // ser un admin autenticado, se le manda de vuelta al panel en vez de dejarlo "comprar" o
 // abrir tickets como si fuera cliente (ver App\Http\Middleware\RedirectAuthenticatedAdmin).
+// La home/categorías se agregaron acá el 2026-08-13 (antes quedaban afuera a propósito por
+// considerarse "solo lectura, inofensivas" — pero un admin logueado navegando la tienda veía
+// su propia sesión de cliente reflejada en la nav, ej. su nombre en el dropdown de cuenta,
+// lo cual no debe pasar nunca: un admin solo debe "existir" autenticado en /adm_4livepro).
 Route::middleware('no-admin')->group(function () {
+    Route::get('/', [PackageController::class, 'index'])->name('home');
+    Route::get('/comprar', [PackageController::class, 'shop'])->name('packages.shop');
+    Route::get('/categoria/{category:slug}', [PackageController::class, 'category'])->name('packages.category');
+
     Route::get('/tickets/nuevo', [TicketController::class, 'create'])->name('tickets.create');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store')->middleware('throttle:10,1');
     Route::get('/tickets/{ticket}', [TicketController::class, 'show'])->name('tickets.show');

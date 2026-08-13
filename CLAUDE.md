@@ -555,11 +555,24 @@ rutas, pero se cubre por si acaso), y un `Route::middleware('no-admin')->group(.
 envolviendo las rutas de invitado (`/carro*`, `/paquetes/{package}/comprar`,
 `/tickets/nuevo`, `POST /tickets`, `/tickets/{ticket}` GET, `/tickets/{ticket}/responder`)
 que **no** exigen `auth` (soportan checkout/tickets de invitado) pero igual deben rebotar a
-un admin si resulta estar logueado. **No** se tocó: `/` y `/categoria/{slug}` (páginas
-públicas inofensivas de ver) y `POST /logout` (debe seguir cerrando sesión a cualquiera sin
-trabas). `OrderController::hasUsedTrial()` y `PackageController::index()` ya tenían ramas
+un admin si resulta estar logueado. ~~**No** se tocó: `/` y `/categoria/{slug}` (páginas
+públicas inofensivas de ver)~~ — **corregido el 2026-08-13** (ver nota más abajo, el usuario
+reportó ver su propia sesión de admin reflejada en la tienda). `POST /logout` sigue sin
+`no-admin` a propósito (debe seguir cerrando sesión a cualquiera sin trabas).
+`OrderController::hasUsedTrial()` y `PackageController::index()` ya tenían ramas
 `if ($user->isAdmin())` defensivas de antes de este cambio — quedan como código muerto
 inofensivo, no se tocaron.
+
+**Home y categorías cerradas también (2026-08-13)**: el usuario notó que, aun logueado como
+admin, la tienda pública (`/`, `/comprar`, `/categoria/{slug}`) seguía siendo visible y
+reflejaba su sesión (nombre en el dropdown de cuenta, carrito, etc.) — quedaban fuera del
+`no-admin` a propósito desde el cambio original, por considerarse "solo lectura,
+inofensivas". Se decidió que ya no es aceptable: un admin no debe "existir" autenticado en
+ningún lado fuera de `/adm_4livepro`. Fix de una línea: las 3 rutas se movieron dentro del
+mismo `Route::middleware('no-admin')->group(...)` que ya envolvía el resto de rutas de
+invitado en `routes/web.php`. Probado en local: admin autenticado pidiendo `/`, `/comprar` y
+`/categoria/{slug}` → los 3 rebotan a `admin.dashboard`; un invitado sin sesión sigue viendo
+la tienda exactamente igual que antes — admin de prueba eliminado después.
 
 **Rediseño del panel: navegación segmentada por categoría** (referencia visual: paneles
 admin tipo WHMCS, sidebar categorizado — el usuario compartió una URL de
