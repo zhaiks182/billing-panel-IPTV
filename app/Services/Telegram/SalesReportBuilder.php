@@ -11,7 +11,12 @@ use App\Models\Order;
  */
 class SalesReportBuilder
 {
-    public function today(): string
+    /**
+     * Datos crudos del resumen de hoy, compartidos entre el texto de Telegram (`today()`)
+     * y el correo interno (`App\Notifications\AdminDailySalesSummary`) — una sola consulta,
+     * dos formatos de salida.
+     */
+    public function todayStats(): array
     {
         $today = now()->startOfDay();
 
@@ -22,12 +27,24 @@ class SalesReportBuilder
 
         $paidOrders = $approvedToday->filter(fn (Order $order) => ! $order->package->is_trial);
         $trialOrders = $approvedToday->filter(fn (Order $order) => $order->package->is_trial);
-        $revenue = $paidOrders->sum('amount');
 
-        return "📊 <b>Ventas de hoy</b> ({$today->format('d/m/Y')})\n\n".
-            "Pedidos pagados aprobados: {$paidOrders->count()}\n".
-            'Ingresos: $'.number_format((float) $revenue, 2)." USD\n".
-            "Demos activadas: {$trialOrders->count()}\n\n".
-            "Total pedidos aprobados: {$approvedToday->count()}";
+        return [
+            'date' => $today,
+            'paid_count' => $paidOrders->count(),
+            'revenue' => (float) $paidOrders->sum('amount'),
+            'trial_count' => $trialOrders->count(),
+            'total_count' => $approvedToday->count(),
+        ];
+    }
+
+    public function today(): string
+    {
+        $stats = $this->todayStats();
+
+        return "📊 <b>Ventas de hoy</b> ({$stats['date']->format('d/m/Y')})\n\n".
+            "Pedidos pagados aprobados: {$stats['paid_count']}\n".
+            'Ingresos: $'.number_format($stats['revenue'], 2)." USD\n".
+            "Demos activadas: {$stats['trial_count']}\n\n".
+            "Total pedidos aprobados: {$stats['total_count']}";
     }
 }

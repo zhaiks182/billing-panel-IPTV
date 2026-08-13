@@ -800,9 +800,9 @@ el bot ahora también **responde** cuando le escriben, vía webhook de Telegram.
     las 10:00 p.m."** — columna `daily_summary_enabled` en `telegram_settings` (migración
     `2026_08_06_110404_...`).
   - [`App\Console\Commands\SendTelegramDailySalesSummary`](app/Console/Commands/SendTelegramDailySalesSummary.php)
-    (`php artisan telegram:daily-summary`) — no hace nada si Telegram no está activo o si el
-    checkbox está desmarcado (mismo patrón defensivo que el resto de comandos/notificaciones).
-    Programado en [`routes/console.php`](routes/console.php):
+    (`php artisan telegram:daily-summary`) — la parte de Telegram no hace nada si Telegram no
+    está activo o si el checkbox está desmarcado (mismo patrón defensivo que el resto de
+    comandos/notificaciones). Programado en [`routes/console.php`](routes/console.php):
     `Schedule::command('telegram:daily-summary')->dailyAt('22:00')`, mismo patrón que
     `lines:send-expiration-reminders`.
   - **No hizo falta tocar el crontab del VPS** — ya existe `* * * * * cd
@@ -815,6 +815,29 @@ el bot ahora también **responde** cuando le escriben, vía webhook de Telegram.
     intentar nada ("Resumen diario desactivado..."); activándolo a mano (con un bot_token falso)
     sí llega hasta el intento de `sendMessage` (falla por token falso, mismo patrón de
     verificación que el resto de la sesión) — configuración de prueba revertida después.
+  - **También por correo a soporte (2026-08-13)**, a pedido del usuario ("recomiendo también
+    agregarlo para el correo, para que se envíe a soporte@4livepro.com") — mismos 4 números
+    que ya muestra el mensaje de Telegram (pedidos pagados, ingresos, demos, total), en un
+    correo con el mismo diseño de marca que el resto de avisos internos (`ticket_admin_new`,
+    etc.). Se refactorizó `SalesReportBuilder`: el query de siempre ahora vive en
+    `todayStats(): array` (datos crudos), y `today(): string` (el texto de Telegram) arma su
+    salida a partir de eso — una sola consulta, dos formatos. Nueva notificación
+    [`App\Notifications\AdminDailySalesSummary`](app/Notifications/AdminDailySalesSummary.php)
+    (destinatario on-demand, `MailSetting::current()->username`, mismo patrón que los avisos
+    de tickets) y plantilla nueva `daily_sales_summary` en `email_templates` (migración
+    `2026_08_13_180000_add_daily_sales_summary_email_template.php`, mismo patrón
+    `$wrap()`/heredoc, con una tabla simple de 4 filas en vez de las cajas de texto que usan
+    los avisos de tickets). **El envío del correo es independiente del checkbox
+    `daily_summary_enabled`** (ese checkbox solo dice "Enviar por Telegram" en su propio
+    texto) — el correo se manda siempre que haya un `username` configurado en Admin >
+    Configuración de correo, sin checkbox propio, mismo criterio que ya usan los avisos
+    internos de tickets. Probado en local: pedido pagado + demo aprobados hoy (sintéticos),
+    comando corrido con Telegram desactivado (esa rama no hizo nada, como se espera) y un
+    `MailSetting::username` de prueba — el correo salió con los 4 números correctos
+    ($5.99, 1 pagado, 1 demo, 2 total), quedó registrado en el historial de correos (ver
+    "Historial de correos por cliente" — aunque este no tiene `user_id`, por no ser un
+    cliente real) y el texto de Telegram (`today()`) se confirmó idéntico al de antes del
+    refactor — datos y configuración de prueba revertidos después.
 
 ## Módulo de Tickets de Soporte (2026-08-06)
 

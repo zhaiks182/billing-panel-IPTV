@@ -113,6 +113,13 @@ class EmailTemplate extends Model
                 'message' => 'Texto de la respuesta del cliente/invitado',
                 'ticket_url' => 'Enlace al ticket en el panel de admin',
             ],
+            'daily_sales_summary' => [
+                'date' => 'Fecha del resumen (ej. "13/08/2026")',
+                'paid_orders_count' => 'Cantidad de pedidos pagados aprobados hoy',
+                'revenue' => 'Ingresos del día (con formato, ej. "$45.50 USD")',
+                'trial_orders_count' => 'Cantidad de demos activadas hoy',
+                'total_orders_count' => 'Total de pedidos aprobados hoy (pagados + demos)',
+            ],
         ];
     }
 
@@ -218,6 +225,13 @@ class EmailTemplate extends Model
                 'customer_name' => 'Juan Pérez',
                 'message' => 'Gracias, ya probé de nuevo y sigue igual.',
                 'ticket_url' => url('/adm_4livepro/tickets/58'),
+            ],
+            'daily_sales_summary' => [
+                'date' => now()->format('d/m/Y'),
+                'paid_orders_count' => '3',
+                'revenue' => '$45.50 USD',
+                'trial_orders_count' => '2',
+                'total_orders_count' => '5',
             ],
             default => [],
         };
