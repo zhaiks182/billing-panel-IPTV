@@ -1518,6 +1518,20 @@ que la documentación de XUI ONE **también fuera pública**, no exclusiva del a
   Admin > Documentación > Categorías muestra los 4 íconos y las 4 como "Pública" — admin de
   prueba eliminado después.
 
+**Ajustes menores tras revisar el resultado (mismo día)**:
+- **Orden de categorías**: a pedido del usuario, "Preguntas frecuentes" pasó a mostrarse
+  primero (`sort_order` reasignado 1-4: Preguntas frecuentes, Instalación, XUI ONE
+  Administración, XUI ONE Líneas y revendedores) — migración de datos
+  `2026_08_13_210000_reorder_help_categories.php`, sin cambios de código.
+- **8 artículos más en "Preguntas frecuentes"** (11 en total ahora) — el usuario comparó
+  directamente con la categoría "What is?" del sitio de referencia y notó que le faltaban
+  varios temas. Se agregaron, mismo criterio de contenido 100% original: cómo funciona
+  IPTV, qué es una suscripción IPTV, qué es VOD, qué es el catch-up TV, IPTV vs. TV por
+  cable, qué es un Android TV Box, qué es un dispositivo MAG, qué es un revendedor IPTV
+  (este último conecta bien con el propio modelo de negocio del panel). Migración
+  `2026_08_13_220000_add_more_faq_articles.php`, mismo patrón `updateOrInsert`/heredoc que
+  el resto — total del módulo ahora: 4 categorías, 29 artículos.
+
 ## Plantillas de correo
 
 Los 9 correos transaccionales del sistema (verificación de cuenta, **factura pendiente de
