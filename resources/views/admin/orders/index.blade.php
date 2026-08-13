@@ -74,7 +74,7 @@
                             <tr>
                                 <td class="px-4 py-4 text-sm text-dim">{{ $order->order_number }}</td>
                                 <td class="px-4 py-4 text-sm text-dim">
-                                    {{ $order->user->name }}<br>
+                                    <a href="{{ route('admin.users.show', $order->user) }}" class="text-paper hover:text-brand-400 hover:underline">{{ $order->user->name }}</a><br>
                                     <span class="text-xs text-dim-2">{{ $order->user->email }}</span>
                                     @if ($order->is_renewal)
                                         <span class="ml-1 inline-flex px-1.5 py-0.5 text-xs rounded bg-brand-500/10 text-brand-300">{{ __('Cliente con línea activa') }}</span>

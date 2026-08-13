@@ -64,7 +64,7 @@
                         <dl class="grid grid-cols-2 gap-4 text-sm">
                             <div>
                                 <dt class="text-dim-2 text-xs uppercase tracking-wide">{{ __('Cliente') }}</dt>
-                                <dd class="text-paper">{{ $line->user->name }}</dd>
+                                <dd><a href="{{ route('admin.users.show', $line->user) }}" class="text-paper hover:text-brand-400 hover:underline">{{ $line->user->name }}</a></dd>
                                 <dd class="text-dim text-xs">{{ $line->user->email }}</dd>
                             </div>
                             <div>

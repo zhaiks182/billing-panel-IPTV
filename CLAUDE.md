@@ -660,6 +660,13 @@ sin tener que pasar por el pedido original. `Admin\LineController`:
 - El frontend (`admin/lines/show.blade.php`) deshabilita el botón apenas se confirma el
   envío (`lockLineAction()`) para evitar doble clic — importante en `renew`, ya que aplicar
   el mismo paquete dos veces sumaría la duración dos veces sobre el vencimiento ya extendido.
+- **Nombre del cliente enlazado a su perfil (2026-08-13)**, a pedido del usuario ("en
+  pedidos como en líneas, debo poder dar clic al usuario... igual que el módulo de
+  usuarios") — el nombre del cliente en `admin/orders/index.blade.php`,
+  `admin/lines/index.blade.php` y `admin/lines/show.blade.php` ahora enlaza a
+  `route('admin.users.show', $user)`, mismo estilo (`text-paper hover:text-brand-400
+  hover:underline`) que ya usaba `admin/users/index.blade.php`. Solo el `<a>` alrededor del
+  nombre — el correo debajo sigue siendo texto plano en los tres lugares.
 
 ### Auditoría (2026-08-09)
 

@@ -58,7 +58,7 @@
                         @forelse ($lines as $line)
                             <tr>
                                 <td class="px-4 py-4 text-sm">
-                                    <p class="text-paper">{{ $line->user->name }}</p>
+                                    <a href="{{ route('admin.users.show', $line->user) }}" class="text-paper hover:text-brand-400 hover:underline">{{ $line->user->name }}</a>
                                     <p class="text-xs text-dim-2">{{ $line->user->email }}</p>
                                 </td>
                                 <td class="px-4 py-4 text-sm text-dim font-mono">{{ $line->xui_username }}</td>
