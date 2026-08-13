@@ -126,6 +126,50 @@
                             </table>
                         </div>
                     </div>
+                    <div class="bg-panel border border-steel rounded-lg p-6">
+                        <h3 class="text-sm font-semibold text-dim-2 uppercase tracking-wide mb-4">{{ __('Historial de correos') }} ({{ $emailLogs->total() }})</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-steel">
+                                <thead>
+                                    <tr>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Fecha') }}</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Asunto') }}</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Estado') }}</th>
+                                        <th class="px-3 py-2 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Acción') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-steel">
+                                    @forelse ($emailLogs as $emailLog)
+                                        <tr>
+                                            <td class="px-3 py-3 text-sm text-dim-2">{{ $emailLog->created_at->format('d/m/Y H:i') }}</td>
+                                            <td class="px-3 py-3 text-sm text-paper">{{ $emailLog->subject }}</td>
+                                            <td class="px-3 py-3 text-sm">
+                                                @if ($emailLog->status === 'sent')
+                                                    <span class="inline-flex px-1.5 py-0.5 text-xs rounded bg-brand-500/10 text-brand-300">{{ __('Enviado') }}</span>
+                                                @else
+                                                    <span class="inline-flex px-1.5 py-0.5 text-xs rounded bg-danger/10 text-danger">{{ __('Falló') }}</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-3 py-3 text-sm">
+                                                <form method="POST" action="{{ route('admin.users.emails.resend', [$user, $emailLog]) }}"
+                                                      onsubmit="return confirm('{{ __('¿Reenviar este correo a') }} {{ $emailLog->to_email }}?')">
+                                                    @csrf
+                                                    <button class="text-brand-400 hover:underline">{{ __('Reenviar') }}</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="4" class="px-3 py-6 text-center text-dim-2">{{ __('Todavía no se le ha enviado ningún correo.') }}</td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                        @if ($emailLogs->hasPages())
+                            <div class="mt-4">{{ $emailLogs->onEachSide(1)->links() }}</div>
+                        @endif
+                    </div>
                 </div>
 
                 <div class="bg-panel border border-steel rounded-lg p-6 space-y-3">

@@ -107,6 +107,7 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::put('/usuarios/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::post('/usuarios/{user}/verificar', [AdminUserController::class, 'verify'])->name('users.verify');
         Route::post('/usuarios/{user}/bloquear', [AdminUserController::class, 'toggleBlock'])->name('users.toggle-block');
+        Route::post('/usuarios/{user}/correos/{emailLog}/reenviar', [AdminUserController::class, 'resendEmail'])->name('users.emails.resend');
         Route::delete('/usuarios/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
 
         Route::get('/configuracion-turnstile', [TurnstileSettingController::class, 'edit'])->name('turnstile.edit');

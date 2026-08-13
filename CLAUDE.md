@@ -60,8 +60,9 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
 - `OrderController` — aprobar/rechazar/reintentar pedidos, ver "Flujo de negocio principal".
 - `PackageController`, `PackageCategoryController`, `PaymentMethodController` — CRUD estándar
   (`Route::resource`, español en las rutas).
-- `UserController` — listar/verificar/eliminar usuarios, modal de dirección (ver "Panel de
-  administración").
+- `UserController` — listar/verificar/eliminar usuarios, página de detalle por cliente
+  (pedidos, líneas, historial de correos con reenvío — ver "Historial de correos por
+  cliente"), ver "Panel de administración".
 - `XuiSettingController`, `MailSettingController`, `TurnstileSettingController`,
   `TelegramSettingController` — edición de cada singleton de configuración (`XuiSetting`,
   `MailSetting`, `TurnstileSetting`, `TelegramSetting`), cada uno con su propio botón de
@@ -80,8 +81,16 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
 - `Ticket`, `TicketMessage`, `TicketAttachment` — ver "Módulo de Tickets de Soporte".
 - `LineActivityLog` — auditoría de acciones de admin sobre una línea, ver "Módulo de Líneas
   (Admin)" → "Auditoría".
+- `EmailLog` — historial de correos enviados por usuario, ver "Historial de correos por
+  cliente".
 - `XuiSetting`, `MailSetting`, `TurnstileSetting`, `TelegramSetting` — singletons de config
   (patrón `::current()`, un solo registro en la tabla, se crea vacío si no existe).
+
+**Listeners** (`app/Listeners`) — `LogEmailAttempt` (`app/Listeners/LogEmailAttempt.php`),
+único listener de la app: engancha `Illuminate\Mail\Events\MessageSending`/`MessageSent` a
+nivel global (auto-descubierto por Laravel, **no** registrado a mano — ver el propio
+docblock de la clase para el porqué) para alimentar `EmailLog`, ver "Historial de correos
+por cliente".
 
 **Jobs en cola** (`app/Jobs`) — únicos jobs de la app, ver "Módulo de Tickets de Soporte":
 `SendNewTicketAdminAlert`, `SendTicketReplyAdminAlert` (Telegram + correo interno cuando el
@@ -1193,6 +1202,79 @@ determinista. Todos los tickets/usuarios/línea/pedido de prueba eliminados desp
   devolvió 200 con el ticket correcto, y `/soporte/7195` devolvió 404 — datos de prueba
   eliminados después.
 
+## Historial de correos por cliente (2026-08-13)
+
+A pedido del usuario ("quisiera implementar dentro de cada usuario una opción para validar
+si efectivamente llegaron los correos, tipo WHMCS"), con una aclaración importante resuelta
+por `AskUserQuestion` antes de construir nada: WHMCS en realidad tiene dos niveles muy
+distintos de "verificar que llegó" — (a) un historial de qué correos intentó mandar el
+sistema y si el envío por SMTP tuvo éxito, o (b) confirmación real de entrega/apertura vía
+webhooks de un proveedor transaccional (Postmark/SES/Mailgun/etc.), que **no es posible**
+con el SMTP de Gmail que usa este proyecto hoy sin migrar toda la infraestructura de correo.
+El usuario eligió (a) — más simple, aditivo, sin tocar la configuración de correo actual — y
+pidió además la opción de reenviar cada correo desde el mismo historial.
+
+- **Captura universal con un solo listener**, en vez de tocar cada una de las ~15 clases de
+  `Notification`/`toMailUsing` de la app: [`App\Listeners\LogEmailAttempt`](app/Listeners/LogEmailAttempt.php)
+  engancha los eventos globales de Laravel `Illuminate\Mail\Events\MessageSending` (antes de
+  intentar el envío real) y `MessageSent` (justo después de que el envío tuvo éxito) — estos
+  disparan para **cualquier** correo de la app sin importar el camino (notificación
+  sync/queued, `Mail::send()` directo, "Probar esta plantilla" del admin), así que no hizo
+  falta modificar `OrderInvoice`, `TicketCreated`, etc.
+  - Funciona en **dos fases** porque Laravel no dispara ningún evento de "falló el envío":
+    `MessageSending` crea la fila en `email_logs` con `status='failed'` como valor
+    **pesimista** por defecto (antes de que el SMTP real responda), guardando ya el
+    destinatario/asunto/html/text completos; si `MessageSent` llega a dispararse (el envío
+    SMTP tuvo éxito), esa misma fila se actualiza a `status='sent'`. Si el SMTP falla a
+    mitad de camino, la fila se queda en `'failed'` con el contenido íntegro ya guardado —
+    útil para poder reenviarlo después sin haber perdido nada.
+  - Las dos fases se correlacionan con un header MIME propio (`X-Email-Log-Id`, un UUID) en
+    vez de depender de estado compartido entre los dos métodos del listener, porque Laravel
+    puede resolver una instancia nueva del listener por cada evento — el header viaja con el
+    mensaje real (visible si alguien mira el "mostrar original" en Gmail, inofensivo).
+  - `user_id` se resuelve por email (`User::where('email', $to)->value('id')`) al momento de
+    loguear — si no hay ningún `User` con ese correo (invitados de tickets, o el correo
+    interno a `soporte@4livepro.com`), la fila igual se guarda con `user_id = null`, solo que
+    no aparece en la página de ningún cliente puntual.
+  - ⚠️ **Bug real encontrado y corregido durante la prueba**: la primera versión registraba
+    el listener a mano con `Event::listen(...)` en `AppServiceProvider::boot()` — pero
+    Laravel 13 **auto-descubre** listeners en `app/Listeners` por convención (primer
+    parámetro del método tipado con la clase del evento), así que cada método corría **dos
+    veces** por cada correo real: dos filas por envío, cada una con su propio
+    `X-Email-Log-Id`, y solo una de las dos terminaba actualizada a `'sent'` (la otra
+    quedaba huérfana en `'failed'` para siempre). Fix: se quitaron los `Event::listen(...)`
+    manuales — el listener se registra solo, sin tocar `AppServiceProvider`. Repetido con
+    `php artisan tinker` disparando una notificación real: antes del fix, 2 filas por envío;
+    después, exactamente 1.
+- **Reenviar** ([`Admin\UserController::resendEmail()`](app/Http/Controllers/Admin/UserController.php),
+  ruta `POST /adm_4livepro/usuarios/{user}/correos/{emailLog}/reenviar`) manda **exactamente
+  el mismo `html_body`/`text_body` que quedó guardado la primera vez** — no reconstruye el
+  correo desde el estado actual del pedido/línea/ticket. Esto es intencional: si el pedido
+  cambió después (ej. se aprobó, se reasignó a otro paquete), reenviar sigue mostrando el
+  contenido histórico real de cuando se mandó, no una versión reescrita con datos de hoy.
+  Usa `Mail::send(['html' => new HtmlString(...), 'raw' => $text], [], ...)` — la clave
+  `'html'` con un `HtmlString` evita que Laravel intente tratar el contenido ya renderizado
+  como el nombre de una vista Blade (que lo volvería a envolver, generando HTML anidado
+  inválido), y la clave `'raw'` es el mecanismo interno que usa `Mail::raw()` para mandar
+  texto plano sin pasar por una vista. El reenvío pasa igual por `LogEmailAttempt`, así que
+  también queda registrado como una fila nueva en el historial — no se edita ni se reemplaza
+  la fila original.
+- **Vista**: tarjeta "Historial de correos" agregada a
+  [`admin/users/show.blade.php`](resources/views/admin/users/show.blade.php) (la página de
+  detalle de cliente ya existente — fecha, asunto, badge Enviado/Falló, botón Reenviar con
+  confirmación), paginada (10 por página, `paginate(10, ['*'], 'correos')` con nombre de
+  página propio por si en el futuro esa vista suma otro paginador).
+- Probado en local: notificación real disparada por `tinker` → exactamente 1 fila `'sent'`
+  (tras el fix del bug de doble registro); SMTP apuntado a un puerto inválido a propósito
+  para forzar `Symfony\Component\Mailer\Exception\TransportException` → la fila queda en
+  `'failed'` con el `html_body`/`text_body` completos igual guardados (confirmado que la
+  excepción real de Symfony sigue propagándose sin que el listener la trague); reenvío
+  probado end-to-end en el navegador (login admin real, clic en "Reenviar", confirmado el
+  mensaje de éxito y una fila nueva `'sent'` en el historial, y el correo saliente
+  inspeccionado en `storage/logs/laravel.log` — HTML sin doble-envoltura, `X-Email-Log-Id`
+  presente, contenido idéntico al original incluyendo el token/URL de la versión guardada,
+  no uno regenerado). Usuario/admin/filas de prueba eliminados después.
+
 ## Plantillas de correo
 
 Los 9 correos transaccionales del sistema (verificación de cuenta, **factura pendiente de
@@ -2238,3 +2320,14 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   Verificado en local entrando al panel admin real (`/adm_4livepro`) con un admin de
   prueba: la sección ya no aparece entre las tarjetas de resumen y "Líneas por vencer" —
   admin de prueba eliminado después.
+
+### 2026-08-13
+
+- **Historial de correos por cliente + reenvío**, a pedido del usuario ("tipo WHMCS") — ver
+  sección dedicada "Historial de correos por cliente" más arriba para el diseño completo
+  (captura universal vía `MessageSending`/`MessageSent`, dos fases sent/failed, reenvío del
+  contenido histórico exacto). Se resolvió primero con `AskUserQuestion` qué tipo de
+  "verificar que llegó" quería el usuario — historial de envíos (elegido) vs. confirmación
+  real de entrega/apertura (habría requerido migrar de Gmail SMTP a un proveedor
+  transaccional con webhooks, fuera de alcance). Bug real de doble-registro del listener
+  encontrado y corregido durante la prueba (ver detalle en la sección dedicada).

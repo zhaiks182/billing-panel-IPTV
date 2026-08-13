@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\EmailLog;
 use App\Models\User;
 use App\Services\Xui\TrialActivator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\HtmlString;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -37,8 +40,31 @@ class UserController extends Controller
 
         $orders = $user->orders()->with('package')->latest()->get();
         $lines = $user->lines()->with('order.package')->latest('expires_at')->get();
+        $emailLogs = EmailLog::where('user_id', $user->id)->latest()->paginate(10, ['*'], 'correos');
 
-        return view('admin.users.show', compact('user', 'orders', 'lines'));
+        return view('admin.users.show', compact('user', 'orders', 'lines', 'emailLogs'));
+    }
+
+    /**
+     * Reenvía exactamente el mismo contenido (html/text) que se generó y se intentó
+     * mandar la primera vez — no reconstruye el correo desde datos actuales, así que un
+     * pedido/línea que cambió después no afecta lo que se reenvía. El intento de reenvío
+     * pasa igual por LogEmailAttempt, así que queda como una fila nueva en el historial.
+     */
+    public function resendEmail(User $user, EmailLog $emailLog)
+    {
+        abort_unless($emailLog->user_id === $user->id, 404);
+
+        Mail::send(
+            array_filter([
+                'html' => new HtmlString((string) $emailLog->html_body),
+                'raw' => $emailLog->text_body,
+            ], fn ($value) => $value !== null),
+            [],
+            fn ($message) => $message->to($emailLog->to_email)->subject($emailLog->subject)
+        );
+
+        return back()->with('status', "Correo «{$emailLog->subject}» reenviado a {$emailLog->to_email}.");
     }
 
     public function edit(User $user)
