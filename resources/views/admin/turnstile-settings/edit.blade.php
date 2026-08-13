@@ -46,6 +46,18 @@
                         <x-input-error :messages="$errors->get('secret_key')" class="mt-2" />
                     </div>
 
+                    <div class="mt-4">
+                        <x-input-label for="theme" value="{{ __('Color del widget') }}" />
+                        <select id="theme" name="theme" class="mt-1 block w-full rounded-md border-steel bg-panel text-paper shadow-sm">
+                            <option value="dark" {{ old('theme', $settings->theme) === 'dark' ? 'selected' : '' }}>{{ __('Oscuro') }}</option>
+                            <option value="light" {{ old('theme', $settings->theme) === 'light' ? 'selected' : '' }}>{{ __('Claro (blanco)') }}</option>
+                        </select>
+                        <x-input-error :messages="$errors->get('theme')" class="mt-2" />
+                        <p class="mt-2 text-xs text-dim-2">
+                            {{ __('Aplica a los 3 formularios que muestran el widget: login del panel admin, login de clientes, y registro/checkout/tickets.') }}
+                        </p>
+                    </div>
+
                     <div class="mt-6 flex items-center gap-3">
                         <x-primary-button>{{ __('Guardar') }}</x-primary-button>
                         <a href="{{ route('admin.dashboard') }}" class="text-sm text-dim hover:text-paper">{{ __('Cancelar') }}</a>

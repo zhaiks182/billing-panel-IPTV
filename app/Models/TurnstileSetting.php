@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['enabled', 'site_key', 'secret_key'])]
+#[Fillable(['enabled', 'site_key', 'secret_key', 'theme'])]
 class TurnstileSetting extends Model
 {
     protected function casts(): array

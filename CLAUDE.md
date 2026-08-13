@@ -2670,13 +2670,24 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   usuario, por derechos de autor). 4 categorías, 21 artículos, 2 modelos nuevos
   (`HelpCategory`/`HelpArticle`), CRUD admin completo, clase CSS `.help-content` nueva.
   Desplegado con `deploy.sh --migrate` (sin `--no-build`, por el CSS nuevo).
-- **Widget de Cloudflare Turnstile del login admin, de oscuro a claro** — a pedido del
-  usuario, viendo una captura del login de `/adm_4livepro`. Solo afecta a
-  `admin/auth/login.blade.php` (`data-theme="dark"` → `"light"`), que tiene su propio
-  markup del widget separado de `<x-turnstile-widget>` (el componente compartido de
-  registro/checkout/tickets, que sigue en oscuro sin cambios). Verificado que el atributo
-  queda bien seteado en el DOM con las llaves públicas de prueba de Cloudflare
-  (`1x00000000000000000000AA`/`1x0000...AA`) — el iframe real del widget no se pudo
-  renderizar en esta sesión porque el navegador de pruebas no tiene salida de red hacia
-  `challenges.cloudflare.com`, no es un problema del código — configuración de prueba
-  revertida después.
+- **Color del widget de Cloudflare Turnstile, ahora configurable desde el admin** — primer
+  intento: solo se cambió `data-theme="dark"` → `"light"` a mano en
+  `admin/auth/login.blade.php` (a pedido del usuario, viendo una captura del login de
+  `/adm_4livepro`). El usuario pidió después centralizarlo ("recomiendo mejor agregar el
+  color en el módulo de admin para que se aplique a todo") — columna nueva
+  `turnstile_settings.theme` (`dark`|`light`, default `dark`, migración
+  `2026_08_13_250000_add_theme_to_turnstile_settings.php`), select nuevo en
+  Admin > Cloudflare Turnstile ("Color del widget"). Los **3 lugares** que renderizan
+  `cf-turnstile` leen `\App\Models\TurnstileSetting::current()->theme` directamente en el
+  Blade (mismo patrón de consulta liviana ya usado para el badge de tickets/categorías de
+  la tienda en la nav — sin service/composer nuevo, tabla singleton de una fila):
+  `admin/auth/login.blade.php` (login del panel), `auth/login.blade.php` (login de
+  clientes), y [`<x-turnstile-widget>`](resources/views/components/turnstile-widget.blade.php)
+  (componente compartido de registro/checkout/tickets). Cambiar el select una vez ahora
+  afecta a los tres. Probado en local con las llaves públicas de prueba de Cloudflare: el
+  atributo `data-theme` se confirmó `"light"` en el DOM de los 3 formularios tras activar
+  el ajuste, y el guardado real del selector (cambiándolo a `"dark"` vía el formulario de
+  Admin > Turnstile) se confirmó en la base de datos — el iframe visual del widget no se
+  pudo renderizar en esta sesión porque el navegador de pruebas no tiene salida de red
+  hacia `challenges.cloudflare.com`, no es un problema del código — configuración y admin
+  de prueba revertidos después.

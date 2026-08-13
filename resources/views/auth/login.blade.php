@@ -47,7 +47,7 @@
 
                     @if ($turnstileSiteKey)
                         <div class="mt-4 flex flex-col items-center">
-                            <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-theme="dark"></div>
+                            <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-theme="{{ \App\Models\TurnstileSetting::current()->theme }}"></div>
                             <x-input-error :messages="$errors->get('cf-turnstile-response')" class="mt-2" />
                         </div>
                     @endif

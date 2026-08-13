@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\TurnstileSetting;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class TurnstileSettingController extends Controller
 {
@@ -21,12 +22,14 @@ class TurnstileSettingController extends Controller
             'enabled' => ['nullable', 'boolean'],
             'site_key' => ['nullable', 'required_if:enabled,1', 'string', 'max:255'],
             'secret_key' => ['nullable', 'string', 'max:255'],
+            'theme' => ['required', Rule::in(['dark', 'light'])],
         ]);
 
         $settings = TurnstileSetting::current();
 
         $settings->enabled = $request->boolean('enabled');
         $settings->site_key = $validated['site_key'] ?? null;
+        $settings->theme = $validated['theme'];
 
         if (! empty($validated['secret_key'])) {
             $settings->secret_key = $validated['secret_key'];
