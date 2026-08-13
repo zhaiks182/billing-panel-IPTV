@@ -1560,6 +1560,14 @@ que la documentación de XUI ONE **también fuera pública**, no exclusiva del a
     su propio ícono; en el editor admin, la vista previa en vivo (`x-html`) renderiza la
     caja correctamente sin necesidad de guardar primero — admin de prueba eliminado
     después.
+- **Navegación Anterior/Siguiente entre artículos** (mismo día) — otro patrón de diseño que
+  el usuario mostró por captura (dos cajas al pie del artículo). `HelpController::article()`
+  calcula `$previousArticle`/`$nextArticle` buscando la posición del artículo actual dentro
+  de `$category->articles()` (ya ordenado por `sort_order`) con `Collection::search()`, sin
+  consulta extra. Se muestra en `help/article.blade.php` como dos tarjetas (ocultas si no
+  hay anterior/siguiente — el primer artículo de una categoría no muestra "Anterior", el
+  último no muestra "Siguiente"). Probado en local con los 3 casos: artículo del medio
+  (ambos enlaces), primero (solo "Siguiente"), último (solo "Anterior").
 
 ## Plantillas de correo
 

@@ -31,7 +31,12 @@ class HelpController extends Controller
 
         $categories = $this->sidebarCategories();
 
-        return view('help.article', compact('category', 'article', 'categories'));
+        $siblingArticles = $category->articles()->where('is_active', true)->orderBy('sort_order')->get();
+        $position = $siblingArticles->search(fn ($a) => $a->id === $article->id);
+        $previousArticle = $position > 0 ? $siblingArticles->get($position - 1) : null;
+        $nextArticle = $position < $siblingArticles->count() - 1 ? $siblingArticles->get($position + 1) : null;
+
+        return view('help.article', compact('category', 'article', 'categories', 'previousArticle', 'nextArticle'));
     }
 
     /**

@@ -26,6 +26,29 @@
                         <x-help-article-content :article="$article" />
                     </div>
 
+                    @if ($previousArticle || $nextArticle)
+                        <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                @if ($previousArticle)
+                                    <a href="{{ route('help.article', [$category, $previousArticle]) }}"
+                                       class="block bg-panel border border-steel rounded-lg p-4 hover:border-brand-500 transition">
+                                        <p class="text-xs text-dim-2 mb-1">{{ __('Anterior') }}</p>
+                                        <p class="text-sm font-semibold text-brand-400">« {{ $previousArticle->title }}</p>
+                                    </a>
+                                @endif
+                            </div>
+                            <div>
+                                @if ($nextArticle)
+                                    <a href="{{ route('help.article', [$category, $nextArticle]) }}"
+                                       class="block bg-panel border border-steel rounded-lg p-4 text-right hover:border-brand-500 transition">
+                                        <p class="text-xs text-dim-2 mb-1">{{ __('Siguiente') }}</p>
+                                        <p class="text-sm font-semibold text-brand-400">{{ $nextArticle->title }} »</p>
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    @endif
+
                     <a href="{{ route('help.category', $category) }}" class="mt-6 inline-block text-sm text-dim hover:text-paper">
                         {{ __('← Volver a :category', ['category' => $category->name]) }}
                     </a>
