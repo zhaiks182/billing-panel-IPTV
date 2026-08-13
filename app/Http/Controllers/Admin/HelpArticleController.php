@@ -73,6 +73,23 @@ class HelpArticleController extends Controller
         return back()->with('status', 'Artículo eliminado.');
     }
 
+    /**
+     * Sube una imagen (ej. una captura del panel XUI ONE real del usuario) y devuelve su
+     * URL pública para insertarla en el `<textarea>` del editor — mismo disco `public` y
+     * mismo patrón de `store()` que ya usan los comprobantes de pago y los adjuntos de
+     * tickets, solo con su propia carpeta (`help-images`).
+     */
+    public function uploadImage(Request $request)
+    {
+        $request->validate([
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:5120'],
+        ]);
+
+        $path = $request->file('image')->store('help-images', 'public');
+
+        return response()->json(['url' => asset('storage/'.$path)]);
+    }
+
     private function validated(Request $request): array
     {
         $validated = $request->validate([

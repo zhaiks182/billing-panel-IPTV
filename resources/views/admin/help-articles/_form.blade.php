@@ -1,7 +1,35 @@
 @csrf
 @if (isset($article)) @method('PUT') @endif
 
-<div x-data="{ content: @js($article->content ?? '') }">
+<div x-data="{
+        content: @js($article->content ?? ''),
+        uploadingImage: false,
+        uploadImage(event) {
+            const file = event.target.files[0];
+            if (! file) return;
+
+            this.uploadingImage = true;
+            const formData = new FormData();
+            formData.append('image', file);
+
+            fetch('{{ route('admin.help.articles.upload-image') }}', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+                body: formData,
+            })
+                .then((response) => response.json())
+                .then((data) => {
+                    const textarea = this.$refs.content;
+                    const placeholder = '<img src=\'' + data.url + '\' alt=\'\'>';
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    this.content = this.content.slice(0, start) + placeholder + this.content.slice(end);
+                    this.$nextTick(() => textarea.focus());
+                })
+                .catch(() => alert('{{ __('No se pudo subir la imagen.') }}'))
+                .finally(() => { this.uploadingImage = false; event.target.value = ''; });
+        },
+    }">
     <div>
         <x-input-label for="help_category_id" value="{{ __('Categoría') }}" />
         <select id="help_category_id" name="help_category_id" required
@@ -38,12 +66,19 @@
     </div>
 
     <div class="mt-4">
-        <x-input-label for="content" value="{{ __('Contenido (HTML)') }}" />
-        <textarea id="content" name="content" rows="18" x-model="content"
+        <div class="flex items-center justify-between">
+            <x-input-label for="content" value="{{ __('Contenido (HTML)') }}" />
+            <label class="text-xs text-brand-400 hover:underline cursor-pointer">
+                <span x-show="! uploadingImage">{{ __('📷 Insertar imagen') }}</span>
+                <span x-show="uploadingImage" x-cloak>{{ __('Subiendo…') }}</span>
+                <input type="file" accept="image/*" class="hidden" @change="uploadImage($event)" :disabled="uploadingImage">
+            </label>
+        </div>
+        <textarea id="content" name="content" rows="18" x-model="content" x-ref="content"
                   class="mt-1 block w-full rounded-md border-steel bg-panel text-paper font-mono text-xs shadow-sm">{{ old('content', $article->content ?? '') }}</textarea>
         <x-input-error :messages="$errors->get('content')" class="mt-2" />
         <p class="mt-2 text-xs text-dim-2">
-            {{ __('Usa tags semánticos simples: <h2>, <h3>, <p>, <ul>/<ol>/<li>, <strong>, <a>, <img>, <code>. Se estilizan automáticamente al mostrarse.') }}
+            {{ __('Usa tags semánticos simples: <h2>, <h3>, <p>, <ul>/<ol>/<li>, <strong>, <a>, <img>, <code>. Se estilizan automáticamente al mostrarse. La imagen se inserta donde tengas el cursor.') }}
         </p>
 
         <p class="mt-3 text-xs text-dim-2">{{ __('Vista previa:') }}</p>

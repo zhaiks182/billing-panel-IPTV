@@ -1568,6 +1568,35 @@ que la documentación de XUI ONE **también fuera pública**, no exclusiva del a
   hay anterior/siguiente — el primer artículo de una categoría no muestra "Anterior", el
   último no muestra "Siguiente"). Probado en local con los 3 casos: artículo del medio
   (ambos enlaces), primero (solo "Siguiente"), último (solo "Anterior").
+- **Subir imágenes reales desde el editor** — el usuario notó que el sitio de referencia
+  tiene capturas de pantalla en sus tutoriales de XUI ONE y pidió lo mismo. Se le explicó
+  que no se pueden copiar sus capturas (son su contenido, mismo motivo de derechos de autor
+  de siempre) pero que sí tiene sentido poder subir **capturas propias** del XUI ONE real
+  del usuario — se construyó esa función:
+  - `Admin\HelpArticleController::uploadImage()` (`POST
+    /adm_4livepro/documentacion/articulos/subir-imagen`) — mismo patrón de `store()` que ya
+    usan los comprobantes de pago y los adjuntos de tickets (`$request->file('image')
+    ->store('help-images', 'public')`), disco `public` (mismo symlink `public/storage` ya
+    existente), devuelve `{url: ...}` en JSON.
+  - Botón "📷 Insertar imagen" en `admin/help-articles/_form.blade.php` — un
+    `<input type="file" class="hidden">` disparado por un `<label>`, sube el archivo por
+    `fetch()` y al recibir la URL inserta `<img src='...' alt=''>` en el `<textarea>` justo
+    en la posición del cursor (`textarea.selectionStart`/`selectionEnd`), mismo patrón que
+    `insertVariable()` en el editor de plantillas de correo.
+  - ⚠️ **Bug real encontrado y corregido durante la prueba**: la primera versión escribía
+    el HTML del `<img>` con comillas dobles escapadas (`'<img src=\"' + data.url + '\" ...`)
+    dentro del propio atributo `x-data="..."`, que **también** usa comillas dobles como
+    delimitador — HTML no entiende el escape de barra invertida de JS, así que el primer
+    `\"` cerraba de verdad el atributo `x-data` a mitad de camino, dejando el resto del
+    componente roto (Alpine tiraba `SyntaxError` y el JS se filtraba como texto visible en
+    la página). Fix: usar comillas simples para los atributos del `<img>` generado
+    (`'<img src=\'' + data.url + '\' alt=\'\'>'`), ya que el atributo `x-data` que lo
+    envuelve usa comillas dobles — nunca mezclar el mismo tipo de comilla entre el
+    delimitador HTML de afuera y las cadenas JS de adentro.
+  - Probado de punta a punta: subida real vía `curl` con sesión/CSRF reales (200, archivo
+    guardado en `storage/app/public/help-images/` y servido en `/storage/help-images/...`);
+    inserción en el textarea y reflejo inmediato en la vista previa confirmados con
+    `Alpine.$data()` en el navegador — archivo y admin de prueba eliminados después.
 
 ## Plantillas de correo
 

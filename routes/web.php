@@ -124,6 +124,7 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
                 'update' => 'help.articles.update',
                 'destroy' => 'help.articles.destroy',
             ]);
+        Route::post('documentacion/articulos/subir-imagen', [AdminHelpArticleController::class, 'uploadImage'])->name('help.articles.upload-image');
 
         Route::get('/configuracion-xui', [XuiSettingController::class, 'edit'])->name('xui.edit');
         Route::put('/configuracion-xui', [XuiSettingController::class, 'update'])->name('xui.update');
