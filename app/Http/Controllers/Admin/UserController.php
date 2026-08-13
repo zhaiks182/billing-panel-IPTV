@@ -46,6 +46,19 @@ class UserController extends Controller
     }
 
     /**
+     * Vista previa del HTML exacto que se generó ese envío — se abre en pestaña aparte
+     * (no un modal en la misma página) para que el CSS del correo nunca choque con el del
+     * panel admin; el html_body ya es un documento completo (`<!DOCTYPE html>...`).
+     */
+    public function previewEmail(User $user, EmailLog $emailLog)
+    {
+        abort_unless($emailLog->user_id === $user->id, 404);
+
+        return response($emailLog->html_body ?: '<p>Este correo no tiene contenido HTML guardado.</p>')
+            ->header('Content-Type', 'text/html; charset=UTF-8');
+    }
+
+    /**
      * Reenvía exactamente el mismo contenido (html/text) que se generó y se intentó
      * mandar la primera vez — no reconstruye el correo desde datos actuales, así que un
      * pedido/línea que cambió después no afecta lo que se reenvía. El intento de reenvío

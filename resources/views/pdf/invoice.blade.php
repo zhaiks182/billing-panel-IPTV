@@ -40,7 +40,7 @@
 
     <div class="content">
         <p class="eyebrow">Documento de facturación</p>
-        <p class="title">Factura N.&ordm;{{ $order->id }}</p>
+        <p class="title">Factura N.&ordm;{{ $order->order_number }}</p>
         <span class="badge">{{ $statusLabel }}</span>
 
         <table class="info-table">
@@ -99,7 +99,7 @@
     </div>
 
     <div class="footer">
-        4LivePro Latino &middot; Factura N.&ordm;{{ $order->id }} &middot; Generada el {{ now()->format('d/m/Y') }}
+        4LivePro Latino &middot; Factura N.&ordm;{{ $order->order_number }} &middot; Generada el {{ now()->format('d/m/Y') }}
     </div>
 </body>
 </html>

@@ -39,6 +39,6 @@ class InvoicePdfService
 
     public function filename(Order $order): string
     {
-        return "factura-{$order->id}.pdf";
+        return "factura-{$order->order_number}.pdf";
     }
 }

@@ -42,7 +42,7 @@ class OrderController extends Controller
 
             foreach ($orders as $order) {
                 fputcsv($out, [
-                    $order->id,
+                    $order->order_number,
                     $order->user->name,
                     $order->user->email,
                     $order->package->name,
@@ -63,7 +63,7 @@ class OrderController extends Controller
 
         $this->activate($order, $xui);
 
-        return back()->with('status', "Pedido #{$order->id} aprobado.");
+        return back()->with('status', "Pedido #{$order->order_number} aprobado.");
     }
 
     public function retry(Order $order, XuiLineService $xui)
@@ -72,7 +72,7 @@ class OrderController extends Controller
 
         $this->activate($order, $xui);
 
-        return back()->with('status', "Pedido #{$order->id} reintentado.");
+        return back()->with('status', "Pedido #{$order->order_number} reintentado.");
     }
 
     public function reject(Request $request, Order $order)
@@ -92,7 +92,7 @@ class OrderController extends Controller
 
         $order->user->notify(new OrderRejected($order));
 
-        return back()->with('status', "Pedido #{$order->id} rechazado.");
+        return back()->with('status', "Pedido #{$order->order_number} rechazado.");
     }
 
     /**

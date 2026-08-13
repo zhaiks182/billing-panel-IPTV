@@ -111,7 +111,7 @@
                                 <tbody class="divide-y divide-steel">
                                     @forelse ($orders as $order)
                                         <tr>
-                                            <td class="px-3 py-3 text-sm text-dim">{{ $order->id }}</td>
+                                            <td class="px-3 py-3 text-sm text-dim">{{ $order->order_number }}</td>
                                             <td class="px-3 py-3 text-sm text-dim">{{ $order->package->name }}</td>
                                             <td class="px-3 py-3 text-sm text-dim">${{ number_format($order->amount, 2) }}</td>
                                             <td class="px-3 py-3 text-sm"><x-order-status-badge :status="$order->status" /></td>
@@ -151,11 +151,15 @@
                                                 @endif
                                             </td>
                                             <td class="px-3 py-3 text-sm">
-                                                <form method="POST" action="{{ route('admin.users.emails.resend', [$user, $emailLog]) }}"
-                                                      onsubmit="return confirm('{{ __('¿Reenviar este correo a') }} {{ $emailLog->to_email }}?')">
-                                                    @csrf
-                                                    <button class="text-brand-400 hover:underline">{{ __('Reenviar') }}</button>
-                                                </form>
+                                                <div class="flex items-center gap-3">
+                                                    <a href="{{ route('admin.users.emails.preview', [$user, $emailLog]) }}" target="_blank"
+                                                       class="text-dim hover:text-paper hover:underline">{{ __('Ver') }}</a>
+                                                    <form method="POST" action="{{ route('admin.users.emails.resend', [$user, $emailLog]) }}"
+                                                          onsubmit="return confirm('{{ __('¿Reenviar este correo a') }} {{ $emailLog->to_email }}?')">
+                                                        @csrf
+                                                        <button class="text-brand-400 hover:underline">{{ __('Reenviar') }}</button>
+                                                    </form>
+                                                </div>
                                             </td>
                                         </tr>
                                     @empty

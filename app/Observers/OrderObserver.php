@@ -27,7 +27,7 @@ class OrderObserver
             default => $order->status,
         };
 
-        $message = "<b>{$type} #{$order->id}</b>\n"
+        $message = "<b>{$type} #{$order->order_number}</b>\n"
             .'Cliente: '.TelegramNotifier::escape($order->user->name).' ('.TelegramNotifier::escape($order->user->email).")\n"
             .'Paquete: '.TelegramNotifier::escape($order->package->name)."\n"
             ."Monto: {$amount}\n"

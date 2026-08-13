@@ -90,7 +90,7 @@
                                 <option value="">{{ __('Ninguno') }}</option>
                                 @foreach ($orders as $order)
                                     <option value="{{ $order->id }}" {{ (string) old('order_id') === (string) $order->id ? 'selected' : '' }}>
-                                        #{{ $order->id }} — {{ $order->package->name }}
+                                        #{{ $order->order_number }} — {{ $order->package->name }}
                                     </option>
                                 @endforeach
                             </select>

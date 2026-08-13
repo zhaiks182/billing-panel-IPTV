@@ -25,7 +25,7 @@ class OrderRejected extends Notification
     {
         return EmailTemplate::mail('order_rejected', [
             'user_name' => $notifiable->name,
-            'order_id' => (string) $this->order->id,
+            'order_id' => (string) $this->order->order_number,
             'admin_note' => $this->order->admin_note ?: 'No se especificó un motivo.',
             'orders_url' => route('orders.index'),
         ]);
@@ -35,7 +35,7 @@ class OrderRejected extends Notification
     {
         return [
             'order_id' => $this->order->id,
-            'message' => "Tu pedido #{$this->order->id} fue rechazado.",
+            'message' => "Tu pedido #{$this->order->order_number} fue rechazado.",
         ];
     }
 }

@@ -424,8 +424,11 @@ del formulario de registro.
   `is_active`, `is_trial`, `xui_package_id` (FK lógica al ID de paquete en XUI ONE — **si
   está vacío, la activación falla** con mensaje explícito), `features` (texto multilínea).
 - `payment_methods`: nombre + instrucciones de pago (texto libre), `is_active`.
-- `orders`: `user_id`, `package_id`, `payment_method_id` (nullable — permite pedidos sin
-  método, ej. trials), `amount`, `proof_path`, `status`
+- `orders`: `order_number` (string(4), único, aleatorio con ceros a la izquierda — número
+  público de "Pedido #XXXX", mismo patrón que `Ticket::ticket_number`, ver "Número de
+  pedido público" más abajo; el `id` autoincremental sigue siendo la clave real para
+  `lines.order_id` y el binding de rutas), `user_id`, `package_id`, `payment_method_id`
+  (nullable — permite pedidos sin método, ej. trials), `amount`, `proof_path`, `status`
   (`pending`|`approved`|`activated`|`rejected`|`error` — `approved`/`activated` representan
   ambos un pago ya confirmado, la diferencia es solo si la línea llegó a crearse en XUI o no
   todavía; `Order::isPaid()` los trata igual. `rejected` se muestra como "Cancelado" en las
@@ -1274,6 +1277,68 @@ pidió además la opción de reenviar cada correo desde el mismo historial.
   inspeccionado en `storage/logs/laravel.log` — HTML sin doble-envoltura, `X-Email-Log-Id`
   presente, contenido idéntico al original incluyendo el token/URL de la versión guardada,
   no uno regenerado). Usuario/admin/filas de prueba eliminados después.
+- **Vista previa agregada** (mismo día, a pedido del usuario: "recomiendo agregar un previo
+  del correo para ver como le llegó al usuario") — enlace "Ver" junto a "Reenviar", abre en
+  pestaña aparte (`GET /adm_4livepro/usuarios/{user}/correos/{emailLog}/vista-previa`,
+  `Admin\UserController::previewEmail()`) el `html_body` guardado tal cual, con
+  `Content-Type: text/html` directo — **no** un modal/iframe en la misma página, a propósito,
+  para que el CSS inline del correo nunca choque con el del panel admin. Probado en el
+  navegador: abre y renderiza el diseño real de marca del correo (header oscuro, botón,
+  footer) igual que llegaría al cliente.
+
+## Número de pedido público (2026-08-13)
+
+A pedido del usuario ("cambiar los números de pedido a 4 dígitos y que sea random,
+actualmente el último fue 55") — antes "Pedido #N" en todos lados (correos, PDF de factura,
+avisos de Telegram, panel admin, "Mis Pedidos") mostraba el `id` autoincremental de la tabla
+(secuencial y predecible, revela cuántos pedidos totales lleva el negocio). **Mismo patrón
+ya probado con `Ticket::ticket_number`** (ver "Módulo de Tickets de Soporte" →  "Número de
+ticket público"), aplicado ahora a `Order`: columna nueva `order_number` (string(4), único,
+`0000`-`9999` con ceros a la izquierda), generada en `Order::booted()`/`static::creating()`
+con reintento hasta encontrar uno no usado. Migración
+`2026_08_13_150000_add_order_number_to_orders_table.php` agrega la columna (nullable a
+nivel de esquema, igual que `ticket_number`, para no depender de `doctrine/dbal`) y rellena
+con números aleatorios únicos los pedidos que ya existían.
+
+- **El `id` interno no se tocó** — sigue siendo la clave real de `lines.order_id`, del
+  binding de rutas (`{order}` en `/pedidos/{order}/estado`, `/pedidos/{order}/factura`,
+  las rutas de admin), y del `order_id` que valida/guarda el formulario "Pedido relacionado"
+  al abrir un ticket (`TicketController::store()` sigue validando contra
+  `$user->orders()->where('id', ...)`). **A diferencia de `Ticket`, no se cambió
+  `getRouteKeyName()`** — a propósito: el polling de `trialGateForm()` en
+  [`resources/js/app.js`](resources/js/app.js) arma la URL de estado con el `order_id`
+  crudo que devuelve el JSON de `storeTrial()`, y tocar el binding habría obligado a
+  coordinar ese cambio con el JS también; como nadie pidió que la URL cambiara (a diferencia
+  del caso de tickets, donde sí se pidió explícitamente "el enlace no puede ser el id"), se
+  dejó el binding tal cual y solo se cambió lo que se **muestra**. Si en el futuro se pide lo
+  mismo que con tickets, es el mismo cambio de una línea (`getRouteKeyName()`) más ajustar
+  `pollStatus()` para que reciba `order_number` en vez de `order_id`.
+  - Los usos internos que **sí** siguen usando `$order->id` a propósito (no se tocaron):
+    `XuiLineService::activate()` (FK real `lines.order_id`), `OrderController::storeTrial()`
+    (JSON `order_id` para el polling), y `toArray()` de `OrderApproved`/`OrderRejected`
+    (canal `database` de notificaciones, no tiene UI que lo lea hoy, mismo criterio que
+    `line_id` ahí — referencia interna, no texto para el usuario).
+  - La variable de plantilla de correo sigue llamándose `{{order_id}}` (mismo criterio que
+    `{{ticket_id}}` con los tickets: no se renombró para no tener que sobreescribir con una
+    migración de datos las plantillas `order_invoice`/`order_approved`/`order_rejected` que
+    el admin pudo haber editado a mano) — solo cambió qué valor se le pasa
+    (`$order->order_number` en vez de `(string) $order->id`), en las 3 notificaciones y en
+    `InvoicePdfService` (nombre de archivo `factura-{order_number}.pdf` y el número mostrado
+    dentro del PDF), `OrderObserver` (aviso de Telegram de pedido nuevo), y los 3 mensajes
+    flash de `Admin\OrderController` (aprobar/rechazar/reintentar) + los 2 de
+    `OrderController` (cliente). También se actualizó la columna `#` del CSV de exportación
+    de pedidos y las 5 vistas que mostraban `#{{ $order->id }}` (Mis Pedidos, Admin >
+    Pedidos, Admin > Dashboard "Pedidos recientes", Admin > Líneas → detalle, el detalle de
+    ticket cliente/admin cuando hay un pedido relacionado).
+  - `EmailTemplate::sampleVariables()` ya usaba `'order_id' => '1042'` como dato de ejemplo
+    para "Probar esta plantilla" — coincidía por casualidad con el formato de 4 dígitos, no
+    hizo falta tocarlo.
+- Probado en local: los pedidos existentes quedaron con `order_number` único de 4 dígitos
+  tras la migración (confirmado `Order::distinct('order_number')->count()` == total de
+  pedidos); un pedido nuevo creado por `tinker` generó `order_number` real (ej. `4830`) sin
+  relación con su `id` real (`64`); el PDF de factura generado y revisado visualmente
+  muestra "Factura N.º6209" (no el id) en el encabezado y el pie — pedidos de prueba
+  eliminados después.
 
 ## Plantillas de correo
 

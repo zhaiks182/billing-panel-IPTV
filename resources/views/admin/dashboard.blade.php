@@ -142,7 +142,7 @@
                     @forelse ($recentOrders as $order)
                         <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-3 text-sm">
                             <div class="flex flex-wrap items-center gap-2">
-                                <span class="text-dim-2">#{{ $order->id }}</span>
+                                <span class="text-dim-2">#{{ $order->order_number }}</span>
                                 <span class="text-paper">{{ $order->user->name }}</span>
                                 <span class="text-dim-2">·</span>
                                 <span class="text-dim">{{ $order->package->name }}</span>

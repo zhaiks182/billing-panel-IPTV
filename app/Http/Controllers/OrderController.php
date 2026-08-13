@@ -118,7 +118,7 @@ class OrderController extends Controller
         session()->forget('cart_package_id');
 
         return redirect()->route('orders.index')
-            ->with('status', "Tu pedido #{$order->id} fue recibido y está en revisión.");
+            ->with('status', "Tu pedido #{$order->order_number} fue recibido y está en revisión.");
     }
 
     private function registerGuest(Request $request): User
@@ -259,7 +259,7 @@ class OrderController extends Controller
             }
 
             return redirect()->route('orders.index')
-                ->with('status', "Tu prueba #{$order->id} no pudo activarse automáticamente. Un administrador la revisará.");
+                ->with('status', "Tu prueba #{$order->order_number} no pudo activarse automáticamente. Un administrador la revisará.");
         }
     }
 

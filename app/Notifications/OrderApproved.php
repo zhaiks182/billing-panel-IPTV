@@ -30,7 +30,7 @@ class OrderApproved extends Notification
 
         return EmailTemplate::mail('order_approved', [
             'user_name' => $notifiable->name,
-            'order_id' => (string) $this->order->id,
+            'order_id' => (string) $this->order->order_number,
             'package_name' => $this->order->package->name,
             'xui_username' => $this->line->xui_username,
             'xui_password' => $this->line->xui_password,
@@ -45,7 +45,7 @@ class OrderApproved extends Notification
         return [
             'order_id' => $this->order->id,
             'line_id' => $this->line->id,
-            'message' => "Tu pedido #{$this->order->id} fue aprobado y tu línea está activa.",
+            'message' => "Tu pedido #{$this->order->order_number} fue aprobado y tu línea está activa.",
         ];
     }
 }

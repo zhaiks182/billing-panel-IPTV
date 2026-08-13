@@ -83,7 +83,7 @@
                                 <dt class="text-dim-2 text-xs uppercase tracking-wide">{{ __('Pedido relacionado') }}</dt>
                                 <dd class="text-paper">
                                     @if ($line->order)
-                                        <a href="{{ route('admin.orders.index') }}" class="text-brand-400 hover:underline">#{{ $line->order->id }}</a>
+                                        <a href="{{ route('admin.orders.index') }}" class="text-brand-400 hover:underline">#{{ $line->order->order_number }}</a>
                                     @else
                                         —
                                     @endif

@@ -54,7 +54,7 @@ class OrderInvoice extends Notification
 
         return EmailTemplate::mail('order_invoice', [
             'user_name' => $notifiable->name,
-            'order_id' => (string) $this->order->id,
+            'order_id' => (string) $this->order->order_number,
             'package_name' => $this->order->package->name,
             'amount' => '$'.number_format((float) $this->order->amount, 2).' USD',
             'payment_method_name' => $isTrial ? 'Prueba gratuita' : ($this->order->paymentMethod?->name ?: '—'),

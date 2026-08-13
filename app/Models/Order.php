@@ -11,6 +11,22 @@ use Illuminate\Database\Eloquent\Model;
 ])]
 class Order extends Model
 {
+    protected static function booted(): void
+    {
+        static::creating(function (Order $order) {
+            $order->order_number ??= static::generateNumber();
+        });
+    }
+
+    private static function generateNumber(): string
+    {
+        do {
+            $number = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        } while (static::where('order_number', $number)->exists());
+
+        return $number;
+    }
+
     protected function casts(): array
     {
         return [

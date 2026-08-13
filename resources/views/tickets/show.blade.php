@@ -116,7 +116,7 @@
                     @if ($ticket->order)
                         <div class="flex justify-between">
                             <span class="text-dim">{{ __('Pedido') }}</span>
-                            <span class="text-dim-2">#{{ $ticket->order->id }}</span>
+                            <span class="text-dim-2">#{{ $ticket->order->order_number }}</span>
                         </div>
                     @endif
                     @if ($ticket->assignedAdmin)

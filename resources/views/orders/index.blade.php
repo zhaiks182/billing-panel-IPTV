@@ -68,7 +68,7 @@
                             <tbody class="divide-y divide-steel">
                                 @forelse ($orders as $order)
                                     <tr x-show="search === '' || {{ Illuminate\Support\Js::from(str($order->package->name)->lower()->value()) }}.includes(search.toLowerCase())">
-                                        <td class="px-6 py-4 text-sm text-dim">{{ $order->id }}</td>
+                                        <td class="px-6 py-4 text-sm text-dim">{{ $order->order_number }}</td>
                                         <td class="px-6 py-4 text-sm text-dim-2">{{ $order->created_at->format('d/m/Y H:i') }}</td>
                                         <td class="px-6 py-4 text-sm text-dim">{{ $order->package->name }}</td>
                                         <td class="px-6 py-4 text-sm text-dim">${{ number_format($order->amount, 2) }}</td>

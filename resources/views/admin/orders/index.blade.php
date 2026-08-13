@@ -72,7 +72,7 @@
                     <tbody class="divide-y divide-steel">
                         @forelse ($orders as $order)
                             <tr>
-                                <td class="px-4 py-4 text-sm text-dim">{{ $order->id }}</td>
+                                <td class="px-4 py-4 text-sm text-dim">{{ $order->order_number }}</td>
                                 <td class="px-4 py-4 text-sm text-dim">
                                     {{ $order->user->name }}<br>
                                     <span class="text-xs text-dim-2">{{ $order->user->email }}</span>
