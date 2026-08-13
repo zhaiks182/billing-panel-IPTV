@@ -1479,6 +1479,45 @@ interna de administración de XUI ONE para uso del propio equipo.
   prueba confirmadas end-to-end en el navegador — datos y admin de prueba eliminados
   después.
 
+**Revisión visual y de alcance (mismo día, tras ver el resultado)**: el usuario pidió más
+parecido al sitio de referencia — iconos por categoría y una jerarquía tipo árbol (sidebar
+con **todas** las categorías y sus artículos a la vez, no solo nombres de categoría) — y
+que la documentación de XUI ONE **también fuera pública**, no exclusiva del admin.
+- Columna nueva `icon` (string corto, un emoji) en `help_categories`, editable desde el
+  formulario de categoría. Migración
+  `2026_08_13_200000_add_icon_to_help_categories_and_make_public.php` agrega la columna,
+  asigna un ícono a cada categoría existente (📲 Instalación, ❓ Preguntas frecuentes, 🖥️
+  Administración XUI ONE, 🔗 Líneas y revendedores) y cambia `audience` de `internal` a
+  `public` en las dos categorías de XUI ONE (con su descripción ajustada, ya no dice
+  "guías internas").
+  Los íconos son elección propia (no los del sitio de referencia) — el emoji en sí no es
+  un problema de derechos de autor, pero se usaron distintos de todos modos.
+- Nuevo componente [`<x-help-sidebar>`](resources/views/components/help-sidebar.blade.php)
+  — árbol completo (categoría + lista de sus artículos, expandido siempre, sin JS de
+  colapsar/expandir — con 21 artículos en 4 categorías no hace falta), resalta la
+  categoría/artículo activo. `HelpController` ahora carga **todas** las categorías públicas
+  con sus artículos (`with(['articles' => ...])`) en las 3 acciones (antes `index()` no
+  cargaba artículos, y `category()`/`article()` solo cargaban nombres de categoría vía
+  `withCount`) — mismo criterio de "cargar todo de una vez" que ya usaba el sidebar de
+  categorías de la tienda (`packages/category.blade.php`), volumen total bajo (21 filas).
+  Reemplaza el sidebar viejo (solo nombres de categoría) en las 3 vistas públicas
+  (`help/index`, `help/category`, `help/article` — esta última no tenía sidebar antes).
+- La distinción `audience` (`public`/`internal`) **se mantuvo en el modelo** aunque hoy las
+  4 categorías sean públicas — sigue disponible desde el formulario de categoría por si en
+  el futuro se quiere volver a marcar algo como interno; no se quitó la lógica de
+  `HelpController` que la respeta.
+- Se aprovechó el mismo cambio para reordenar el menú principal a pedido del usuario:
+  "Paquetes, Tienda, Ayuda, Abrir Ticket" (antes "Ayuda" iba justo después de "Paquetes",
+  antes de "Tienda") — mismo orden aplicado también para clientes con sesión ("Paquetes,
+  Servicios, Facturación, Ayuda, Abrir Ticket") y en el menú responsive.
+- Probado en local: `/ayuda` muestra el árbol completo con íconos y las 4 categorías
+  (incluyendo las 2 de XUI ONE, ya públicas); un artículo antes-interno
+  (`xui-one-administracion/xui-agregar-servidor`) ahora carga sin `404`, con el sidebar
+  completo también visible en la página de artículo; el artículo/categoría activos quedan
+  resaltados en el árbol (confirmado por clase CSS `bg-brand-500/10` en el enlace activo);
+  Admin > Documentación > Categorías muestra los 4 íconos y las 4 como "Pública" — admin de
+  prueba eliminado después.
+
 ## Plantillas de correo
 
 Los 9 correos transaccionales del sistema (verificación de cuenta, **factura pendiente de

@@ -1,11 +1,19 @@
 @csrf
 @if (isset($category)) @method('PUT') @endif
 
-<div>
-    <x-input-label for="name" value="{{ __('Nombre') }}" />
-    <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" required
-                  value="{{ old('name', $category->name ?? '') }}" />
-    <x-input-error :messages="$errors->get('name')" class="mt-2" />
+<div class="flex gap-4">
+    <div class="w-24">
+        <x-input-label for="icon" value="{{ __('Ícono') }}" />
+        <x-text-input id="icon" name="icon" type="text" class="mt-1 block w-full text-center text-lg" maxlength="10"
+                      placeholder="🔧" value="{{ old('icon', $category->icon ?? '') }}" />
+        <x-input-error :messages="$errors->get('icon')" class="mt-2" />
+    </div>
+    <div class="flex-1">
+        <x-input-label for="name" value="{{ __('Nombre') }}" />
+        <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" required
+                      value="{{ old('name', $category->name ?? '') }}" />
+        <x-input-error :messages="$errors->get('name')" class="mt-2" />
+    </div>
 </div>
 
 <div class="mt-4">

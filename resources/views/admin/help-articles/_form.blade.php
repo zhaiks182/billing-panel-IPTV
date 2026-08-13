@@ -8,7 +8,7 @@
                 class="mt-1 block w-full rounded-md border-steel bg-panel text-paper shadow-sm">
             @foreach ($categories as $cat)
                 <option value="{{ $cat->id }}" {{ (int) old('help_category_id', $article->help_category_id ?? '') === $cat->id ? 'selected' : '' }}>
-                    {{ $cat->audience === 'internal' ? '🔒 ' : '' }}{{ $cat->name }}
+                    {{ $cat->icon }} {{ $cat->name }}{{ $cat->audience === 'internal' ? ' (interna)' : '' }}
                 </option>
             @endforeach
         </select>

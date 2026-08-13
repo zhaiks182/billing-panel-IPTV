@@ -35,7 +35,7 @@
                         @forelse ($categories as $category)
                             <tr>
                                 <td class="px-6 py-4 text-sm text-dim">{{ $category->sort_order }}</td>
-                                <td class="px-6 py-4 text-sm text-paper">{{ $category->name }}</td>
+                                <td class="px-6 py-4 text-sm text-paper">{{ $category->icon }} {{ $category->name }}</td>
                                 <td class="px-6 py-4 text-sm">
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $category->audience === 'internal' ? 'bg-amber/10 text-amber' : 'bg-brand-500/10 text-brand-400' }}">
                                         {{ $category->audience === 'internal' ? __('Interna') : __('Pública') }}

@@ -61,6 +61,7 @@ class HelpCategoryController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'icon' => ['nullable', 'string', 'max:10'],
             'description' => ['nullable', 'string', 'max:1000'],
             'audience' => ['required', Rule::in(['public', 'internal'])],
             'sort_order' => ['nullable', 'integer', 'min:0'],

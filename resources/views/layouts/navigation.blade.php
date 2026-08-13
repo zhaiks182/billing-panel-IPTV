@@ -16,10 +16,6 @@
                         {{ __('Paquetes') }}
                     </x-nav-link>
 
-                    <x-nav-link :href="route('help.index')" :active="request()->routeIs('help.*')">
-                        {{ __('Ayuda') }}
-                    </x-nav-link>
-
                     @php
                         $navDropdownClasses = fn (bool $active) => $active
                             ? 'inline-flex items-center gap-1 px-1 pt-1 border-b-2 border-brand-500 text-sm font-medium leading-5 text-paper focus:outline-none transition duration-150 ease-in-out'
@@ -50,6 +46,10 @@
                                 @endif
                             </x-slot>
                         </x-dropdown>
+
+                        <x-nav-link :href="route('help.index')" :active="request()->routeIs('help.*')">
+                            {{ __('Ayuda') }}
+                        </x-nav-link>
 
                         <x-nav-link :href="route('tickets.create')" :active="request()->routeIs('tickets.create')">
                             {{ __('Abrir Ticket') }}
@@ -85,6 +85,10 @@
                                 <x-dropdown-link :href="route('orders.index')">{{ __('Mis Facturas') }}</x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
+
+                        <x-nav-link :href="route('help.index')" :active="request()->routeIs('help.*')">
+                            {{ __('Ayuda') }}
+                        </x-nav-link>
 
                         <x-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
                             {{ __('Abrir Ticket') }}
@@ -174,10 +178,6 @@
                 {{ __('Paquetes') }}
             </x-responsive-nav-link>
 
-            <x-responsive-nav-link :href="route('help.index')" :active="request()->routeIs('help.*')">
-                {{ __('Ayuda') }}
-            </x-responsive-nav-link>
-
             <x-responsive-nav-link :href="route('cart.index')" :active="request()->routeIs('cart.index')">
                 {{ __('Carrito') }}
                 @if (session('cart_package_id'))
@@ -195,6 +195,10 @@
                     </x-responsive-nav-link>
                 @endforeach
 
+                <x-responsive-nav-link :href="route('help.index')" :active="request()->routeIs('help.*')">
+                    {{ __('Ayuda') }}
+                </x-responsive-nav-link>
+
                 <x-responsive-nav-link :href="route('tickets.create')" :active="request()->routeIs('tickets.create')">
                     {{ __('Abrir Ticket') }}
                 </x-responsive-nav-link>
@@ -209,6 +213,9 @@
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('orders.index')" :active="request()->routeIs('orders.*')">
                     {{ __('Mis Facturas') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('help.index')" :active="request()->routeIs('help.*')">
+                    {{ __('Ayuda') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('tickets.index')" :active="request()->routeIs('tickets.*')">
                     {{ __('Abrir Ticket') }}

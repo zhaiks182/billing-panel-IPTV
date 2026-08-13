@@ -11,14 +11,20 @@
     </x-slot>
 
     <div class="py-12">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="bg-panel border border-steel rounded-lg p-6 sm:p-8">
-                <x-help-article-content :article="$article" />
-            </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+                <x-help-sidebar :categories="$categories" :active-category="$category" :active-article="$article" />
 
-            <a href="{{ route('help.category', $category) }}" class="mt-6 inline-block text-sm text-dim hover:text-paper">
-                {{ __('← Volver a :category', ['category' => $category->name]) }}
-            </a>
+                <div class="lg:col-span-3">
+                    <div class="bg-panel border border-steel rounded-lg p-6 sm:p-8">
+                        <x-help-article-content :article="$article" />
+                    </div>
+
+                    <a href="{{ route('help.category', $category) }}" class="mt-6 inline-block text-sm text-dim hover:text-paper">
+                        {{ __('← Volver a :category', ['category' => $category->name]) }}
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </x-app-layout>
