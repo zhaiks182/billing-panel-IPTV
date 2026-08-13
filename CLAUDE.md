@@ -2670,3 +2670,13 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   usuario, por derechos de autor). 4 categorías, 21 artículos, 2 modelos nuevos
   (`HelpCategory`/`HelpArticle`), CRUD admin completo, clase CSS `.help-content` nueva.
   Desplegado con `deploy.sh --migrate` (sin `--no-build`, por el CSS nuevo).
+- **Widget de Cloudflare Turnstile del login admin, de oscuro a claro** — a pedido del
+  usuario, viendo una captura del login de `/adm_4livepro`. Solo afecta a
+  `admin/auth/login.blade.php` (`data-theme="dark"` → `"light"`), que tiene su propio
+  markup del widget separado de `<x-turnstile-widget>` (el componente compartido de
+  registro/checkout/tickets, que sigue en oscuro sin cambios). Verificado que el atributo
+  queda bien seteado en el DOM con las llaves públicas de prueba de Cloudflare
+  (`1x00000000000000000000AA`/`1x0000...AA`) — el iframe real del widget no se pudo
+  renderizar en esta sesión porque el navegador de pruebas no tiene salida de red hacia
+  `challenges.cloudflare.com`, no es un problema del código — configuración de prueba
+  revertida después.
