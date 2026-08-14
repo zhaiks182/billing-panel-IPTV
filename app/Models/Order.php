@@ -6,8 +6,8 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable([
-    'user_id', 'package_id', 'payment_method_id', 'amount', 'proof_path',
-    'customer_note', 'status', 'admin_note', 'is_renewal', 'approved_by', 'approved_at',
+    'user_id', 'package_id', 'payment_method_id', 'coupon_id', 'amount', 'discount_amount',
+    'proof_path', 'customer_note', 'status', 'admin_note', 'is_renewal', 'approved_by', 'approved_at',
 ])]
 class Order extends Model
 {
@@ -31,6 +31,7 @@ class Order extends Model
     {
         return [
             'amount' => 'decimal:2',
+            'discount_amount' => 'decimal:2',
             'is_renewal' => 'boolean',
             'approved_at' => 'datetime',
         ];
@@ -49,6 +50,11 @@ class Order extends Model
     public function paymentMethod()
     {
         return $this->belongsTo(PaymentMethod::class);
+    }
+
+    public function coupon()
+    {
+        return $this->belongsTo(Coupon::class);
     }
 
     public function approvedBy()

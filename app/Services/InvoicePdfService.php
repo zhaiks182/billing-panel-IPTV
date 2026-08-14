@@ -14,7 +14,7 @@ class InvoicePdfService
 {
     public function generate(Order $order): string
     {
-        $order->loadMissing(['user', 'package', 'paymentMethod']);
+        $order->loadMissing(['user', 'package', 'paymentMethod', 'coupon']);
 
         $statusLabel = match (true) {
             $order->package->is_trial => 'Prueba gratuita',

@@ -42,6 +42,16 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->role === 'admin';
     }
 
+    /**
+     * "Super Admin" tiene acceso total al panel; cualquier otro admin (`admin_role`
+     * distinto, ej. `support`) queda sin Configuración ni Paquetes/Categorías/Métodos de
+     * pago/Cupones — ver App\Http\Middleware\EnsureUserIsSuperAdmin.
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->isAdmin() && $this->admin_role === 'super_admin';
+    }
+
     public function isBlocked(): bool
     {
         return ! $this->isAdmin() && $this->is_blocked;

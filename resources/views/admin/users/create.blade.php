@@ -45,6 +45,15 @@
                         <p class="mt-1 text-xs text-dim-2">{{ __('Solo letras, números, puntos, guiones y guion bajo. Sin @, no es un correo — así inicia sesión en el panel admin.') }}</p>
                     </div>
 
+                    <div class="mt-4" x-show="role === 'admin'" x-cloak>
+                        <x-input-label for="admin_role" value="{{ __('Nivel de acceso') }}" />
+                        <select id="admin_role" name="admin_role" class="mt-1 block w-full rounded-md border-steel bg-ink text-paper shadow-sm">
+                            <option value="support" {{ old('admin_role', 'support') === 'support' ? 'selected' : '' }}>{{ __('Soporte (sin Configuración ni Paquetes/Cupones)') }}</option>
+                            <option value="super_admin" {{ old('admin_role') === 'super_admin' ? 'selected' : '' }}>{{ __('Super Admin (acceso total)') }}</option>
+                        </select>
+                        <x-input-error :messages="$errors->get('admin_role')" class="mt-2" />
+                    </div>
+
                     <div class="mt-4">
                         <x-input-label for="phone" value="{{ __('Teléfono (opcional)') }}" />
                         <x-text-input id="phone" name="phone" type="text" class="mt-1 block w-full"

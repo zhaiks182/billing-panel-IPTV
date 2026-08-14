@@ -45,9 +45,12 @@ class CreateAdminUser extends Command
             ]
         );
 
-        // 'role' tampoco está en el mass-assignment permitido (a propósito, ver App\Models\User)
-        // — se asigna por propiedad directa, igual que 'email_verified_at' abajo.
+        // 'role'/'admin_role' tampoco están en el mass-assignment permitido (a propósito, ver
+        // App\Models\User) — se asignan por propiedad directa, igual que 'email_verified_at' abajo.
+        // admin_role solo se fija si todavía no tiene uno (??=) — así reejecutar este comando
+        // para resetear la clave de un admin ya existente nunca le cambia el nivel de acceso.
         $user->role = 'admin';
+        $user->admin_role ??= 'super_admin';
         $user->save();
 
         // 'email_verified_at' no está en el mass-assignment permitido del modelo (a propósito,

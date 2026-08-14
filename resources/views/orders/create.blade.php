@@ -8,7 +8,43 @@
         </div>
     </x-slot>
 
-    <div class="py-8" x-data @keydown.escape.window="window.location = '{{ route('home') }}'">
+    <div class="py-8"
+         x-data="{
+            couponCode: '',
+            couponApplied: null,
+            couponChecking: false,
+            couponError: '',
+            checkCoupon() {
+                if (! this.couponCode.trim()) { return; }
+                this.couponChecking = true;
+                this.couponError = '';
+                fetch('{{ route('orders.check-coupon', $package) }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}', 'Accept': 'application/json' },
+                    body: JSON.stringify({ code: this.couponCode }),
+                })
+                    .then(r => r.json())
+                    .then(data => {
+                        this.couponChecking = false;
+                        if (data.valid) {
+                            this.couponApplied = data;
+                        } else {
+                            this.couponApplied = null;
+                            this.couponError = data.message || 'Este código no es válido.';
+                        }
+                    })
+                    .catch(() => {
+                        this.couponChecking = false;
+                        this.couponError = 'No pudimos validar el código. Intenta de nuevo.';
+                    });
+            },
+            removeCoupon() {
+                this.couponApplied = null;
+                this.couponCode = '';
+                this.couponError = '';
+            },
+         }"
+         @keydown.escape.window="window.location = '{{ route('home') }}'">
         <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
             @if (session('status'))
                 <div class="bg-amber/10 border border-amber text-amber px-4 py-3 rounded-lg mb-6">
@@ -175,6 +211,25 @@
                                                 <x-input-error :messages="$errors->get('customer_note')" class="mt-2" />
                                             </div>
 
+                                            <div>
+                                                <x-input-label value="{{ __('Código de descuento (opcional)') }}" />
+                                                <div class="mt-1 flex gap-2" x-show="! couponApplied">
+                                                    <x-text-input type="text" x-model="couponCode" placeholder="{{ __('Ej. BIENVENIDA10') }}"
+                                                                  class="flex-1 uppercase" @keydown.enter.prevent="checkCoupon()" />
+                                                    <button type="button" @click="checkCoupon()" x-bind:disabled="couponChecking"
+                                                            class="shrink-0 px-4 py-2 rounded-md bg-steel text-paper text-sm font-semibold hover:bg-steel/80 disabled:opacity-50">
+                                                        <span x-show="! couponChecking">{{ __('Aplicar') }}</span>
+                                                        <span x-show="couponChecking" x-cloak>{{ __('Verificando...') }}</span>
+                                                    </button>
+                                                </div>
+                                                <div x-show="couponApplied" x-cloak class="mt-1 flex items-center justify-between bg-brand-500/10 border border-brand-800 text-brand-300 px-3 py-2 rounded-md text-sm">
+                                                    <span x-text="couponApplied ? couponApplied.message : ''"></span>
+                                                    <button type="button" @click="removeCoupon()" class="text-dim-2 hover:text-paper ml-2">{{ __('Quitar') }}</button>
+                                                </div>
+                                                <p class="mt-1 text-xs text-danger" x-show="couponError" x-cloak x-text="couponError"></p>
+                                                <input type="hidden" name="coupon_code" x-bind:value="couponApplied ? couponCode : ''">
+                                            </div>
+
                                             <x-primary-button class="w-full justify-center py-3 gap-2">
                                                 {{ __('Completar Pedido') }}
                                                 <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -276,13 +331,31 @@
                         @endforeach
                     </div>
 
+                    @if (! $package->is_trial)
+                        <div class="mt-3 pt-3 border-t border-steel space-y-1.5 text-sm" x-show="couponApplied" x-cloak>
+                            <div class="flex justify-between">
+                                <span class="text-dim">{{ __('Subtotal') }}</span>
+                                <span class="text-dim-2">${{ number_format($package->price, 2) }}</span>
+                            </div>
+                            <div class="flex justify-between text-brand-400">
+                                <span>{{ __('Descuento') }}</span>
+                                <span x-text="couponApplied ? '-$' + couponApplied.discount.toFixed(2) : ''"></span>
+                            </div>
+                        </div>
+                    @endif
+
                     <div class="mt-4 pt-4 border-t border-steel">
                         <span class="text-xs font-semibold text-dim uppercase tracking-wide">{{ __('Total a abonar') }}</span>
                         <p class="text-3xl font-display font-extrabold text-paper mt-1">
                             @if ($package->is_trial)
                                 {{ __('$0.00') }}
                             @else
-                                ${{ number_format($package->price, 2) }}
+                                <template x-if="couponApplied">
+                                    <span x-text="'$' + couponApplied.final_amount.toFixed(2)"></span>
+                                </template>
+                                <template x-if="! couponApplied">
+                                    <span>${{ number_format($package->price, 2) }}</span>
+                                </template>
                                 <span class="text-sm font-normal text-dim-2">USD</span>
                             @endif
                         </p>

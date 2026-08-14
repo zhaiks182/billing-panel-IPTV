@@ -86,7 +86,12 @@
                                         <span class="ml-1 inline-flex px-1.5 py-0.5 text-xs rounded bg-amber/10 text-amber">{{ __('Demo') }}</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-4 text-sm text-dim">${{ number_format($order->amount, 2) }}</td>
+                                <td class="px-4 py-4 text-sm text-dim">
+                                    ${{ number_format($order->amount, 2) }}
+                                    @if ($order->coupon)
+                                        <span class="block text-xs text-brand-400">{{ $order->coupon->code }}</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-4 text-sm text-dim">{{ $order->paymentMethod->name ?? __('Prueba Gratis') }}</td>
                                 <td class="px-4 py-4 text-sm">
                                     @if ($order->proof_path)

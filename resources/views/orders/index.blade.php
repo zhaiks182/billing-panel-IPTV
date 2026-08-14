@@ -71,7 +71,12 @@
                                         <td class="px-6 py-4 text-sm text-dim">{{ $order->order_number }}</td>
                                         <td class="px-6 py-4 text-sm text-dim-2">{{ $order->created_at->format('d/m/Y H:i') }}</td>
                                         <td class="px-6 py-4 text-sm text-dim">{{ $order->package->name }}</td>
-                                        <td class="px-6 py-4 text-sm text-dim">${{ number_format($order->amount, 2) }}</td>
+                                        <td class="px-6 py-4 text-sm text-dim">
+                                            ${{ number_format($order->amount, 2) }}
+                                            @if ($order->coupon)
+                                                <span class="block text-xs text-brand-400">{{ $order->coupon->code }}</span>
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4 text-sm">
                                             <x-order-status-badge :status="$order->status" />
                                         </td>

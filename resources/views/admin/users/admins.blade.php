@@ -37,6 +37,7 @@
                         <tr>
                             <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Nombre') }}</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Usuario') }}</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Nivel de acceso') }}</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Registrado') }}</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-dim-2 uppercase">{{ __('Acciones') }}</th>
                         </tr>
@@ -46,6 +47,17 @@
                             <tr>
                                 <td class="px-4 py-4 text-sm text-paper">{{ $admin->name }}</td>
                                 <td class="px-4 py-4 text-sm text-dim font-mono">{{ $admin->username }}</td>
+                                <td class="px-4 py-4 text-sm">
+                                    <form method="POST" action="{{ route('admin.users.role.update', $admin) }}"
+                                          onsubmit="return confirm('¿Cambiar el nivel de acceso de {{ $admin->username }}?')">
+                                        @csrf
+                                        <select name="admin_role" onchange="this.form.submit()"
+                                                class="rounded-md border-steel bg-ink text-paper text-sm shadow-sm">
+                                            <option value="support" {{ $admin->admin_role === 'support' ? 'selected' : '' }}>{{ __('Soporte') }}</option>
+                                            <option value="super_admin" {{ $admin->admin_role === 'super_admin' ? 'selected' : '' }}>{{ __('Super Admin') }}</option>
+                                        </select>
+                                    </form>
+                                </td>
                                 <td class="px-4 py-4 text-sm text-dim-2">{{ $admin->created_at->format('d/m/Y H:i') }}</td>
                                 <td class="px-4 py-4 text-sm">
                                     @if ($admin->id !== auth()->id())
@@ -62,7 +74,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="px-4 py-8 text-center text-dim-2">{{ __('No se encontraron administradores.') }}</td>
+                                <td colspan="5" class="px-4 py-8 text-center text-dim-2">{{ __('No se encontraron administradores.') }}</td>
                             </tr>
                         @endforelse
                     </tbody>

@@ -44,33 +44,38 @@
             <div class="space-y-1">
                 <a href="{{ route('admin.orders.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.orders.*')) }}">{{ __('Pedidos') }}</a>
                 <a href="{{ route('admin.lines.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.lines.*')) }}">{{ __('Líneas') }}</a>
+                @if (auth()->user()->isSuperAdmin())
+                    <a href="{{ route('admin.cupones.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.cupones.*')) }}">{{ __('Cupones') }}</a>
+                @endif
             </div>
         </div>
 
-        <div>
-            <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">
-                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M9.638 1.093a.75.75 0 01.724 0l2 1.104a.75.75 0 11-.724 1.313L10 2.788l-1.638.722a.75.75 0 11-.724-1.313l2-1.104zM5.403 4.287a.75.75 0 01-.295 1.019l-.805.444.805.444a.75.75 0 01-.724 1.314L3.5 7.02v.73a.75.75 0 01-1.5 0v-2a.75.75 0 01.388-.657l1.996-1.1a.75.75 0 011.019.294zm9.194 0a.75.75 0 011.02-.295l1.995 1.101A.75.75 0 0118 5.75v2a.75.75 0 01-1.5 0v-.73l-.884.488a.75.75 0 11-.724-1.314l.806-.444-.806-.444a.75.75 0 01-.295-1.02zM7.343 8.284a.75.75 0 011.02-.294L10 8.856l1.638-.866a.75.75 0 11.724 1.314l-1.612.848v2.264a.75.75 0 01-1.5 0V10.15l-1.612-.848a.75.75 0 01-.295-1.019zM2.75 11.5a.75.75 0 01.75.75v1.936l.086.048 1.5.83a.75.75 0 01-.724 1.313l-1.5-.83a.75.75 0 01-.386-.657v-2.64a.75.75 0 01.274-.75zm14.5 0a.75.75 0 01.274.75v2.64a.75.75 0 01-.386.657l-1.5.83a.75.75 0 11-.724-1.313l1.5-.83.086-.048V12.25a.75.75 0 01.75-.75zm-7.25 6.5v-2.64a.75.75 0 011.5 0v2.64a.75.75 0 01-1.5 0z" clip-rule="evenodd" />
-                </svg>
-                {{ __('Paquetes') }}
-            </p>
-            <div class="space-y-1">
-                <a href="{{ route('admin.paquetes.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.paquetes.*')) }}">{{ __('Paquetes') }}</a>
-                <a href="{{ route('admin.categorias.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.categorias.*')) }}">{{ __('Categorías') }}</a>
+        @if (auth()->user()->isSuperAdmin())
+            <div>
+                <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M9.638 1.093a.75.75 0 01.724 0l2 1.104a.75.75 0 11-.724 1.313L10 2.788l-1.638.722a.75.75 0 11-.724-1.313l2-1.104zM5.403 4.287a.75.75 0 01-.295 1.019l-.805.444.805.444a.75.75 0 01-.724 1.314L3.5 7.02v.73a.75.75 0 01-1.5 0v-2a.75.75 0 01.388-.657l1.996-1.1a.75.75 0 011.019.294zm9.194 0a.75.75 0 011.02-.295l1.995 1.101A.75.75 0 0118 5.75v2a.75.75 0 01-1.5 0v-.73l-.884.488a.75.75 0 11-.724-1.314l.806-.444-.806-.444a.75.75 0 01-.295-1.02zM7.343 8.284a.75.75 0 011.02-.294L10 8.856l1.638-.866a.75.75 0 11.724 1.314l-1.612.848v2.264a.75.75 0 01-1.5 0V10.15l-1.612-.848a.75.75 0 01-.295-1.019zM2.75 11.5a.75.75 0 01.75.75v1.936l.086.048 1.5.83a.75.75 0 01-.724 1.313l-1.5-.83a.75.75 0 01-.386-.657v-2.64a.75.75 0 01.274-.75zm14.5 0a.75.75 0 01.274.75v2.64a.75.75 0 01-.386.657l-1.5.83a.75.75 0 11-.724-1.313l1.5-.83.086-.048V12.25a.75.75 0 01.75-.75zm-7.25 6.5v-2.64a.75.75 0 011.5 0v2.64a.75.75 0 01-1.5 0z" clip-rule="evenodd" />
+                    </svg>
+                    {{ __('Paquetes') }}
+                </p>
+                <div class="space-y-1">
+                    <a href="{{ route('admin.paquetes.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.paquetes.*')) }}">{{ __('Paquetes') }}</a>
+                    <a href="{{ route('admin.categorias.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.categorias.*')) }}">{{ __('Categorías') }}</a>
+                </div>
             </div>
-        </div>
 
-        <div>
-            <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">
-                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M2.5 4A1.5 1.5 0 001 5.5V6h18v-.5A1.5 1.5 0 0017.5 4h-15zM19 8.5H1v6A1.5 1.5 0 002.5 16h15a1.5 1.5 0 001.5-1.5v-6zM3 13.25a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zm4.75-.75a.75.75 0 000 1.5h3.5a.75.75 0 000-1.5h-3.5z" clip-rule="evenodd" />
-                </svg>
-                {{ __('Métodos de pago') }}
-            </p>
-            <div class="space-y-1">
-                <a href="{{ route('admin.metodos-pago.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.metodos-pago.*')) }}">{{ __('Métodos de pago') }}</a>
+            <div>
+                <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M2.5 4A1.5 1.5 0 001 5.5V6h18v-.5A1.5 1.5 0 0017.5 4h-15zM19 8.5H1v6A1.5 1.5 0 002.5 16h15a1.5 1.5 0 001.5-1.5v-6zM3 13.25a.75.75 0 01.75-.75h1.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zm4.75-.75a.75.75 0 000 1.5h3.5a.75.75 0 000-1.5h-3.5z" clip-rule="evenodd" />
+                    </svg>
+                    {{ __('Métodos de pago') }}
+                </p>
+                <div class="space-y-1">
+                    <a href="{{ route('admin.metodos-pago.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.metodos-pago.*')) }}">{{ __('Métodos de pago') }}</a>
+                </div>
             </div>
-        </div>
+        @endif
 
         <div>
             <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">
@@ -104,21 +109,23 @@
             </div>
         </div>
 
-        <div>
-            <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">
-                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
-                </svg>
-                {{ __('Configuración') }}
-            </p>
-            <div class="space-y-1">
-                <a href="{{ route('admin.xui.edit') }}" class="{{ $navLinkClasses(request()->routeIs('admin.xui.*')) }}">{{ __('XUI One') }}</a>
-                <a href="{{ route('admin.mail.edit') }}" class="{{ $navLinkClasses(request()->routeIs('admin.mail.*')) }}">{{ __('SMTP') }}</a>
-                <a href="{{ route('admin.turnstile.edit') }}" class="{{ $navLinkClasses(request()->routeIs('admin.turnstile.*')) }}">{{ __('Cloudflare Turnstile') }}</a>
-                <a href="{{ route('admin.telegram.edit') }}" class="{{ $navLinkClasses(request()->routeIs('admin.telegram.*')) }}">{{ __('Telegram') }}</a>
-                <a href="{{ route('admin.email-templates.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.email-templates.*')) }}">{{ __('Plantillas de correo') }}</a>
+        @if (auth()->user()->isSuperAdmin())
+            <div>
+                <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    {{ __('Configuración') }}
+                </p>
+                <div class="space-y-1">
+                    <a href="{{ route('admin.xui.edit') }}" class="{{ $navLinkClasses(request()->routeIs('admin.xui.*')) }}">{{ __('XUI One') }}</a>
+                    <a href="{{ route('admin.mail.edit') }}" class="{{ $navLinkClasses(request()->routeIs('admin.mail.*')) }}">{{ __('SMTP') }}</a>
+                    <a href="{{ route('admin.turnstile.edit') }}" class="{{ $navLinkClasses(request()->routeIs('admin.turnstile.*')) }}">{{ __('Cloudflare Turnstile') }}</a>
+                    <a href="{{ route('admin.telegram.edit') }}" class="{{ $navLinkClasses(request()->routeIs('admin.telegram.*')) }}">{{ __('Telegram') }}</a>
+                    <a href="{{ route('admin.email-templates.index') }}" class="{{ $navLinkClasses(request()->routeIs('admin.email-templates.*')) }}">{{ __('Plantillas de correo') }}</a>
+                </div>
             </div>
-        </div>
+        @endif
 
         <div>
             <p class="mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wide text-dim-2">

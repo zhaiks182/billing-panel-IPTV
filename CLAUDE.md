@@ -69,6 +69,8 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
   `TelegramSettingController` — edición de cada singleton de configuración (`XuiSetting`,
   `MailSetting`, `TurnstileSetting`, `TelegramSetting`), cada uno con su propio botón de
   "probar" que no requiere guardar antes.
+- `CouponController` — CRUD de cupones de descuento (`/adm_4livepro/cupones`), ver "Cupones
+  de descuento". Restringido a Super Admin (ver "Roles de administrador").
 - `EmailTemplateController` — editor de las 9 plantillas de correo, ver "Plantillas de correo".
 - `TicketController` — listado/detalle/respuesta/gestión de tickets, ver "Módulo de Tickets
   de Soporte".
@@ -81,6 +83,7 @@ especial es scaffolding estándar de Laravel Breeze, sin personalizar.
 **Modelos** (`app/Models`)
 - `User` — `role` (customer/admin), dirección completa, `isAdmin()`, `hasVerifiedEmail()`.
 - `PackageCategory`, `Package`, `PaymentMethod`, `Order`, `Line` — ver "Modelo de datos".
+- `Coupon` — cupones de descuento, ver "Cupones de descuento".
 - `EmailTemplate` — ver "Plantillas de correo".
 - `Ticket`, `TicketMessage`, `TicketAttachment` — ver "Módulo de Tickets de Soporte".
 - `LineActivityLog` — auditoría de acciones de admin sobre una línea, ver "Módulo de Líneas
@@ -153,6 +156,9 @@ negocio: `OrderObserver@created` (pedido nuevo), `LineObserver@created` (línea 
 
 **Middleware** (`app/Http/Middleware`)
 - `EnsureUserIsAdmin` — alias `admin`, usado en el grupo de rutas `/adm_4livepro`.
+- `EnsureUserIsSuperAdmin` — alias `super-admin`, agregado **además** de `admin` (no en vez
+  de) a las rutas de Configuración/Paquetes/Categorías/Métodos de pago/Cupones — ver "Roles
+  de administrador".
 - `EnsureEmailIsVerified` — alias `verified` (reemplaza el de Laravel): hace lo mismo pero
   además guarda `url.intended` para regresar al usuario a donde quería ir (ej. comprar un
   paquete) después de verificar, en vez de mandarlo siempre a `/dashboard`.
@@ -422,8 +428,10 @@ del formulario de registro.
 
 ## Modelo de datos (tablas/relaciones clave)
 
-- `users`: + `role` (`customer`|`admin`, enum), `phone`, `phone_country_code`, `company`,
-  dirección completa (billing fields, migración `2026_08_04_115353`). `isAdmin()` en el modelo.
+- `users`: + `role` (`customer`|`admin`, enum), `admin_role` (`super_admin`|`support`,
+  nullable — solo aplica cuando `role='admin'`, ver "Roles de administrador"), `phone`,
+  `phone_country_code`, `company`, dirección completa (billing fields, migración
+  `2026_08_04_115353`). `isAdmin()`/`isSuperAdmin()` en el modelo.
 - `package_categories` → `packages` (1:N, ordenado por precio)
 - `packages`: `price`, `duration_days`, `duration_unit` (`days`|`hours`), `max_connections`,
   `is_active`, `is_trial`, `xui_package_id` (FK lógica al ID de paquete en XUI ONE — **si
@@ -438,7 +446,12 @@ del formulario de registro.
   ambos un pago ya confirmado, la diferencia es solo si la línea llegó a crearse en XUI o no
   todavía; `Order::isPaid()` los trata igual. `rejected` se muestra como "Cancelado" en las
   vistas),
-  `admin_note`, `is_renewal`, `approved_by`, `approved_at`. `hasOne(Line)`.
+  `admin_note`, `is_renewal`, `approved_by`, `approved_at`, `coupon_id` (nullable,
+  `nullOnDelete()`), `discount_amount` (nullable — monto ya restado de `amount`, ver
+  "Cupones de descuento"). `hasOne(Line)`, `belongsTo(Coupon)`.
+- `coupons`: `code` (único, se normaliza a mayúsculas al comparar, no al guardar), `type`
+  (`percent`|`fixed`), `value`, `max_redemptions` (nullable, null = ilimitado), `expires_at`
+  (nullable), `is_active`. Ver "Cupones de descuento".
 - `lines`: `user_id`, `order_id`, `xui_line_id`, `xui_username`, `xui_password`, `m3u_url`,
   `max_connections`, `expires_at`, `status` (`active`|`suspended`|`expired`, columna real en
   BD), `reminder_sent_at`. `Line::displayStatus()` es un estado **computado** aparte, no la
@@ -1975,6 +1988,146 @@ rastrear para que el bot vea la etiqueta `noindex` y excluya la página; bloquea
 del todo a veces hace que la URL aparezca "pelada" sin descripción en vez de excluirse).
 Commit `9498618`.
 
+## Cupones de descuento (2026-08-14)
+
+A pedido del usuario ("aplica cupones/descuentos"), planificado con `EnterPlanMode`/
+`AskUserQuestion` antes de escribir código. Se confirmó con el usuario que los cupones
+aplican **a toda la tienda** (no restringidos por paquete/categoría) — más simple de
+administrar que un sistema con reglas por producto.
+
+- Modelo [`App\Models\Coupon`](app/Models/Coupon.php): `type` (`percent`|`fixed`), `value`,
+  `max_redemptions` (nullable, null = ilimitado), `expires_at` (nullable), `is_active`.
+  `redeemedCount()` cuenta en vivo (`orders()->where('status','!=','rejected')->count()`) —
+  **mismo patrón que `Package::soldCount()`** (ver "Control de stock por paquete"), sin
+  columna contadora desnormalizada, para no tener que sincronizarla en cada punto donde un
+  pedido cambia de estado. `isRedeemable()` (activo, no vencido, no alcanzó el límite) y
+  `discountFor(float $price)` (nunca deja el total negativo — `min($discount, $price)`).
+- **Checkout** ([`OrderController`](app/Http/Controllers/OrderController.php)):
+  - `POST /paquetes/{package:slug}/cupon` (`orders.check-coupon`, `throttle:20,1`, dentro
+    del mismo grupo `no-admin` que ya envuelve el resto del checkout) — valida un código por
+    AJAX (`checkCoupon()`) y devuelve `{valid, discount, final_amount, message}` **sin
+    aplicarlo todavía**, solo para mostrarle el descuento al cliente en vivo. No aplica a
+    paquetes trial (son gratis).
+  - `createOrderWithStockCheck()` (privado, ya existía para el control de stock — ver
+    "Control de stock por paquete") se extendió con un 4º parámetro `?string $couponCode`:
+    dentro de la misma transacción, **después** del lock de `Package` y **antes** de crear
+    el pedido, relee el cupón con su propio `Coupon::where(...)->lockForUpdate()->first()` y
+    recalcula el descuento desde cero — **nunca confía en el `discount`/`final_amount` que
+    devolvió el endpoint de AJAX al cliente**. Si el código dejó de ser válido entre el
+    check y el submit real (ej. otro cliente agotó el cupo mientras tanto), el pedido se
+    crea igual, solo que sin el descuento — no vale la pena bloquear una compra por un
+    cupón que venció a último momento.
+  - `store()` valida `coupon_code` (`nullable|string|max:50`) y lo pasa a
+    `createOrderWithStockCheck()`. `storeTrial()` no lo toca — un trial es gratis, no aplica.
+- **Vista de checkout** ([`orders/create.blade.php`](resources/views/orders/create.blade.php)):
+  input "Código de descuento" + botón "Aplicar" (Alpine + `fetch()`, mismo patrón que
+  `trialGateForm()` en `resources/js/app.js`) dentro de la tarjeta "Detalles de pago" —
+  solo para paquetes no-trial. Al aplicar, la tarjeta "Resumen del pedido" muestra
+  Subtotal/Descuento y actualiza el "Total a abonar" en vivo, sin recargar la página. El
+  código aplicado viaja como `<input type="hidden" name="coupon_code">` dentro del form
+  real, para que `store()` lo re-valide server-side al enviar.
+- **Admin** ([`Admin\CouponController`](app/Http/Controllers/Admin/CouponController.php),
+  `/adm_4livepro/cupones`) — CRUD estándar (`Route::resource(...)->except('show')`), mismo
+  patrón exacto que `Admin\PaymentMethodController`. Listado muestra código, tipo, valor,
+  canjeados/máximo, vencimiento, estado. **Restringido a Super Admin** (ver "Roles de
+  administrador" — el pricing es una de las áreas que el usuario pidió reservar para el
+  rol con acceso total).
+- **Mostrar el descuento aplicado**: PDF de factura
+  ([`InvoicePdfService`](app/Services/InvoicePdfService.php)/
+  [`pdf/invoice.blade.php`](resources/views/pdf/invoice.blade.php)) agrega una fila
+  "Descuento (CÓDIGO)" cuando `discount_amount > 0` — el subtotal de la tabla se calcula
+  como `amount + discount_amount` (no `$package->price` directo, para no depender de que el
+  precio del paquete no haya cambiado desde que se hizo el pedido). Badge chico con el
+  código de cupón usado en "Mis Pedidos" ([`orders/index.blade.php`](resources/views/orders/index.blade.php))
+  y en Admin > Pedidos ([`admin/orders/index.blade.php`](resources/views/admin/orders/index.blade.php)),
+  debajo del monto. **Fuera de alcance en esta pasada**: no se tocó el HTML de las
+  plantillas de correo (`order_invoice`, etc.) — el monto final ya llega correcto vía
+  `{{amount}}`, solo no se desglosa el descuento dentro del cuerpo del correo.
+- Probado end-to-end en local con `curl` (cookie jar de sesión real, mismo patrón usado en
+  toda la sesión) sobre un cliente y un paquete reales: cupón porcentual (`10%` sobre
+  $5.99) dejó `amount=5.39`/`discount_amount=0.60`/`coupon_id` correcto; cupón fijo ($5)
+  dejó `amount=0.99`/`discount_amount=5.00`; un cupón vencido no bloqueó la compra pero
+  tampoco aplicó descuento (`coupon_id=null`, precio completo); un cupón con
+  `max_redemptions=1` aplicó el descuento en el primer pedido y **no** en el segundo
+  intento (pedido igual se creó, sin descuento). **Condición de carrera probada con
+  procesos reales concurrentes** (mismo método que la prueba de stock — `artisan serve` con
+  `PHP_CLI_SERVER_WORKERS=4` para permitir concurrencia real, dos peticiones `curl`
+  disparadas en paralelo con `&`/`wait` contra un cupón `max_redemptions=1` nunca antes
+  usado): de las dos, exactamente una quedó con el descuento aplicado y la otra sin él —
+  nunca las dos, confirmando que el `lockForUpdate()` del cupón serializa correctamente el
+  canje del último cupo, igual que ya estaba probado para el stock de paquetes. Botón
+  "Aplicar" del checkout también probado en el navegador (código en minúsculas
+  `promo10` → coincidió con `PROMO10` guardado en mayúsculas, confirma la comparación
+  case-insensitive `UPPER(code) = ?`). Todos los cupones/pedidos/usuarios de prueba
+  eliminados después, incluyendo los comprobantes subidos a `storage/app/public/proofs`.
+
+## Roles de administrador: Super Admin / Soporte (2026-08-14)
+
+A pedido del usuario ("crear los roles/permisos"). Antes, `users.role='admin'` daba acceso
+total al panel sin niveles — si el usuario sumaba a alguien al equipo de soporte, no había
+forma de darle acceso limitado (quedaría viendo también Configuración de XUI/SMTP y el
+pricing de paquetes/métodos de pago). Planificado con `EnterPlanMode`/`AskUserQuestion`:
+el usuario confirmó por `AskUserQuestion` (multiSelect) que el rol **Soporte** no debe
+tocar **Configuración** (XUI/SMTP/Turnstile/Telegram/Plantillas de correo) ni
+**Paquetes/Categorías/Métodos de pago/Cupones** (pricing) — el resto del panel (Dashboard,
+Pedidos —incluye aprobar/rechazar—, Líneas, Tickets, Documentación, Usuarios, y **gestión
+de administradores**) queda accesible para cualquier admin. El usuario dejó explícitamente
+sin restringir "Gestión de administradores" al elegir las opciones — así que hoy un admin
+Soporte puede crear otro admin o cambiarle el nivel de acceso a cualquiera; es una decisión
+tomada a propósito, no un descuido.
+
+- `users.admin_role` (string nullable, solo tiene sentido cuando `role='admin'`) — valores
+  `super_admin`|`support`. Migración
+  `2026_08_14_090200_add_admin_role_to_users_table.php` deja a **todos los admins que ya
+  existían en `super_admin`** (nadie perdió acceso con el cambio). `admin_role` **no** es
+  mass-assignable (mismo patrón de seguridad que `role`/`is_blocked`, ver `User.php`) — se
+  asigna siempre por propiedad directa. `User::isSuperAdmin()`:
+  `isAdmin() && admin_role === 'super_admin'`.
+- [`App\Http\Middleware\EnsureUserIsSuperAdmin`](app/Http/Middleware/EnsureUserIsSuperAdmin.php)
+  (alias `super-admin`, mismo patrón que `EnsureUserIsAdmin` — `abort(403)` si no cumple)
+  se agrega **además** de `admin` (no en vez de) en tres grupos de rutas de
+  [routes/web.php](routes/web.php): `paquetes`/`categorias`/`metodos-pago`/`cupones`;
+  `configuracion-xui`/`configuracion-correo`; `configuracion-turnstile`/
+  `configuracion-telegram` (+`probar`)/`plantillas-correo` (+`probar`). El resto de rutas
+  admin (dashboard, pedidos, líneas, tickets, documentación, usuarios, administradores)
+  solo llevan `admin` — un Soporte las usa exactamente igual que un Super Admin.
+- **UI**: [`layouts/admin-navigation.blade.php`](resources/views/layouts/admin-navigation.blade.php)
+  envuelve los grupos "Paquetes", "Métodos de pago", "Cupones" (dentro de "Ventas") y todo
+  "Configuración" en `@if(auth()->user()->isSuperAdmin())` — un Soporte no ve esos enlaces
+  en el sidebar, además del bloqueo real a nivel de ruta (defensa en dos capas, ninguna
+  reemplaza a la otra).
+  - `Admin\UserController::create()`/`store()` (crear administrador): select nuevo "Nivel
+    de acceso" cuando `role=admin` — **por seguridad, el valor por defecto es "Soporte"**,
+    así que crear un Super Admin nuevo requiere elegirlo a propósito desde el desplegable,
+    nunca por descuido/valor por defecto.
+  - Listado de administradores ([`admin/users/admins.blade.php`](resources/views/admin/users/admins.blade.php))
+    muestra un `<select>` con el nivel de acceso de cada admin, auto-submit al cambiarlo
+    (`onchange="this.form.submit()"`, con confirmación) contra la nueva ruta
+    `POST /adm_4livepro/administradores/{user}/nivel-acceso` (`admin.users.role.update`,
+    `Admin\UserController::updateAdminRole()`) — acción rápida sin vista/formulario propio,
+    mismo criterio que el toggle de bloqueo de clientes.
+  - [`app/Console/Commands/CreateAdminUser.php`](app/Console/Commands/CreateAdminUser.php)
+    (`php artisan app:create-admin`, usado por `install.sh` y por SSH para resetear la
+    clave de un admin) usa `$user->admin_role ??= 'super_admin';` — **solo asigna
+    `super_admin` si el admin todavía no tiene ningún `admin_role`** (admin nuevo). Volver
+    a correr este comando para resetear la contraseña de un admin ya existente (el uso más
+    común por SSH) **nunca** le cambia el nivel de acceso que ya tenía, gracias al `??=`.
+- Probado end-to-end en el navegador local: admin de prueba creado con `admin_role=support`
+  → sidebar sin "Cupones"/"Paquetes"/"Categorías"/"Métodos de pago"/"Configuración" (los 5
+  enlaces de Configuración); acceso directo por URL a `/adm_4livepro/cupones`,
+  `/paquetes`, `/configuracion-xui` y `/plantillas-correo` → los 4 devuelven `403`;
+  `/pedidos` sigue devolviendo el panel normal (200). `php artisan route:list -v` confirmó
+  el middleware `super-admin` presente en `cupones` y ausente en `pedidos`. Formulario
+  "Nuevo administrador" probado con clic real: el select "Nivel de acceso" nace en
+  "Soporte" y el admin creado quedó con `admin_role=support` en la base de datos; el
+  selector inline del listado de administradores probado cambiando el nivel de un admin
+  real de `super_admin`→`support`→`super_admin` (confirmado en BD en cada paso, restaurado
+  al final). `php artisan app:create-admin` probado dos veces sobre el mismo usuario:
+  primera vez asignó `super_admin` (admin nuevo); tras bajarlo a mano a `support` y volver
+  a correr el comando con una contraseña distinta (simulando el caso real de uso por SSH:
+  "olvidé la clave del admin de soporte"), el `admin_role` se mantuvo en `support` — no se
+  resetea. Todos los admins/usuarios de prueba eliminados después.
+
 ## Puntos abiertos / riesgos conocidos
 
 - ✅ **Renovación en XUI resuelta**: `XuiLineService::applyPackage()` (usada tanto por
@@ -2691,3 +2844,21 @@ cosas que **viven fuera del repo, en la carpeta de usuario de Windows**, y no se
   pudo renderizar en esta sesión porque el navegador de pruebas no tiene salida de red
   hacia `challenges.cloudflare.com`, no es un problema del código — configuración y admin
   de prueba revertidos después.
+
+### 2026-08-14
+
+- El usuario pidió recomendaciones de mejoras; de la lista, eligió implementar **cupones de
+  descuento** y **roles de administrador (Super Admin / Soporte)** en la misma sesión. Ver
+  secciones dedicadas "Cupones de descuento" y "Roles de administrador: Super Admin /
+  Soporte" más arriba para el diseño completo. Planificado con `EnterPlanMode` +
+  `AskUserQuestion` (alcance de los cupones — a toda la tienda — y qué secciones debía
+  restringir el rol Soporte) antes de escribir código.
+  - Cupones: probado end-to-end con `curl` (percent/fijo/vencido/límite alcanzado) y con
+    condición de carrera real (`PHP_CLI_SERVER_WORKERS=4` + dos peticiones concurrentes),
+    mismo método ya usado para el control de stock por paquete.
+  - Roles: probado en navegador con un admin `support` real (403 en las 4 áreas
+    restringidas, sidebar sin esos enlaces, `pedidos` accesible normal) y con
+    `php artisan app:create-admin` corrido dos veces para confirmar que no resetea el nivel
+    de acceso de un admin ya existente.
+  - Todos los datos de prueba (cupones, pedidos, comprobantes subidos, usuarios/admins)
+    eliminados después de cada verificación.

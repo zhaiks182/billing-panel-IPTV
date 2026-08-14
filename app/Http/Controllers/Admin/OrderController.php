@@ -15,7 +15,7 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $orders = Order::with(['user', 'package', 'paymentMethod'])
+        $orders = Order::with(['user', 'package', 'paymentMethod', 'coupon'])
             ->when($request->status, fn ($q, $status) => $q->whereIn('status', (array) $status))
             ->when($request->date_from, fn ($q, $date) => $q->whereDate('created_at', '>=', $date))
             ->when($request->date_to, fn ($q, $date) => $q->whereDate('created_at', '<=', $date))
@@ -28,7 +28,7 @@ class OrderController extends Controller
 
     public function export(Request $request)
     {
-        $orders = Order::with(['user', 'package', 'paymentMethod'])
+        $orders = Order::with(['user', 'package', 'paymentMethod', 'coupon'])
             ->when($request->status, fn ($q, $status) => $q->whereIn('status', (array) $status))
             ->when($request->date_from, fn ($q, $date) => $q->whereDate('created_at', '>=', $date))
             ->when($request->date_to, fn ($q, $date) => $q->whereDate('created_at', '<=', $date))

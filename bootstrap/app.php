@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'super-admin' => \App\Http\Middleware\EnsureUserIsSuperAdmin::class,
             'verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
             'admin.timeout' => \App\Http\Middleware\AdminIdleTimeout::class,
             'no-admin' => \App\Http\Middleware\RedirectAuthenticatedAdmin::class,

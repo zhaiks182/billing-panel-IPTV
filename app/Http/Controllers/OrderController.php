@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\PackageSoldOutException;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\PaymentMethod;
@@ -53,6 +54,34 @@ class OrderController extends Controller
         return response()->json(['status' => $order->status]);
     }
 
+    /**
+     * Valida un cupón por AJAX antes del submit final, solo para mostrarle al cliente el
+     * descuento — no lo aplica todavía. El submit real (`store()`) siempre recalcula el
+     * descuento desde cero, nunca confía en lo que devuelve este endpoint.
+     */
+    public function checkCoupon(Request $request, Package $package)
+    {
+        $request->validate(['code' => ['required', 'string', 'max:50']]);
+
+        $coupon = Coupon::whereRaw('UPPER(code) = ?', [strtoupper($request->code)])->first();
+
+        if ($package->is_trial || ! $coupon || ! $coupon->isRedeemable()) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Este código no es válido o ya venció.',
+            ]);
+        }
+
+        $discount = $coupon->discountFor((float) $package->price);
+
+        return response()->json([
+            'valid' => true,
+            'discount' => $discount,
+            'final_amount' => round((float) $package->price - $discount, 2),
+            'message' => 'Cupón aplicado: -$'.number_format($discount, 2),
+        ]);
+    }
+
     public function invoice(Order $order, InvoicePdfService $pdf)
     {
         abort_unless($order->user_id === auth()->id(), 403);
@@ -90,6 +119,7 @@ class OrderController extends Controller
             'payment_method_id' => ['required', 'exists:payment_methods,id'],
             'proof' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:5120'],
             'customer_note' => ['nullable', 'string', 'max:1000'],
+            'coupon_code' => ['nullable', 'string', 'max:50'],
         ]);
 
         $proofPath = $request->file('proof')->store('proofs', 'public');
@@ -102,7 +132,7 @@ class OrderController extends Controller
                 'customer_note' => $validated['customer_note'] ?? null,
                 'is_renewal' => $user->lines()->where('status', 'active')->exists(),
                 'status' => 'pending',
-            ]);
+            ], $validated['coupon_code'] ?? null);
         } catch (PackageSoldOutException) {
             $message = 'Este paquete se agotó. Elige otro plan o contáctanos.';
 
@@ -170,10 +200,16 @@ class OrderController extends Controller
      * como primera consulta (antes del conteo) — así dos compras casi simultáneas del
      * último cupo se serializan en vez de vender de más. "Vendido" = cualquier pedido que
      * no sea 'rejected' (ver Package::soldCount()). No aplica si stock_limit es null.
+     *
+     * El cupón (si se manda uno) se re-valida acá adentro, con su propio lockForUpdate() —
+     * nunca se confía en el descuento que haya devuelto checkCoupon() al cliente. Si el
+     * código dejó de ser válido entre el check por AJAX y este submit (ej. otro cliente
+     * agotó el cupo), el pedido igual se crea, solo que sin el descuento — no vale la pena
+     * bloquear la compra por un cupón que venció a último momento.
      */
-    private function createOrderWithStockCheck(User $user, Package $package, array $attributes): Order
+    private function createOrderWithStockCheck(User $user, Package $package, array $attributes, ?string $couponCode = null): Order
     {
-        return DB::transaction(function () use ($user, $package, $attributes) {
+        return DB::transaction(function () use ($user, $package, $attributes, $couponCode) {
             $locked = Package::where('id', $package->id)->lockForUpdate()->first();
 
             if ($locked->force_sold_out) {
@@ -186,6 +222,18 @@ class OrderController extends Controller
 
                 if ($soldSinceLimit >= $locked->stock_limit) {
                     throw new PackageSoldOutException;
+                }
+            }
+
+            if ($couponCode) {
+                $coupon = Coupon::whereRaw('UPPER(code) = ?', [strtoupper($couponCode)])->lockForUpdate()->first();
+
+                if ($coupon && $coupon->isRedeemable()) {
+                    $discount = $coupon->discountFor((float) $attributes['amount']);
+
+                    $attributes['amount'] = round((float) $attributes['amount'] - $discount, 2);
+                    $attributes['coupon_id'] = $coupon->id;
+                    $attributes['discount_amount'] = $discount;
                 }
             }
 
@@ -273,7 +321,7 @@ class OrderController extends Controller
             ->pluck('total', 'status');
 
         $orders = $user->orders()
-            ->with(['package', 'paymentMethod', 'line'])
+            ->with(['package', 'paymentMethod', 'line', 'coupon'])
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
             ->latest()
             ->paginate(10)

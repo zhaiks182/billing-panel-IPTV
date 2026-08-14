@@ -145,6 +145,7 @@ class UserController extends Controller
             'username' => [Rule::requiredIf($isAdmin), 'nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9_.-]+$/', 'unique:users,username'],
             'password' => ['required', 'confirmed', Password::min(8)->mixedCase()->numbers()->symbols()],
             'role' => ['required', Rule::in(['customer', 'admin'])],
+            'admin_role' => [Rule::requiredIf($isAdmin), 'nullable', Rule::in(['super_admin', 'support'])],
             'phone' => ['nullable', 'string', 'max:30'],
         ]);
 
@@ -160,6 +161,7 @@ class UserController extends Controller
         ]);
 
         $user->role = $validated['role'];
+        $user->admin_role = $isAdmin ? $validated['admin_role'] : null;
         $user->save();
 
         $user->markEmailAsVerified();
@@ -168,6 +170,24 @@ class UserController extends Controller
 
         return redirect()->route($isAdmin ? 'admin.users.admins' : 'admin.users.index')
             ->with('status', "Usuario {$label} creado correctamente.");
+    }
+
+    /**
+     * Cambia el nivel de acceso (Super Admin / Soporte) de un admin ya existente — acción
+     * rápida desde el listado de administradores, no tiene un formulario/vista propia.
+     */
+    public function updateAdminRole(Request $request, User $user)
+    {
+        abort_unless($user->isAdmin(), 404);
+
+        $validated = $request->validate([
+            'admin_role' => ['required', Rule::in(['super_admin', 'support'])],
+        ]);
+
+        $user->admin_role = $validated['admin_role'];
+        $user->save();
+
+        return back()->with('status', "Nivel de acceso de {$user->username} actualizado.");
     }
 
     public function toggleBlock(User $user)

@@ -89,8 +89,14 @@
                     <strong>{{ $order->package->name }}</strong><br>
                     Duración: {{ $order->package->durationLabel() }}
                 </td>
-                <td class="text-right">${{ number_format((float) $order->amount, 2) }} USD</td>
+                <td class="text-right">${{ number_format((float) $order->amount + (float) ($order->discount_amount ?? 0), 2) }} USD</td>
             </tr>
+            @if ($order->discount_amount > 0)
+                <tr>
+                    <td>Descuento{{ $order->coupon ? ' ('.$order->coupon->code.')' : '' }}</td>
+                    <td class="text-right">-${{ number_format((float) $order->discount_amount, 2) }} USD</td>
+                </tr>
+            @endif
             <tr class="total-row">
                 <td>Total</td>
                 <td class="text-right">${{ number_format((float) $order->amount, 2) }} USD</td>

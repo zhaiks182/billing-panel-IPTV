@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\CouponController as AdminCouponController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\EmailTemplateController;
 use App\Http\Controllers\Admin\HelpArticleController as AdminHelpArticleController;
@@ -55,6 +56,7 @@ Route::middleware('no-admin')->group(function () {
 
     Route::get('/paquetes/{package:slug}/comprar', [OrderController::class, 'create'])->name('orders.create');
     Route::post('/paquetes/{package:slug}/comprar', [OrderController::class, 'store'])->name('orders.store')->middleware('throttle:10,1');
+    Route::post('/paquetes/{package:slug}/cupon', [OrderController::class, 'checkCoupon'])->name('orders.check-coupon')->middleware('throttle:20,1');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -99,9 +101,15 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::post('/lineas/{line}/sincronizar', [AdminLineController::class, 'sync'])->name('lines.sync');
         Route::delete('/lineas/{line}', [AdminLineController::class, 'destroy'])->name('lines.destroy');
 
-        Route::resource('paquetes', AdminPackageController::class)->except('show')->parameters(['paquetes' => 'package']);
-        Route::resource('categorias', AdminPackageCategoryController::class)->except('show')->parameters(['categorias' => 'category']);
-        Route::resource('metodos-pago', AdminPaymentMethodController::class)->except('show')->parameters(['metodos-pago' => 'paymentMethod']);
+        // Restringido a Super Admin: pricing/catálogo — un admin de Soporte no debe poder
+        // tocar precios ni crear cupones (ver App\Http\Middleware\EnsureUserIsSuperAdmin).
+        Route::middleware('super-admin')->group(function () {
+            Route::resource('paquetes', AdminPackageController::class)->except('show')->parameters(['paquetes' => 'package']);
+            Route::resource('categorias', AdminPackageCategoryController::class)->except('show')->parameters(['categorias' => 'category']);
+            Route::resource('metodos-pago', AdminPaymentMethodController::class)->except('show')->parameters(['metodos-pago' => 'paymentMethod']);
+            Route::resource('cupones', AdminCouponController::class)->except('show')->parameters(['cupones' => 'coupon']);
+        });
+
         Route::resource('documentacion/categorias', AdminHelpCategoryController::class)
             ->except('show')
             ->parameters(['categorias' => 'category'])
@@ -126,11 +134,14 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
             ]);
         Route::post('documentacion/articulos/subir-imagen', [AdminHelpArticleController::class, 'uploadImage'])->name('help.articles.upload-image');
 
-        Route::get('/configuracion-xui', [XuiSettingController::class, 'edit'])->name('xui.edit');
-        Route::put('/configuracion-xui', [XuiSettingController::class, 'update'])->name('xui.update');
+        // Restringido a Super Admin: configuración sensible de infraestructura.
+        Route::middleware('super-admin')->group(function () {
+            Route::get('/configuracion-xui', [XuiSettingController::class, 'edit'])->name('xui.edit');
+            Route::put('/configuracion-xui', [XuiSettingController::class, 'update'])->name('xui.update');
 
-        Route::get('/configuracion-correo', [MailSettingController::class, 'edit'])->name('mail.edit');
-        Route::put('/configuracion-correo', [MailSettingController::class, 'update'])->name('mail.update');
+            Route::get('/configuracion-correo', [MailSettingController::class, 'edit'])->name('mail.edit');
+            Route::put('/configuracion-correo', [MailSettingController::class, 'update'])->name('mail.update');
+        });
 
         Route::get('/usuarios', [AdminUserController::class, 'index'])->name('users.index');
         Route::get('/administradores', [AdminUserController::class, 'admins'])->name('users.admins');
@@ -141,21 +152,24 @@ Route::prefix('adm_4livepro')->name('admin.')->group(function () {
         Route::put('/usuarios/{user}', [AdminUserController::class, 'update'])->name('users.update');
         Route::post('/usuarios/{user}/verificar', [AdminUserController::class, 'verify'])->name('users.verify');
         Route::post('/usuarios/{user}/bloquear', [AdminUserController::class, 'toggleBlock'])->name('users.toggle-block');
+        Route::post('/administradores/{user}/nivel-acceso', [AdminUserController::class, 'updateAdminRole'])->name('users.role.update');
         Route::get('/usuarios/{user}/correos/{emailLog}/vista-previa', [AdminUserController::class, 'previewEmail'])->name('users.emails.preview');
         Route::post('/usuarios/{user}/correos/{emailLog}/reenviar', [AdminUserController::class, 'resendEmail'])->name('users.emails.resend');
         Route::delete('/usuarios/{user}', [AdminUserController::class, 'destroy'])->name('users.destroy');
 
-        Route::get('/configuracion-turnstile', [TurnstileSettingController::class, 'edit'])->name('turnstile.edit');
-        Route::put('/configuracion-turnstile', [TurnstileSettingController::class, 'update'])->name('turnstile.update');
+        Route::middleware('super-admin')->group(function () {
+            Route::get('/configuracion-turnstile', [TurnstileSettingController::class, 'edit'])->name('turnstile.edit');
+            Route::put('/configuracion-turnstile', [TurnstileSettingController::class, 'update'])->name('turnstile.update');
 
-        Route::get('/configuracion-telegram', [TelegramSettingController::class, 'edit'])->name('telegram.edit');
-        Route::put('/configuracion-telegram', [TelegramSettingController::class, 'update'])->name('telegram.update');
-        Route::post('/configuracion-telegram/probar', [TelegramSettingController::class, 'test'])->name('telegram.test');
+            Route::get('/configuracion-telegram', [TelegramSettingController::class, 'edit'])->name('telegram.edit');
+            Route::put('/configuracion-telegram', [TelegramSettingController::class, 'update'])->name('telegram.update');
+            Route::post('/configuracion-telegram/probar', [TelegramSettingController::class, 'test'])->name('telegram.test');
 
-        Route::get('/plantillas-correo', [EmailTemplateController::class, 'index'])->name('email-templates.index');
-        Route::get('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'edit'])->name('email-templates.edit');
-        Route::put('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'update'])->name('email-templates.update');
-        Route::post('/plantillas-correo/{emailTemplate}/probar', [EmailTemplateController::class, 'test'])->name('email-templates.test');
+            Route::get('/plantillas-correo', [EmailTemplateController::class, 'index'])->name('email-templates.index');
+            Route::get('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'edit'])->name('email-templates.edit');
+            Route::put('/plantillas-correo/{emailTemplate}', [EmailTemplateController::class, 'update'])->name('email-templates.update');
+            Route::post('/plantillas-correo/{emailTemplate}/probar', [EmailTemplateController::class, 'test'])->name('email-templates.test');
+        });
 
         Route::get('/tickets', [AdminTicketController::class, 'index'])->name('tickets.index');
         Route::get('/tickets/{ticket}', [AdminTicketController::class, 'show'])->name('tickets.show');
